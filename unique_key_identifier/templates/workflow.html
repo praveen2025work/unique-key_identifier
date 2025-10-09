@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Status - Run #{{ run_id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .status-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+
+        .status-title {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .status-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .meta-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+
+        .meta-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .meta-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .progress-container {
+            margin: 30px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 40px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+        }
+
+        .progress-fill.error {
+            background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.queued {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .status-badge.running {
+            background: #fbbf24;
+            color: #92400e;
+        }
+
+        .status-badge.completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-badge.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .stages-container {
+            margin: 30px 0;
+        }
+
+        .stage-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .stage-item.pending {
+            border-color: #e0e0e0;
+        }
+
+        .stage-item.in_progress {
+            border-color: #fbbf24;
+            background: #fffbeb;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .stage-item.completed {
+            border-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .stage-item.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .stage-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .stage-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stage-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .stage-icon.pending {
+            background: #e0e0e0;
+            color: #999;
+        }
+
+        .stage-icon.in_progress {
+            background: #fbbf24;
+            color: white;
+        }
+
+        .stage-icon.completed {
+            background: #10b981;
+            color: white;
+        }
+
+        .stage-icon.error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .stage-details {
+            font-size: 14px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .stage-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        .auto-refresh {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔄 Workflow Status</h1>
+            <p class="subtitle">Run #{{ run_id }} - Real-time Processing Monitor</p>
+        </header>
+
+        <div class="card">
+            <div class="status-header">
+                <div class="status-title">
+                    Analysis Job #{{ run_id }}
+                    <span class="status-badge {{ status }}" id="statusBadge">{{ status }}</span>
+                </div>
+                <div class="status-meta">
+                    <div class="meta-item">
+                        <div class="meta-label">Started At</div>
+                        <div class="meta-value">{{ timestamp }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">File A</div>
+                        <div class="meta-value">{{ file_a }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">File B</div>
+                        <div class="meta-value">{{ file_b }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Columns</div>
+                        <div class="meta-value">{{ num_columns }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-container">
+                <h3 style="margin-bottom: 15px;">Overall Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill {% if status == 'error' %}error{% endif %}" id="progressBar" style="width: {{ progress }}%">
+                        <span id="progressText">{{ progress }}%</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if error %}
+            <div class="error-message">
+                <strong>⚠️ Error:</strong> {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="stages-container">
+                <h3 style="margin-bottom: 15px;">Processing Stages</h3>
+                <div id="stagesContainer">
+                    <!-- Stages will be dynamically updated -->
+                    <div class="stage-item pending">
+                        <div class="stage-header">
+                            <div class="stage-name">Loading stages...</div>
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="auto-refresh" id="autoRefresh">
+                <span class="spinner"></span> Auto-refreshing every 5 seconds...
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" onclick="window.location.href='/'">← Back to Home</button>
+                <button class="btn" id="viewResultsBtn" style="display: none;" onclick="window.location.href='/run/{{ run_id }}'">
+                    📊 View Results
+                </button>
+                <button class="btn" id="downloadCsvBtn" style="display: none;" onclick="window.location.href='/download/{{ run_id }}/csv'">
+                    📥 Download CSV
+                </button>
+                <button class="btn" id="downloadExcelBtn" style="display: none;" onclick="window.location.href='/download/{{ run_id }}/excel'">
+                    📊 Download Excel
+                </button>
+                <button class="btn" onclick="location.reload()">🔄 Refresh Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pollInterval;
+        const runId = {{ run_id }};
+        
+        async function updateStatus() {
+            try {
+                const response = await fetch(`/api/status/${runId}`);
+                const data = await response.json();
+                
+                // Update progress bar
+                const progressBar = document.getElementById('progressBar');
+                const progressText = document.getElementById('progressText');
+                progressBar.style.width = data.progress + '%';
+                progressText.textContent = data.progress + '%';
+                
+                // Update status badge
+                const statusBadge = document.getElementById('statusBadge');
+                statusBadge.className = 'status-badge ' + data.status;
+                statusBadge.textContent = data.status;
+                
+                // Update stages
+                updateStages(data.stages);
+                
+                // If completed or error, show results button and stop polling
+                if (data.status === 'completed') {
+                    document.getElementById('viewResultsBtn').style.display = 'block';
+                    document.getElementById('downloadCsvBtn').style.display = 'block';
+                    document.getElementById('downloadExcelBtn').style.display = 'block';
+                    document.getElementById('autoRefresh').innerHTML = '✅ Analysis completed!';
+                    clearInterval(pollInterval);
+                } else if (data.status === 'error') {
+                    document.getElementById('autoRefresh').innerHTML = '❌ Analysis failed';
+                    clearInterval(pollInterval);
+                    progressBar.classList.add('error');
+                }
+                
+            } catch (error) {
+                console.error('Error fetching status:', error);
+            }
+        }
+        
+        function updateStages(stages) {
+            const container = document.getElementById('stagesContainer');
+            container.innerHTML = '';
+            
+            const stageNames = {
+                'reading_files': '📁 Reading CSV Files',
+                'validating_data': '✓ Validating Data',
+                'analyzing_file_a': '📊 Analyzing File A',
+                'analyzing_file_b': '📊 Analyzing File B',
+                'storing_results': '💾 Storing Results'
+            };
+            
+            const stageIcons = {
+                'pending': '○',
+                'in_progress': '⟳',
+                'completed': '✓',
+                'error': '✗'
+            };
+            
+            stages.forEach(stage => {
+                const stageDiv = document.createElement('div');
+                stageDiv.className = `stage-item ${stage.status}`;
+                
+                let timeInfo = '';
+                if (stage.started_at) {
+                    timeInfo = `Started: ${stage.started_at}`;
+                }
+                if (stage.completed_at) {
+                    timeInfo += ` | Completed: ${stage.completed_at}`;
+                }
+                
+                stageDiv.innerHTML = `
+                    <div class="stage-header">
+                        <div class="stage-name">${stageNames[stage.name] || stage.name}</div>
+                        <div class="stage-icon ${stage.status}">${stageIcons[stage.status]}</div>
+                    </div>
+                    ${stage.details ? `<div class="stage-details">${stage.details}</div>` : ''}
+                    ${timeInfo ? `<div class="stage-time">${timeInfo}</div>` : ''}
+                `;
+                
+                container.appendChild(stageDiv);
+            });
+        }
+        
+        // Start polling
+        updateStatus(); // Initial load
+        pollInterval = setInterval(updateStatus, 5000); // Poll every 5 seconds
+        
+        // Stop polling when user leaves page
+        window.addEventListener('beforeunload', () => {
+            clearInterval(pollInterval);
+        });
+    </script>
+</body>
+</html>
+

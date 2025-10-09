@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results - Run #{{ run_id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .run-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            margin: -30px -30px 30px -30px;
+        }
+
+        .run-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .run-meta-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 15px;
+            border-radius: 6px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .group-nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .group-btn {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .group-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .group-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .group-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 6px;
+        }
+
+        .comparison-tables {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .table-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .table-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .table-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .results-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .results-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 13px;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .results-table tr.unique-key {
+            background: linear-gradient(to right, #ecfdf5 0%, white 100%);
+        }
+
+        .results-table tr.has-duplicates {
+            background: linear-gradient(to right, #fffbeb 0%, white 100%);
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-badge.unique {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-badge.duplicate {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .score-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .score-bar-fill {
+            flex: 1;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .score-bar-value {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .score-bar-value.high {
+            background: #10b981;
+        }
+
+        .score-bar-value.medium {
+            background: #f59e0b;
+        }
+
+        .score-bar-value.low {
+            background: #ef4444;
+        }
+
+        .score-text {
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        @media (max-width: 1200px) {
+            .comparison-tables {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .columns-display {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .column-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .group-summary {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Analysis Results</h1>
+            <p class="subtitle">Run #{{ run_id }} - Grouped by Combination Size</p>
+        </header>
+
+        <div class="card">
+            <div class="run-header">
+                <h2>Run #{{ run_id }} - {{ timestamp }}</h2>
+                <div class="run-meta">
+                    <div class="run-meta-item">
+                        <strong>File A:</strong> {{ file_a }} ({{ file_a_rows }} rows)
+                    </div>
+                    <div class="run-meta-item">
+                        <strong>File B:</strong> {{ file_b }} ({{ file_b_rows }} rows)
+                    </div>
+                    <div class="run-meta-item">
+                        <strong>Columns:</strong> {{ columns|length }} total
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-bar">
+                <div>
+                    <a href="/" class="btn btn-secondary">← Back to Home</a>
+                    <a href="/workflow/{{ run_id }}" class="btn btn-secondary">🔄 View Workflow</a>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <a href="/download/{{ run_id }}/csv" class="btn">📥 Download CSV</a>
+                    <a href="/download/{{ run_id }}/excel" class="btn">📊 Download Excel</a>
+                </div>
+            </div>
+
+            {% if columns %}
+            <div style="margin-bottom: 20px;">
+                <strong>Available Columns ({{ columns|length }}):</strong>
+                <div class="columns-display">
+                    {% for col in columns %}
+                        <span class="column-tag">{{ col }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Group Navigation -->
+            <div class="group-summary">
+                <h3 style="margin-bottom: 15px;">📊 Results Grouped by Combination Size</h3>
+                <div class="summary-grid">
+                    {% for stat in group_stats %}
+                    <div class="summary-item">
+                        <div class="summary-value">{{ stat.size }}-Column</div>
+                        <div class="summary-label">
+                            A: {{ stat.count_a }} total ({{ stat.unique_keys_a }} unique)<br>
+                            B: {{ stat.count_b }} total ({{ stat.unique_keys_b }} unique)
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="group-nav">
+                <strong style="align-self: center; margin-right: 10px;">Jump to Group:</strong>
+                {% for stat in group_stats %}
+                <a href="/run/{{ run_id }}?group={{ stat.size }}&page=1&per_page=50" 
+                   class="group-btn {% if current_group == stat.size %}active{% endif %}">
+                    {{ stat.size }}-Column Combinations
+                    <span class="group-badge">{{ stat.count_a + stat.count_b }}</span>
+                </a>
+                {% endfor %}
+                <a href="/run/{{ run_id }}" class="group-btn {% if not current_group %}active{% endif %}">
+                    View All (Summary)
+                </a>
+            </div>
+
+            {% if current_group %}
+            <!-- Detailed view of specific group -->
+            <h3 style="margin: 30px 0 20px 0; color: #333;">{{ current_group }}-Column Combinations - Detailed View</h3>
+            
+            {% if pagination %}
+            <div style="text-align: center; margin-bottom: 15px; color: #666;">
+                Showing {{ pagination.per_page }} results per page | 
+                Side A: {{ pagination.total_in_group_a }} total | Side B: {{ pagination.total_in_group_b }} total
+            </div>
+            {% endif %}
+
+            <div class="comparison-tables">
+                <!-- Side A Table -->
+                <div class="table-panel">
+                    <div class="table-header">
+                        <div class="table-title">Side A: {{ file_a }}</div>
+                        <div class="table-badge">{{ (grouped_a[current_group]|length) if (current_group in grouped_a) else 0 }} combinations</div>
+                    </div>
+
+                    {% if current_group in grouped_a and grouped_a[current_group] %}
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Columns</th>
+                                <th style="width: 12%;">Unique</th>
+                                <th style="width: 12%;">Duplicates</th>
+                                <th style="width: 35%;">Uniqueness</th>
+                                <th style="width: 16%;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pagination %}
+                                {% set offset = (pagination.current_page - 1) * pagination.per_page %}
+                                {% set results_slice = grouped_a[current_group][offset:offset + pagination.per_page] %}
+                            {% else %}
+                                {% set results_slice = grouped_a[current_group][:10] %}
+                            {% endif %}
+                            {% for result in results_slice %}
+                            <tr class="{% if result.is_unique_key %}unique-key{% else %}has-duplicates{% endif %}">
+                                <td><strong>{{ result.columns }}</strong></td>
+                                <td>{{ result.unique_rows }}</td>
+                                <td>{{ result.duplicate_count }}</td>
+                                <td>
+                                    <div class="score-bar">
+                                        <div class="score-bar-fill">
+                                            <div class="score-bar-value {% if result.uniqueness_score == 100 %}high{% elif result.uniqueness_score >= 70 %}medium{% else %}low{% endif %}"
+                                                 style="width: {{ result.uniqueness_score }}%"></div>
+                                        </div>
+                                        <span class="score-text">{{ result.uniqueness_score }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if result.is_unique_key %}unique{% else %}duplicate{% endif %}">
+                                        {% if result.is_unique_key %}✓ Unique{% else %}⚠ Duplicates{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">No results in this group</div>
+                    {% endif %}
+                </div>
+
+                <!-- Side B Table -->
+                <div class="table-panel">
+                    <div class="table-header">
+                        <div class="table-title">Side B: {{ file_b }}</div>
+                        <div class="table-badge">{{ (grouped_b[current_group]|length) if (current_group in grouped_b) else 0 }} combinations</div>
+                    </div>
+
+                    {% if current_group in grouped_b and grouped_b[current_group] %}
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;">Columns</th>
+                                <th style="width: 12%;">Unique</th>
+                                <th style="width: 12%;">Duplicates</th>
+                                <th style="width: 35%;">Uniqueness</th>
+                                <th style="width: 16%;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pagination %}
+                                {% set offset = (pagination.current_page - 1) * pagination.per_page %}
+                                {% set results_slice = grouped_b[current_group][offset:offset + pagination.per_page] %}
+                            {% else %}
+                                {% set results_slice = grouped_b[current_group][:10] %}
+                            {% endif %}
+                            {% for result in results_slice %}
+                            <tr class="{% if result.is_unique_key %}unique-key{% else %}has-duplicates{% endif %}">
+                                <td><strong>{{ result.columns }}</strong></td>
+                                <td>{{ result.unique_rows }}</td>
+                                <td>{{ result.duplicate_count }}</td>
+                                <td>
+                                    <div class="score-bar">
+                                        <div class="score-bar-fill">
+                                            <div class="score-bar-value {% if result.uniqueness_score == 100 %}high{% elif result.uniqueness_score >= 70 %}medium{% else %}low{% endif %}"
+                                                 style="width: {{ result.uniqueness_score }}%"></div>
+                                        </div>
+                                        <span class="score-text">{{ result.uniqueness_score }}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if result.is_unique_key %}unique{% else %}duplicate{% endif %}">
+                                        {% if result.is_unique_key %}✓ Unique{% else %}⚠ Duplicates{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="empty-state">No results in this group</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pagination for group -->
+            {% if pagination and pagination.total_pages > 1 %}
+            <div class="pagination">
+                <div style="color: #666; margin-right: 20px;">
+                    Page {{ pagination.current_page }} of {{ pagination.total_pages }}
+                </div>
+                {% if pagination.has_prev %}
+                <a href="/run/{{ run_id }}?group={{ current_group }}&page=1&per_page={{ pagination.per_page }}" class="btn btn-sm">« First</a>
+                <a href="/run/{{ run_id }}?group={{ current_group }}&page={{ pagination.current_page - 1 }}&per_page={{ pagination.per_page }}" class="btn btn-sm">‹ Prev</a>
+                {% else %}
+                <button class="btn btn-sm" disabled style="opacity: 0.5;">« First</button>
+                <button class="btn btn-sm" disabled style="opacity: 0.5;">‹ Prev</button>
+                {% endif %}
+                
+                <span style="padding: 8px 16px; background: #667eea; color: white; border-radius: 6px; font-weight: 600;">
+                    {{ pagination.current_page }}
+                </span>
+                
+                {% if pagination.has_next %}
+                <a href="/run/{{ run_id }}?group={{ current_group }}&page={{ pagination.current_page + 1 }}&per_page={{ pagination.per_page }}" class="btn btn-sm">Next ›</a>
+                <a href="/run/{{ run_id }}?group={{ current_group }}&page={{ pagination.total_pages }}&per_page={{ pagination.per_page }}" class="btn btn-sm">Last »</a>
+                {% else %}
+                <button class="btn btn-sm" disabled style="opacity: 0.5;">Next ›</button>
+                <button class="btn btn-sm" disabled style="opacity: 0.5;">Last »</button>
+                {% endif %}
+                
+                <select onchange="window.location.href='/run/{{ run_id }}?group={{ current_group }}&page=1&per_page=' + this.value"
+                        style="padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px;">
+                    <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25/page</option>
+                    <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50/page</option>
+                    <option value="100" {% if pagination.per_page == 100 %}selected{% endif %}>100/page</option>
+                    <option value="200" {% if pagination.per_page == 200 %}selected{% endif %}>200/page</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {% else %}
+            <!-- Summary view of all groups (showing top 10 from each) -->
+            <h3 style="margin: 30px 0 20px 0; color: #333;">Summary View - Top Results per Group</h3>
+            <p style="color: #666; margin-bottom: 20px;">Click a group button above to see all results in that category</p>
+
+            {% for stat in group_stats %}
+            <div style="margin-bottom: 40px;">
+                <h4 style="color: #667eea; margin-bottom: 15px;">
+                    {{ stat.size }}-Column Combinations 
+                    <span style="color: #999; font-size: 14px; font-weight: normal;">
+                        (Side A: {{ stat.count_a }}, Side B: {{ stat.count_b }})
+                    </span>
+                    <a href="/run/{{ run_id }}?group={{ stat.size }}" class="btn btn-sm" style="margin-left: 15px;">
+                        View All →
+                    </a>
+                </h4>
+
+                <div class="comparison-tables">
+                    <div class="table-panel">
+                        <div class="table-header">
+                            <div class="table-title">Side A - Top 10</div>
+                        </div>
+                        {% if stat.size in grouped_a %}
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Columns</th>
+                                    <th>Unique</th>
+                                    <th>Duplicates</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in grouped_a[stat.size][:10] %}
+                                <tr class="{% if result.is_unique_key %}unique-key{% else %}has-duplicates{% endif %}">
+                                    <td><strong>{{ result.columns }}</strong></td>
+                                    <td>{{ result.unique_rows }}</td>
+                                    <td>{{ result.duplicate_count }}</td>
+                                    <td>{{ result.uniqueness_score }}%</td>
+                                    <td>
+                                        <span class="status-badge {% if result.is_unique_key %}unique{% else %}duplicate{% endif %}">
+                                            {% if result.is_unique_key %}✓{% else %}⚠{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if stat.count_a > 10 %}
+                        <div style="text-align: center; margin-top: 10px; color: #666; font-size: 13px;">
+                            ... and {{ stat.count_a - 10 }} more 
+                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #667eea;">View All</a>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <div class="table-panel">
+                        <div class="table-header">
+                            <div class="table-title">Side B - Top 10</div>
+                        </div>
+                        {% if stat.size in grouped_b %}
+                        <table class="results-table">
+                            <thead>
+                                <tr>
+                                    <th>Columns</th>
+                                    <th>Unique</th>
+                                    <th>Duplicates</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in grouped_b[stat.size][:10] %}
+                                <tr class="{% if result.is_unique_key %}unique-key{% else %}has-duplicates{% endif %}">
+                                    <td><strong>{{ result.columns }}</strong></td>
+                                    <td>{{ result.unique_rows }}</td>
+                                    <td>{{ result.duplicate_count }}</td>
+                                    <td>{{ result.uniqueness_score }}%</td>
+                                    <td>
+                                        <span class="status-badge {% if result.is_unique_key %}unique{% else %}duplicate{% endif %}">
+                                            {% if result.is_unique_key %}✓{% else %}⚠{% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if stat.count_b > 10 %}
+                        <div style="text-align: center; margin-top: 10px; color: #666; font-size: 13px;">
+                            ... and {{ stat.count_b - 10 }} more 
+                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #667eea;">View All</a>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
+

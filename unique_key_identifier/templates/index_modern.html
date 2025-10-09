@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unique Key Identifier - Modern Analysis Tool</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js for React-like reactivity -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Custom Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#667eea',
+                        secondary: '#764ba2',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .animate-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-primary to-secondary min-h-screen" x-data="appData()">
+    
+    <!-- Toast Notifications -->
+    <div x-show="toast.show" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-y-2"
+         x-transition:enter-end="opacity-100 transform translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 transform translate-y-0"
+         x-transition:leave-end="opacity-0 transform translate-y-2"
+         class="fixed top-4 right-4 z-50 max-w-md"
+         x-cloak>
+        <div :class="{
+            'bg-green-500': toast.type === 'success',
+            'bg-red-500': toast.type === 'error',
+            'bg-blue-500': toast.type === 'info',
+            'bg-yellow-500': toast.type === 'warning'
+        }" class="text-white px-6 py-4 rounded-lg shadow-2xl flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <template x-if="toast.type === 'success'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </template>
+                <template x-if="toast.type === 'error'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </template>
+                <template x-if="toast.type === 'info'">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </template>
+            </div>
+            <div class="flex-1">
+                <p class="font-semibold" x-text="toast.title"></p>
+                <p class="text-sm mt-1 opacity-90" x-text="toast.message"></p>
+            </div>
+            <button @click="toast.show = false" class="flex-shrink-0 text-white hover:text-gray-200">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div x-show="loading" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm z-40 flex items-center justify-center"
+         x-cloak>
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div class="flex flex-col items-center">
+                <!-- Spinner -->
+                <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                
+                <h3 class="text-2xl font-bold text-gray-800 mt-6">Analyzing Files...</h3>
+                <p class="text-gray-600 mt-2 text-center">Please wait while we process your data</p>
+                
+                <!-- Progress Steps -->
+                <div class="w-full mt-6 space-y-3">
+                    <template x-for="(step, index) in progressSteps" :key="index">
+                        <div class="flex items-center space-x-3">
+                            <div :class="{
+                                'bg-green-500': step.status === 'completed',
+                                'bg-primary animate-pulse': step.status === 'active',
+                                'bg-gray-300': step.status === 'pending'
+                            }" class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                <template x-if="step.status === 'completed'">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </template>
+                                <template x-if="step.status !== 'completed'">
+                                    <span x-text="index + 1"></span>
+                                </template>
+                            </div>
+                            <span :class="{
+                                'text-gray-800 font-semibold': step.status === 'active',
+                                'text-gray-600': step.status === 'pending',
+                                'text-green-600': step.status === 'completed'
+                            }" class="text-sm" x-text="step.name"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white bg-opacity-10 backdrop-blur-md border-b border-white border-opacity-20">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-4xl font-bold text-white text-center flex items-center justify-center space-x-3">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
+                    </svg>
+                    <span>Unique Key Identifier</span>
+                </h1>
+                <p class="text-white text-opacity-90 text-center mt-2 text-lg">Advanced Column Combination Analysis & Validation</p>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <div class="flex-1 container mx-auto px-4 py-8">
+            
+            <!-- Configuration Card -->
+            <div class="bg-white rounded-2xl shadow-2xl p-8 mb-6 animate-slide-in">
+                <form @submit.prevent="submitAnalysis">
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-blue-700 font-medium">Files must be in the <strong>unique_key_identifier</strong> folder</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">📄 File A Name</label>
+                            <input type="text" 
+                                   x-model="fileA" 
+                                   @input="debouncePreview()"
+                                   placeholder="trading_system_a.csv"
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">📄 File B Name</label>
+                            <input type="text" 
+                                   x-model="fileB" 
+                                   @input="debouncePreview()"
+                                   placeholder="trading_system_b.csv"
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">🔢 Number of Columns to Combine</label>
+                        <input type="number" 
+                               x-model="numColumns" 
+                               :readonly="includedCombinations.length > 0"
+                               min="1"
+                               required
+                               :class="includedCombinations.length > 0 ? 'bg-gray-100 cursor-not-allowed' : ''"
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                        <p x-show="includedCombinations.length === 0" class="text-sm text-gray-600 mt-2">
+                            Used for auto-discovery mode (when no INCLUDE combinations specified)
+                        </p>
+                        <div x-show="includedCombinations.length > 0" class="bg-blue-50 border-l-4 border-primary p-3 mt-2 rounded-r-lg">
+                            <p class="text-sm text-gray-700"><strong class="text-primary">ℹ️ Field Disabled:</strong> This field is not used when INCLUDE combinations are specified.</p>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" 
+                            :disabled="loading"
+                            class="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        <span>Analyze Files</span>
+                    </button>
+                </form>
+                
+                <!-- Previous Runs -->
+                <div class="mt-8 pt-8 border-t border-gray-200" x-show="runs.length > 0">
+                    <label class="block text-gray-700 font-semibold mb-3">📊 View Previous Analysis</label>
+                    <select @change="if($event.target.value) window.location.href='/run/' + $event.target.value"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                        <option value="">Select a previous run...</option>
+                        <template x-for="run in runs" :key="run.id">
+                            <option :value="run.id" x-text="run.label"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Column Selector (shown when files are loaded) -->
+            <div x-show="columnsLoaded" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform translate-y-4"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 class="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6"
+                 x-cloak>
+                
+                <!-- Info Bar -->
+                <div class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex flex-wrap items-center gap-6">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span class="font-semibold">File A:</span>
+                                <span x-text="fileInfo.rowsA + ' rows'"></span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                <span class="font-semibold">File B:</span>
+                                <span x-text="fileInfo.rowsB + ' rows'"></span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"></path>
+                                </svg>
+                                <span class="font-semibold">Columns:</span>
+                                <span x-text="columns.length" class="font-bold text-yellow-300"></span>
+                            </div>
+                        </div>
+                        <button @click="resetAll()" 
+                                class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg font-semibold transition flex items-center space-x-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Reset All</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid lg:grid-cols-3 gap-0 divide-x divide-gray-200">
+                    
+                    <!-- Column Pool -->
+                    <div class="p-6 bg-gray-50">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
+                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                            </svg>
+                            <span>Available Columns</span>
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-4">Click to add to active builder</p>
+                        
+                        <!-- Builder Toggle -->
+                        <div class="bg-white p-4 rounded-lg mb-4 shadow-sm">
+                            <p class="text-xs font-semibold text-gray-600 mb-2">🎯 Add columns to:</p>
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <button @click="activeBuilder = 'include'" 
+                                        :class="activeBuilder === 'include' ? 'bg-green-500 text-white scale-105' : 'bg-gray-200 text-gray-700'"
+                                        class="px-4 py-2 rounded-lg font-semibold text-sm transition-all transform">
+                                    ✅ INCLUDE
+                                </button>
+                                <button @click="activeBuilder = 'exclude'" 
+                                        :class="activeBuilder === 'exclude' ? 'bg-red-500 text-white scale-105' : 'bg-gray-200 text-gray-700'"
+                                        class="px-4 py-2 rounded-lg font-semibold text-sm transition-all transform">
+                                    ❌ EXCLUDE
+                                </button>
+                            </div>
+                            <p class="text-xs text-center" 
+                               :class="activeBuilder === 'include' ? 'text-green-600' : 'text-red-600'"
+                               x-text="'➜ Currently adding to ' + activeBuilder.toUpperCase() + ' builder'"></p>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="bg-yellow-50 border-2 border-yellow-300 p-3 rounded-lg mb-4">
+                            <p class="text-xs font-semibold text-yellow-800 mb-2">⚡ Quick Actions:</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button @click="selectAllColumns()" 
+                                        class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-2 rounded-lg text-xs font-semibold transition">
+                                    ✓ Select All
+                                </button>
+                                <button @click="deselectAllColumns()" 
+                                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 py-2 rounded-lg text-xs font-semibold transition">
+                                    ✗ Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Columns List -->
+                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                            <template x-for="col in columns" :key="col">
+                                <button @click="addColumnToActiveBuilder(col)" 
+                                        class="w-full text-left px-4 py-2 bg-white hover:bg-primary hover:text-white rounded-lg transition-all transform hover:translate-x-1 text-sm font-medium border border-gray-200 hover:border-primary">
+                                    <span x-text="col"></span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                    
+                    <!-- Include Panel -->
+                    <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-50">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-green-600 flex items-center space-x-2">
+                                <span>✅ INCLUDE</span>
+                                <span class="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-bold" x-text="includedCombinations.length"></span>
+                            </h3>
+                            <button @click="clearInclude()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">
+                                Clear
+                            </button>
+                        </div>
+                        <p class="text-sm text-green-700 mb-4">Analyze only these combinations</p>
+                        
+                        <!-- Builder -->
+                        <div class="bg-white border-2 border-dashed border-green-400 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-sm font-semibold text-green-600">🎨 Build Combination:</p>
+                                <span class="text-xs text-green-600 font-semibold" x-text="includeBuilder.length + ' selected'"></span>
+                            </div>
+                            <div class="min-h-20 max-h-40 overflow-y-auto bg-green-50 rounded-lg p-3 mb-3">
+                                <template x-if="includeBuilder.length === 0">
+                                    <p class="text-gray-400 text-sm text-center py-4">Click columns from left to build...</p>
+                                </template>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="(col, idx) in includeBuilder" :key="idx">
+                                        <div class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center space-x-2">
+                                            <span x-text="col"></span>
+                                            <button @click="includeBuilder.splice(idx, 1)" class="hover:text-red-200 font-bold">×</button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="addIncludeCombination()" 
+                                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
+                                    ➕ Add Combination
+                                </button>
+                                <button @click="includeBuilder = []" 
+                                        class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Saved Combinations -->
+                        <div class="bg-white bg-opacity-70 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <p class="text-xs font-semibold text-green-700 mb-3">📌 Saved Combinations:</p>
+                            <template x-if="includedCombinations.length === 0">
+                                <p class="text-gray-400 text-sm text-center py-4">No combinations added yet</p>
+                            </template>
+                            <div class="space-y-2">
+                                <template x-for="(combo, idx) in includedCombinations" :key="idx">
+                                    <div class="bg-white border-2 border-green-400 rounded-lg p-3 flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-700" x-text="combo"></span>
+                                        <button @click="includedCombinations.splice(idx, 1)" 
+                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold transition">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Exclude Panel -->
+                    <div class="p-6 bg-gradient-to-br from-red-50 to-rose-50">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-red-600 flex items-center space-x-2">
+                                <span>❌ EXCLUDE</span>
+                                <span class="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-bold" x-text="excludedCombinations.length"></span>
+                            </h3>
+                            <button @click="clearExclude()" 
+                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">
+                                Clear
+                            </button>
+                        </div>
+                        <p class="text-sm text-red-700 mb-4">Skip these columns/combinations</p>
+                        
+                        <!-- Builder -->
+                        <div class="bg-white border-2 border-dashed border-red-400 rounded-lg p-4 mb-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <p class="text-sm font-semibold text-red-600">🎨 Build Combination:</p>
+                                <span class="text-xs text-red-600 font-semibold" x-text="excludeBuilder.length + ' selected'"></span>
+                            </div>
+                            <div class="min-h-20 max-h-40 overflow-y-auto bg-red-50 rounded-lg p-3 mb-3">
+                                <template x-if="excludeBuilder.length === 0">
+                                    <p class="text-gray-400 text-sm text-center py-4">Click columns from left to build...</p>
+                                </template>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="(col, idx) in excludeBuilder" :key="idx">
+                                        <div class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center space-x-2">
+                                            <span x-text="col"></span>
+                                            <button @click="excludeBuilder.splice(idx, 1)" class="hover:text-yellow-200 font-bold">×</button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="addExcludeCombination()" 
+                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
+                                    ➕ Add Combination
+                                </button>
+                                <button @click="excludeBuilder = []" 
+                                        class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Saved Combinations -->
+                        <div class="bg-white bg-opacity-70 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <p class="text-xs font-semibold text-red-700 mb-3">📌 Saved Combinations:</p>
+                            <template x-if="excludedCombinations.length === 0">
+                                <p class="text-gray-400 text-sm text-center py-4">No combinations added yet</p>
+                            </template>
+                            <div class="space-y-2">
+                                <template x-for="(combo, idx) in excludedCombinations" :key="idx">
+                                    <div class="bg-white border-2 border-red-400 rounded-lg p-3 flex justify-between items-center">
+                                        <span class="text-sm font-medium text-gray-700" x-text="combo"></span>
+                                        <button @click="excludedCombinations.splice(idx, 1)" 
+                                                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold transition">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Help Section -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-4 border-primary px-6 py-4">
+                    <div class="flex items-start space-x-3">
+                        <svg class="w-6 h-6 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="flex-1">
+                            <p class="font-bold text-primary mb-2">💡 How to Use:</p>
+                            <div class="grid md:grid-cols-4 gap-4 text-sm text-gray-700">
+                                <div>
+                                    <strong class="text-gray-900">1. Toggle Builder:</strong> Select INCLUDE or EXCLUDE button in left panel
+                                </div>
+                                <div>
+                                    <strong class="text-gray-900">2. Build Combination:</strong> Click columns from left to add to active builder
+                                </div>
+                                <div>
+                                    <strong class="text-gray-900">3. Save Combination:</strong> Click "Add Combination" in desired panel
+                                </div>
+                                <div>
+                                    <strong class="text-gray-900">4. Analyze:</strong> "Num Columns" auto-adjusts based on INCLUDE list
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function appData() {
+            return {
+                // Form data
+                fileA: '',
+                fileB: '',
+                numColumns: 3,
+                
+                // Column selection
+                columns: [],
+                columnsLoaded: false,
+                fileInfo: { rowsA: 0, rowsB: 0 },
+                
+                // Builders
+                activeBuilder: 'include',
+                includeBuilder: [],
+                excludeBuilder: [],
+                includedCombinations: [],
+                excludedCombinations: [],
+                
+                // UI State
+                loading: false,
+                toast: {
+                    show: false,
+                    type: 'info',
+                    title: '',
+                    message: ''
+                },
+                
+                // Progress
+                progressSteps: [
+                    { name: 'Reading CSV files', status: 'pending' },
+                    { name: 'Validating columns', status: 'pending' },
+                    { name: 'Analyzing combinations', status: 'pending' },
+                    { name: 'Calculating scores', status: 'pending' },
+                    { name: 'Storing results', status: 'pending' }
+                ],
+                
+                // Previous runs
+                runs: {{ runs | tojson | safe }},
+                
+                // Debounce timer
+                previewTimer: null,
+                
+                init() {
+                    // Watch for combination changes
+                    this.$watch('includedCombinations', () => {
+                        if (this.includedCombinations.length > 0) {
+                            this.numColumns = 1;
+                        } else if (this.numColumns === 1) {
+                            this.numColumns = 3;
+                        }
+                    });
+                },
+                
+                debouncePreview() {
+                    clearTimeout(this.previewTimer);
+                    this.previewTimer = setTimeout(() => {
+                        this.previewColumns();
+                    }, 800);
+                },
+                
+                async previewColumns() {
+                    if (!this.fileA || !this.fileB) {
+                        this.columnsLoaded = false;
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`/api/preview-columns?file_a=${encodeURIComponent(this.fileA)}&file_b=${encodeURIComponent(this.fileB)}`);
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            this.showToast('error', 'Preview Error', data.error);
+                            this.columnsLoaded = false;
+                            return;
+                        }
+                        
+                        this.columns = data.columns;
+                        this.fileInfo = {
+                            rowsA: data.file_a_rows,
+                            rowsB: data.file_b_rows
+                        };
+                        this.columnsLoaded = true;
+                        this.showToast('success', 'Files Loaded', `Found ${data.column_count} columns`);
+                        
+                    } catch (error) {
+                        this.showToast('error', 'Network Error', error.message);
+                        this.columnsLoaded = false;
+                    }
+                },
+                
+                addColumnToActiveBuilder(col) {
+                    if (this.activeBuilder === 'include') {
+                        if (!this.includeBuilder.includes(col)) {
+                            this.includeBuilder.push(col);
+                        }
+                    } else {
+                        if (!this.excludeBuilder.includes(col)) {
+                            this.excludeBuilder.push(col);
+                        }
+                    }
+                },
+                
+                selectAllColumns() {
+                    if (this.columns.length === 0) {
+                        this.showToast('warning', 'No Columns', 'Please load files first');
+                        return;
+                    }
+                    
+                    if (this.activeBuilder === 'include') {
+                        this.includeBuilder = [...this.columns];
+                    } else {
+                        this.excludeBuilder = [...this.columns];
+                    }
+                    this.showToast('info', 'All Selected', `Added all ${this.columns.length} columns`);
+                },
+                
+                deselectAllColumns() {
+                    if (this.activeBuilder === 'include') {
+                        this.includeBuilder = [];
+                    } else {
+                        this.excludeBuilder = [];
+                    }
+                },
+                
+                addIncludeCombination() {
+                    if (this.includeBuilder.length === 0) {
+                        this.showToast('warning', 'No Columns Selected', 'Please add columns to the builder first!');
+                        return;
+                    }
+                    
+                    const combo = this.includeBuilder.join(',');
+                    if (!this.includedCombinations.includes(combo)) {
+                        this.includedCombinations.push(combo);
+                        this.showToast('success', 'Combination Added', `Added: ${combo}`);
+                    }
+                    this.includeBuilder = [];
+                },
+                
+                addExcludeCombination() {
+                    if (this.excludeBuilder.length === 0) {
+                        this.showToast('warning', 'No Columns Selected', 'Please add columns to the builder first!');
+                        return;
+                    }
+                    
+                    const combo = this.excludeBuilder.join(',');
+                    if (!this.excludedCombinations.includes(combo)) {
+                        this.excludedCombinations.push(combo);
+                        this.showToast('success', 'Combination Added', `Excluded: ${combo}`);
+                    }
+                    this.excludeBuilder = [];
+                },
+                
+                clearInclude() {
+                    this.includeBuilder = [];
+                    this.includedCombinations = [];
+                    this.showToast('info', 'Cleared', 'INCLUDE list cleared');
+                },
+                
+                clearExclude() {
+                    this.excludeBuilder = [];
+                    this.excludedCombinations = [];
+                    this.showToast('info', 'Cleared', 'EXCLUDE list cleared');
+                },
+                
+                resetAll() {
+                    this.includeBuilder = [];
+                    this.excludeBuilder = [];
+                    this.includedCombinations = [];
+                    this.excludedCombinations = [];
+                    this.showToast('info', 'Reset Complete', 'All combinations cleared');
+                },
+                
+                async submitAnalysis() {
+                    this.loading = true;
+                    this.animateProgressSteps();
+                    
+                    const formData = new FormData();
+                    formData.append('file_a', this.fileA);
+                    formData.append('file_b', this.fileB);
+                    formData.append('num_columns', this.numColumns);
+                    formData.append('expected_combinations', this.includedCombinations.join('\n'));
+                    formData.append('excluded_combinations', this.excludedCombinations.join('\n'));
+                    
+                    try {
+                        const response = await fetch('/compare', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.run_id) {
+                            this.showToast('success', 'Analysis Started', 'Redirecting to workflow page...');
+                            setTimeout(() => {
+                                window.location.href = `/workflow/${data.run_id}`;
+                            }, 1000);
+                        } else if (data.error) {
+                            this.showToast('error', 'Analysis Error', data.error);
+                            this.loading = false;
+                        } else {
+                            this.showToast('error', 'Unexpected Error', 'Please check the console for details');
+                            this.loading = false;
+                        }
+                    } catch (error) {
+                        this.showToast('error', 'Network Error', error.message);
+                        this.loading = false;
+                    }
+                },
+                
+                animateProgressSteps() {
+                    const delays = [100, 800, 1500, 2500, 3500];
+                    this.progressSteps.forEach((step, index) => {
+                        setTimeout(() => {
+                            step.status = 'active';
+                            if (index > 0) {
+                                this.progressSteps[index - 1].status = 'completed';
+                            }
+                        }, delays[index]);
+                    });
+                },
+                
+                showToast(type, title, message) {
+                    this.toast = { show: true, type, title, message };
+                    setTimeout(() => {
+                        this.toast.show = false;
+                    }, 5000);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+
