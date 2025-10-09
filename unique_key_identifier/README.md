@@ -1,8 +1,13 @@
 # Unique Key Identifier - Advanced Analysis Tool
 
-A modern web-based application for analyzing CSV files to identify potential unique key combinations through comprehensive duplicate detection and uniqueness scoring. Compares files side-by-side with detailed metrics and visualizations.
+A modern web-based application for analyzing data files (CSV, DAT, TXT) to identify potential unique key combinations through comprehensive duplicate detection and uniqueness scoring. Compares files side-by-side with detailed metrics and visualizations. Features automatic delimiter detection for seamless file processing.
 
 ## 🎯 Key Features
+
+### Multiple File Format Support
+- **Smart File Reading**: Supports CSV (.csv), DAT (.dat), and TXT (.txt) files
+- **Auto-Delimiter Detection**: Automatically detects comma, tab, pipe (|), semicolon, or space delimiters
+- **Encoding Support**: Handles UTF-8 and Latin-1 encodings automatically
 
 ### Separate File Analysis
 - **Independent Analysis**: Analyzes Side A and Side B separately to identify unique keys for each file
@@ -39,7 +44,27 @@ A modern web-based application for analyzing CSV files to identify potential uni
 
 ## 🚀 Quick Start
 
-### Installation
+### Automated Setup (Recommended)
+
+**macOS/Linux:**
+```bash
+cd unique_key_identifier
+./run.sh
+```
+
+**Windows:**
+```cmd
+cd unique_key_identifier
+run.bat
+```
+
+The script will automatically:
+- ✓ Check Python installation
+- ✓ Install all dependencies
+- ✓ Check port availability
+- ✓ Start the application
+
+### Manual Setup
 
 1. Navigate to the project directory:
    ```bash
@@ -51,26 +76,24 @@ A modern web-based application for analyzing CSV files to identify potential uni
    pip3 install -r requirements.txt
    ```
 
-### Running the Application
-
-Start the server:
-```bash
-python3 -m uvicorn file_comparator:app --host 0.0.0.0 --port 8000
-```
-
-Or simply:
-```bash
-python3 file_comparator.py
-```
+3. Run the application:
+   ```bash
+   python3 file_comparator.py
+   ```
 
 Then open your browser to: **http://localhost:8000**
+
+> 📖 **Detailed Setup:** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for comprehensive instructions  
+> ⚡ **Quick Reference:** See [QUICKSTART.md](QUICKSTART.md) for essential commands
 
 ## 📖 How to Use
 
 ### Step 1: Prepare Your Files
-Place your CSV files in the `unique_key_identifier` directory. Both files must have:
+Place your data files in the `unique_key_identifier` directory. Both files must have:
 - The same column structure
-- CSV format with headers
+- Supported formats: **CSV (.csv)**, **DAT (.dat)**, **TXT (.txt)**
+- Headers in the first row
+- **Auto-detects delimiters:** comma, tab, pipe (|), semicolon, space
 
 ### Step 2: Run Analysis
 1. Enter the names of File A and File B (e.g., `trading_system_a.csv`, `trading_system_b.csv`)

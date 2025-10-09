@@ -20,6 +20,63 @@ templates = Jinja2Templates(directory=os.path.join(script_dir, "templates"))
 db_path = os.path.join(script_dir, "file_comparison.db")
 conn = sqlite3.connect(db_path, check_same_thread=False)
 
+# Supported file formats
+SUPPORTED_EXTENSIONS = ['.csv', '.dat', '.txt']
+
+def detect_delimiter(file_path, sample_size=5):
+    """
+    Auto-detect delimiter in file by analyzing first few lines
+    Supports: comma, tab, pipe, semicolon, space
+    """
+    common_delimiters = [',', '\t', '|', ';', ' ']
+    
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        # Read sample lines
+        sample_lines = [f.readline() for _ in range(sample_size)]
+        sample = ''.join(sample_lines)
+    
+    # Use CSV Sniffer to detect delimiter
+    try:
+        sniffer = csv.Sniffer()
+        delimiter = sniffer.sniff(sample, delimiters=''.join(common_delimiters)).delimiter
+        return delimiter
+    except:
+        # Fallback: count occurrences of each delimiter
+        delimiter_counts = {delim: sum(line.count(delim) for line in sample_lines) 
+                           for delim in common_delimiters}
+        
+        # Return delimiter with highest consistent count
+        max_delim = max(delimiter_counts, key=delimiter_counts.get)
+        if delimiter_counts[max_delim] > 0:
+            return max_delim
+        
+        # Default to comma if nothing found
+        return ','
+
+def read_data_file(file_path, nrows=None):
+    """
+    Read data file with automatic delimiter detection
+    Supports: .csv, .dat, .txt files
+    """
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError(f"Unsupported file type: {file_ext}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}")
+    
+    # Detect delimiter
+    delimiter = detect_delimiter(file_path)
+    
+    # Read file with detected delimiter
+    try:
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='utf-8', on_bad_lines='skip')
+        return df, delimiter
+    except UnicodeDecodeError:
+        # Try with different encoding
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='latin-1', on_bad_lines='skip')
+        return df, delimiter
+    except Exception as e:
+        raise ValueError(f"Error reading file: {str(e)}")
+
 def create_tables():
     cursor = conn.cursor()
     cursor.execute('''
@@ -140,10 +197,10 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, specifie
     try:
         # Stage 1: Reading Files
         update_job_status(run_id, status='running', stage='reading_files', progress=10)
-        update_stage_status(run_id, 'reading_files', 'in_progress', 'Loading CSV files from disk')
+        update_stage_status(run_id, 'reading_files', 'in_progress', 'Loading data files from disk')
         
-        df_a = pd.read_csv(file_a_path)
-        df_b = pd.read_csv(file_b_path)
+        df_a, delim_a = read_data_file(file_a_path)
+        df_b, delim_b = read_data_file(file_b_path)
         
         update_stage_status(run_id, 'reading_files', 'completed', f'Loaded {len(df_a)} and {len(df_b)} rows')
         update_job_status(run_id, progress=20)
@@ -448,14 +505,14 @@ async def preview_columns(file_a: str, file_b: str):
         if not os.path.exists(file_b_path):
             return JSONResponse({"error": f"❌ File B not found: '{file_b_name}'. Please ensure the file is in the unique_key_identifier folder."}, status_code=404)
         
-        # Read just the headers (nrows=0 for fast loading)
+        # Read just the headers (nrows=5 for fast loading)
         try:
-            df_a = pd.read_csv(file_a_path, nrows=5)
-            df_b = pd.read_csv(file_b_path, nrows=5)
+            df_a, delim_a = read_data_file(file_a_path, nrows=5)
+            df_b, delim_b = read_data_file(file_b_path, nrows=5)
         except pd.errors.EmptyDataError:
-            return JSONResponse({"error": "One or both files are empty or invalid CSV format"}, status_code=400)
+            return JSONResponse({"error": "One or both files are empty or invalid format"}, status_code=400)
         except Exception as csv_error:
-            return JSONResponse({"error": f"Error reading CSV files: {str(csv_error)}"}, status_code=400)
+            return JSONResponse({"error": f"Error reading data files: {str(csv_error)}"}, status_code=400)
         
         cols_a = df_a.columns.tolist()
         cols_b = df_b.columns.tolist()
@@ -470,8 +527,10 @@ async def preview_columns(file_a: str, file_b: str):
         
         # Get basic stats
         try:
-            row_count_a = len(pd.read_csv(file_a_path))
-            row_count_b = len(pd.read_csv(file_b_path))
+            df_full_a, _ = read_data_file(file_a_path)
+            df_full_b, _ = read_data_file(file_b_path)
+            row_count_a = len(df_full_a)
+            row_count_b = len(df_full_b)
         except Exception as count_error:
             return JSONResponse({"error": f"Error counting rows: {str(count_error)}"}, status_code=500)
         
@@ -796,7 +855,7 @@ async def get_run(request: Request, run_id: int, group: int = Query(None), page:
         columns_list = []
         try:
             if os.path.exists(file_a_path):
-                df_temp = pd.read_csv(file_a_path, nrows=0)
+                df_temp, _ = read_data_file(file_a_path, nrows=0)
                 columns_list = df_temp.columns.tolist()
         except:
             pass
