@@ -352,6 +352,7 @@
 
             <div class="action-buttons">
                 <button class="btn" onclick="window.location.href='/'">← Back to Home</button>
+                <button class="btn" onclick="cloneRun({{ run_id }})" style="background: #10b981;">🔄 Clone This Run</button>
                 <button class="btn" id="viewResultsBtn" style="display: none;" onclick="window.location.href='/run/{{ run_id }}'">
                     📊 View Results
                 </button>
@@ -459,6 +460,33 @@
         window.addEventListener('beforeunload', () => {
             clearInterval(pollInterval);
         });
+        
+        // Clone run function
+        async function cloneRun(runId) {
+            if (!confirm(`Clone Run #${runId}?\n\nThis will copy all settings to the home page where you can modify and re-analyze.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/clone/${runId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Clone Failed: ' + data.error);
+                    return;
+                }
+                
+                // Store in sessionStorage to pass to home page
+                sessionStorage.setItem('clonedRun', JSON.stringify(data));
+                
+                // Redirect to home page
+                alert(`✅ Run #${runId} settings cloned!\n\nRedirecting to home page...`);
+                window.location.href = '/';
+                
+            } catch (error) {
+                alert('Network Error: ' + error.message);
+            }
+        }
     </script>
 </body>
 </html>

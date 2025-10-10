@@ -204,20 +204,38 @@
                         </div>
                     </div>
                     
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">🔢 Number of Columns to Combine</label>
-                        <input type="number" 
-                               x-model="numColumns" 
-                               :readonly="includedCombinations.length > 0"
-                               min="1"
-                               required
-                               :class="includedCombinations.length > 0 ? 'bg-gray-100 cursor-not-allowed' : ''"
-                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                        <p x-show="includedCombinations.length === 0" class="text-sm text-gray-600 mt-2">
-                            Used for auto-discovery mode (when no INCLUDE combinations specified)
-                        </p>
-                        <div x-show="includedCombinations.length > 0" class="bg-blue-50 border-l-4 border-primary p-3 mt-2 rounded-r-lg">
-                            <p class="text-sm text-gray-700"><strong class="text-primary">ℹ️ Field Disabled:</strong> This field is not used when INCLUDE combinations are specified.</p>
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">🔢 Number of Columns to Combine</label>
+                            <input type="number" 
+                                   x-model="numColumns" 
+                                   :readonly="includedCombinations.length > 0"
+                                   min="1"
+                                   required
+                                   :class="includedCombinations.length > 0 ? 'bg-gray-100 cursor-not-allowed' : ''"
+                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                            <p x-show="includedCombinations.length === 0" class="text-sm text-gray-600 mt-2">
+                                Used for auto-discovery mode (when no INCLUDE combinations specified)
+                            </p>
+                            <div x-show="includedCombinations.length > 0" class="bg-blue-50 border-l-4 border-primary p-3 mt-2 rounded-r-lg">
+                                <p class="text-sm text-gray-700"><strong class="text-primary">ℹ️ Field Disabled:</strong> This field is not used when INCLUDE combinations are specified.</p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">📊 Row Limit (Optional)</label>
+                            <input type="number" 
+                                   x-model="maxRows" 
+                                   min="0"
+                                   placeholder="0 = Auto (recommended)"
+                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                            <p class="text-sm text-gray-600 mt-2">
+                                <strong>0 or empty:</strong> Auto-sampling for large files<br>
+                                <strong>Specific number:</strong> Analyze only first N rows
+                            </p>
+                            <div x-show="maxRows > 0 && maxRows < 10000" class="bg-yellow-50 border-l-4 border-yellow-400 p-2 mt-2 rounded-r-lg">
+                                <p class="text-xs text-yellow-700">⚠️ Small sample may affect accuracy</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -233,19 +251,55 @@
                 
                 <!-- Previous Runs -->
                 <div class="mt-8 pt-8 border-t border-gray-200" x-show="runs.length > 0">
-                    <label class="block text-gray-700 font-semibold mb-3">📊 View Previous Analysis</label>
-                    <select @change="if($event.target.value) window.location.href='/run/' + $event.target.value"
-                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                        <option value="">Select a previous run...</option>
-                        <template x-for="run in runs" :key="run.id">
-                            <option :value="run.id" x-text="run.label"></option>
-                        </template>
-                    </select>
+                    <label class="block text-gray-700 font-semibold mb-3">📊 Previous Analysis</label>
+                    <div class="grid md:grid-cols-2 gap-3">
+                        <select @change="if($event.target.value) window.location.href='/run/' + $event.target.value"
+                                class="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                            <option value="">View Results...</option>
+                            <template x-for="run in runs" :key="run.id">
+                                <option :value="run.id" x-text="run.label"></option>
+                            </template>
+                        </select>
+                        <select @change="if($event.target.value) cloneRun($event.target.value)"
+                                class="px-4 py-3 border-2 border-green-400 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-400 focus:ring-opacity-20 transition bg-green-50">
+                            <option value="">🔄 Clone Settings...</option>
+                            <template x-for="run in runs" :key="run.id">
+                                <option :value="run.id" x-text="run.label"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-2">
+                        <strong>View:</strong> See previous results | 
+                        <strong class="text-green-600">Clone:</strong> Copy settings to form for new analysis
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Loading Indicator for Column Preview -->
+            <div x-show="columnsLoading" 
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform translate-y-4"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 class="bg-white rounded-2xl shadow-2xl p-8 mb-6 text-center"
+                 x-cloak>
+                <div class="flex flex-col items-center space-y-4">
+                    <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">🔍 Loading Files...</h3>
+                        <p class="text-gray-600 mt-2">Reading headers and counting rows</p>
+                        <p class="text-sm text-gray-500 mt-1">This may take a few seconds for large files</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm text-gray-500">
+                        <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span x-text="'Processing: ' + fileA + ' & ' + fileB"></span>
+                    </div>
                 </div>
             </div>
             
             <!-- Column Selector (shown when files are loaded) -->
-            <div x-show="columnsLoaded" 
+            <div x-show="columnsLoaded && !columnsLoading" 
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 transform translate-y-4"
                  x-transition:enter-end="opacity-100 transform translate-y-0"
@@ -513,10 +567,12 @@
                 fileA: '',
                 fileB: '',
                 numColumns: 3,
+                maxRows: 0,  // 0 = auto-sampling
                 
                 // Column selection
                 columns: [],
                 columnsLoaded: false,
+                columnsLoading: false,  // NEW: Track loading state
                 fileInfo: { rowsA: 0, rowsB: 0 },
                 
                 // Builders
@@ -559,6 +615,48 @@
                             this.numColumns = 3;
                         }
                     });
+                    
+                    // Check if we have cloned run data
+                    this.loadClonedRun();
+                },
+                
+                loadClonedRun() {
+                    const clonedData = sessionStorage.getItem('clonedRun');
+                    if (clonedData) {
+                        try {
+                            const data = JSON.parse(clonedData);
+                            
+                            // Populate form fields
+                            this.fileA = data.file_a;
+                            this.fileB = data.file_b;
+                            this.numColumns = data.num_columns;
+                            this.maxRows = data.max_rows || 0;
+                            
+                            // Parse combinations
+                            if (data.expected_combinations) {
+                                this.includedCombinations = data.expected_combinations.split('\n').filter(line => line.trim());
+                            }
+                            if (data.excluded_combinations) {
+                                this.excludedCombinations = data.excluded_combinations.split('\n').filter(line => line.trim());
+                            }
+                            
+                            // Trigger column preview
+                            setTimeout(() => {
+                                this.previewColumns();
+                            }, 500);
+                            
+                            // Show success message
+                            this.showToast('success', 'Run Cloned!', 
+                                `Run #${data.run_id} settings loaded. Modify and click Analyze!`);
+                            
+                            // Clear sessionStorage
+                            sessionStorage.removeItem('clonedRun');
+                            
+                        } catch (error) {
+                            console.error('Error loading cloned run:', error);
+                            sessionStorage.removeItem('clonedRun');
+                        }
+                    }
                 },
                 
                 debouncePreview() {
@@ -571,12 +669,20 @@
                 async previewColumns() {
                     if (!this.fileA || !this.fileB) {
                         this.columnsLoaded = false;
+                        this.columnsLoading = false;
                         return;
                     }
+                    
+                    // Show loading state
+                    this.columnsLoading = true;
+                    this.columnsLoaded = false;
+                    this.showToast('info', 'Loading Files...', 'Reading file headers and counting rows...');
                     
                     try {
                         const response = await fetch(`/api/preview-columns?file_a=${encodeURIComponent(this.fileA)}&file_b=${encodeURIComponent(this.fileB)}`);
                         const data = await response.json();
+                        
+                        this.columnsLoading = false;
                         
                         if (data.error) {
                             this.showToast('error', 'Preview Error', data.error);
@@ -590,9 +696,36 @@
                             rowsB: data.file_b_rows
                         };
                         this.columnsLoaded = true;
-                        this.showToast('success', 'Files Loaded', `Found ${data.column_count} columns`);
+                        
+                        // Show success with file size info
+                        let message = `Found ${data.column_count} columns | ${data.file_a_rows.toLocaleString()} & ${data.file_b_rows.toLocaleString()} rows`;
+                        if (data.file_a_size_mb) {
+                            message += ` | ${data.file_a_size_mb}MB & ${data.file_b_size_mb}MB`;
+                        }
+                        this.showToast('success', 'Files Loaded', message);
+                        
+                        // Show row limit suggestion if files are large
+                        if (this.maxRows === 0 && data.file_a_rows > 100000) {
+                            setTimeout(() => {
+                                this.showToast('info', 'Row Limit Tip', 
+                                    `💡 Consider using Row Limit (e.g., 50000) for faster testing on large files`);
+                            }, 1500);
+                        }
+                        
+                        // Show performance warnings if any
+                        if (data.warnings && data.warnings.length > 0) {
+                            setTimeout(() => {
+                                data.warnings.forEach(warning => {
+                                    this.showToast('warning', 'Performance Notice', warning);
+                                });
+                                if (data.estimated_time) {
+                                    this.showToast('info', 'Estimated Time', `Expected processing time: ${data.estimated_time}`);
+                                }
+                            }, 2000);
+                        }
                         
                     } catch (error) {
+                        this.columnsLoading = false;
                         this.showToast('error', 'Network Error', error.message);
                         this.columnsLoaded = false;
                     }
@@ -680,6 +813,55 @@
                     this.showToast('info', 'Reset Complete', 'All combinations cleared');
                 },
                 
+                async cloneRun(runId) {
+                    try {
+                        this.showToast('info', 'Cloning Run...', `Loading settings from Run #${runId}`);
+                        
+                        const response = await fetch(`/api/clone/${runId}`);
+                        const data = await response.json();
+                        
+                        if (data.error) {
+                            this.showToast('error', 'Clone Failed', data.error);
+                            return;
+                        }
+                        
+                        // Populate form fields
+                        this.fileA = data.file_a;
+                        this.fileB = data.file_b;
+                        this.numColumns = data.num_columns;
+                        this.maxRows = data.max_rows || 0;
+                        
+                        // Parse and populate combinations
+                        if (data.expected_combinations) {
+                            this.includedCombinations = data.expected_combinations.split('\n').filter(line => line.trim());
+                        } else {
+                            this.includedCombinations = [];
+                        }
+                        
+                        if (data.excluded_combinations) {
+                            this.excludedCombinations = data.excluded_combinations.split('\n').filter(line => line.trim());
+                        } else {
+                            this.excludedCombinations = [];
+                        }
+                        
+                        // Trigger column preview
+                        await this.previewColumns();
+                        
+                        // Success message
+                        this.showToast('success', 'Settings Cloned!', 
+                            `Run #${runId} settings loaded. Modify and re-analyze!`);
+                        
+                        // Scroll to top smoothly
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        
+                        // Reset dropdown
+                        document.querySelectorAll('select').forEach(sel => sel.value = '');
+                        
+                    } catch (error) {
+                        this.showToast('error', 'Network Error', error.message);
+                    }
+                },
+                
                 async submitAnalysis() {
                     this.loading = true;
                     this.animateProgressSteps();
@@ -688,6 +870,7 @@
                     formData.append('file_a', this.fileA);
                     formData.append('file_b', this.fileB);
                     formData.append('num_columns', this.numColumns);
+                    formData.append('max_rows', this.maxRows || 0);  // 0 = auto
                     formData.append('expected_combinations', this.includedCombinations.join('\n'));
                     formData.append('excluded_combinations', this.excludedCombinations.join('\n'));
                     

@@ -21,6 +21,21 @@ A modern web-based application for analyzing data files (CSV, DAT, TXT) to ident
 - **Uniqueness Score**: Percentage indicating suitability as a unique key
 - **Validation Status**: Clear indicators showing which combinations can serve as unique keys
 
+### Performance Control
+- **Row Limit Control**: Choose exact number of rows to analyze (NEW!)
+  - Perfect for testing large files quickly
+  - Example: Analyze 50k rows from 416k file → 2-3 minutes instead of 10+
+  - 0 = Auto-mode with intelligent sampling
+- **Automatic Sampling**: For files > 50k rows (when row limit = 0)
+- **Hard Limits**: Prevents system overload (max 500k rows)
+
+### Productivity Features
+- **Clone Run**: Copy settings from previous runs instantly (NEW!)
+  - Available from home page dropdown, results page, and workflow page
+  - Clones: file names, columns, row limits, all combinations
+  - **Saves 2 minutes per iteration** when reusing complex setups
+  - Perfect for: iterative testing, version comparisons, parameter tuning
+
 ### Modern UI
 - **Side-by-Side Comparison**: View both file analyses simultaneously
 - **Color-Coded Results**: 
@@ -84,7 +99,10 @@ The script will automatically:
 Then open your browser to: **http://localhost:8000**
 
 > 📖 **Detailed Setup:** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for comprehensive instructions  
-> ⚡ **Quick Reference:** See [QUICKSTART.md](QUICKSTART.md) for essential commands
+> ⚡ **Quick Reference:** See [QUICKSTART.md](QUICKSTART.md) for essential commands  
+> 🚀 **Large Files:** See [PERFORMANCE_GUIDE.md](PERFORMANCE_GUIDE.md) for handling 100k+ rows  
+> 📊 **Row Limits:** See [ROW_LIMIT_GUIDE.md](ROW_LIMIT_GUIDE.md) for controlling rows to analyze  
+> 🔄 **Clone Runs:** See [CLONE_RUN_GUIDE.md](CLONE_RUN_GUIDE.md) for reusing previous settings
 
 ## 📖 How to Use
 
@@ -98,7 +116,10 @@ Place your data files in the `unique_key_identifier` directory. Both files must 
 ### Step 2: Run Analysis
 1. Enter the names of File A and File B (e.g., `trading_system_a.csv`, `trading_system_b.csv`)
 2. Specify the number of columns to combine (e.g., `2` for pairs, `3` for triplets) OR use INCLUDE builder
-3. Click "Analyze Files"
+3. **(Optional)** Set Row Limit for faster processing on large files (e.g., `50000` for 50k rows)
+   - `0` or empty = Auto-mode (recommended)
+   - Specific number = Analyze only first N rows
+4. Click "Analyze Files"
 
 ### Step 3: Review Results
 The application will display:

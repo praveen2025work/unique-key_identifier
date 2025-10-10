@@ -374,6 +374,7 @@
                 <div>
                     <a href="/" class="btn btn-secondary">← Back to Home</a>
                     <a href="/workflow/{{ run_id }}" class="btn btn-secondary">🔄 View Workflow</a>
+                    <button onclick="cloneRun({{ run_id }})" class="btn" style="background: #10b981;">🔄 Clone This Run</button>
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <a href="/download/{{ run_id }}/csv" class="btn">📥 Download CSV</a>
@@ -680,6 +681,34 @@
             {% endif %}
         </div>
     </div>
+    
+    <script>
+        async function cloneRun(runId) {
+            if (!confirm(`Clone Run #${runId}?\n\nThis will copy all settings to the home page where you can modify and re-analyze.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/clone/${runId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Clone Failed: ' + data.error);
+                    return;
+                }
+                
+                // Store in sessionStorage to pass to home page
+                sessionStorage.setItem('clonedRun', JSON.stringify(data));
+                
+                // Redirect to home page
+                alert(`✅ Run #${runId} settings cloned!\n\nRedirecting to home page...`);
+                window.location.href = '/';
+                
+            } catch (error) {
+                alert('Network Error: ' + error.message);
+            }
+        }
+    </script>
 </body>
 </html>
 

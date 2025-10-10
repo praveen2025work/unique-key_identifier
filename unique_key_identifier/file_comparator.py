@@ -23,6 +23,12 @@ conn = sqlite3.connect(db_path, check_same_thread=False)
 # Supported file formats
 SUPPORTED_EXTENSIONS = ['.csv', '.dat', '.txt']
 
+# Performance limits
+MAX_ROWS_WARNING = 100000  # Warn above 100k rows
+MAX_ROWS_HARD_LIMIT = 500000  # Hard limit at 500k rows
+MAX_COMBINATIONS = 50  # Maximum combinations to analyze
+MEMORY_EFFICIENT_THRESHOLD = 50000  # Use sampling above 50k rows
+
 def detect_delimiter(file_path, sample_size=5):
     """
     Auto-detect delimiter in file by analyzing first few lines
@@ -53,10 +59,40 @@ def detect_delimiter(file_path, sample_size=5):
         # Default to comma if nothing found
         return ','
 
-def read_data_file(file_path, nrows=None):
+def get_file_stats(file_path):
+    """
+    Get basic file statistics without loading entire file
+    Returns: (row_count, file_size_mb)
+    """
+    try:
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        
+        # Count rows efficiently
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            row_count = sum(1 for _ in f) - 1  # Subtract header row
+        
+        return row_count, file_size_mb
+    except Exception as e:
+        return None, None
+
+def estimate_processing_time(rows, columns):
+    """Estimate processing time based on data size"""
+    if rows < 10000:
+        return "Less than 30 seconds"
+    elif rows < 50000:
+        return "30-60 seconds"
+    elif rows < 100000:
+        return "1-2 minutes"
+    elif rows < 250000:
+        return "2-5 minutes (using sampling)"
+    else:
+        return "5-10 minutes (using sampling)"
+
+def read_data_file(file_path, nrows=None, sample_for_large=False):
     """
     Read data file with automatic delimiter detection
     Supports: .csv, .dat, .txt files
+    For large files, can use sampling for efficiency
     """
     file_ext = os.path.splitext(file_path)[1].lower()
     
@@ -65,6 +101,19 @@ def read_data_file(file_path, nrows=None):
     
     # Detect delimiter
     delimiter = detect_delimiter(file_path)
+    
+    # Check if we should use sampling for large files
+    if sample_for_large and nrows is None:
+        row_count, _ = get_file_stats(file_path)
+        if row_count and row_count > MEMORY_EFFICIENT_THRESHOLD:
+            # Use stratified sampling for large files
+            skip_rows = max(1, row_count // MEMORY_EFFICIENT_THRESHOLD)
+            try:
+                df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', 
+                               on_bad_lines='skip', skiprows=lambda i: i % skip_rows != 0 and i > 0)
+                return df, delimiter
+            except:
+                pass  # Fall back to normal reading
     
     # Read file with detected delimiter
     try:
@@ -192,15 +241,49 @@ def update_stage_status(run_id, stage_name, status, details=None):
     
     conn.commit()
 
-def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, specified_combinations=None, excluded_combinations=None):
+def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None):
     """Background job to process file analysis"""
     try:
+        # Pre-check file sizes
+        row_count_a, size_a = get_file_stats(file_a_path)
+        row_count_b, size_b = get_file_stats(file_b_path)
+        max_rows_available = max(row_count_a, row_count_b)
+        
+        # Determine if user specified a row limit
+        if max_rows_limit > 0:
+            # User specified limit - use it directly
+            use_sampling = False
+            rows_to_read = min(max_rows_limit, max_rows_available)
+            read_mode = f"user-limited to {rows_to_read:,} rows"
+        else:
+            # Auto mode - use intelligent sampling for large files
+            use_sampling = max_rows_available > MEMORY_EFFICIENT_THRESHOLD
+            rows_to_read = None  # Let read_data_file decide
+            read_mode = "auto-sampling" if use_sampling else "full"
+        
         # Stage 1: Reading Files
         update_job_status(run_id, status='running', stage='reading_files', progress=10)
-        update_stage_status(run_id, 'reading_files', 'in_progress', 'Loading data files from disk')
+        if max_rows_limit > 0:
+            update_stage_status(run_id, 'reading_files', 'in_progress', 
+                              f'Loading data files ({read_mode})')
+        elif use_sampling:
+            update_stage_status(run_id, 'reading_files', 'in_progress', 
+                              f'Loading large files ({max_rows_available:,} rows) with {read_mode} for memory efficiency')
+        else:
+            update_stage_status(run_id, 'reading_files', 'in_progress', 'Loading data files from disk')
         
-        df_a, delim_a = read_data_file(file_a_path)
-        df_b, delim_b = read_data_file(file_b_path)
+        # Read files with appropriate limits
+        if max_rows_limit > 0:
+            # User specified limit - read first N rows
+            df_a, delim_a = read_data_file(file_a_path, nrows=rows_to_read)
+            df_b, delim_b = read_data_file(file_b_path, nrows=rows_to_read)
+        else:
+            # Auto mode - use sampling for large files
+            df_a, delim_a = read_data_file(file_a_path, sample_for_large=use_sampling)
+            df_b, delim_b = read_data_file(file_b_path, sample_for_large=use_sampling)
+        
+        actual_rows_a = len(df_a)
+        actual_rows_b = len(df_b)
         
         update_stage_status(run_id, 'reading_files', 'completed', f'Loaded {len(df_a)} and {len(df_b)} rows')
         update_job_status(run_id, progress=20)
@@ -401,23 +484,27 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
     return selected_combos[:max_combinations]
 
 def analyze_file_combinations(df, num_columns, specified_combinations=None, excluded_combinations=None):
-    """Analyze all column combinations for a single file - OPTIMIZED VERSION"""
+    """Analyze all column combinations for a single file - MEMORY OPTIMIZED"""
     results = []
     columns = df.columns.tolist()
     total_rows = len(df)
     
-    # Optimize: Convert to categorical if beneficial
+    # Memory optimization: Convert to categorical if beneficial
     for col in columns:
-        if df[col].dtype == 'object' and df[col].nunique() / len(df) < 0.5:
-            df[col] = df[col].astype('category')
+        if df[col].dtype == 'object':
+            cardinality_ratio = df[col].nunique() / len(df)
+            if cardinality_ratio < 0.5:
+                df[col] = df[col].astype('category')
     
     # Determine which combinations to analyze
     if specified_combinations:
-        # Use user-specified combinations
-        combos_to_analyze = specified_combinations
+        # Use user-specified combinations (limit to prevent memory issues)
+        combos_to_analyze = specified_combinations[:MAX_COMBINATIONS]
+        if len(specified_combinations) > MAX_COMBINATIONS:
+            print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
     else:
-        # Smart auto-discovery: limit to top 50 most promising combinations
-        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=excluded_combinations)
+        # Smart auto-discovery: limit to top combinations
+        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations)
     
     for combo in combos_to_analyze:
         combo_str = ','.join(combo)
@@ -525,21 +612,43 @@ async def preview_columns(file_a: str, file_b: str):
                 "columns_b": cols_b
             }, status_code=400)
         
-        # Get basic stats
+        # Get basic stats efficiently
         try:
-            df_full_a, _ = read_data_file(file_a_path)
-            df_full_b, _ = read_data_file(file_b_path)
-            row_count_a = len(df_full_a)
-            row_count_b = len(df_full_b)
+            row_count_a, size_a = get_file_stats(file_a_path)
+            row_count_b, size_b = get_file_stats(file_b_path)
         except Exception as count_error:
             return JSONResponse({"error": f"Error counting rows: {str(count_error)}"}, status_code=500)
+        
+        # Performance warnings
+        warnings = []
+        performance_level = "good"
+        
+        max_rows = max(row_count_a, row_count_b)
+        if max_rows > MAX_ROWS_HARD_LIMIT:
+            return JSONResponse({
+                "error": f"⚠️ Files too large! Maximum {MAX_ROWS_HARD_LIMIT:,} rows allowed. Your files have {max_rows:,} rows. Please filter or sample your data first.",
+                "file_a_rows": row_count_a,
+                "file_b_rows": row_count_b
+            }, status_code=400)
+        elif max_rows > MAX_ROWS_WARNING:
+            warnings.append(f"⚠️ Large files detected ({max_rows:,} rows). Analysis may take 2-5 minutes.")
+            warnings.append("💡 Tip: Use INCLUDE combinations to specify exact columns instead of auto-discovery for faster processing.")
+            performance_level = "warning"
+        elif max_rows > MEMORY_EFFICIENT_THRESHOLD:
+            warnings.append(f"📊 Medium-sized files ({max_rows:,} rows). Analysis will use sampling for efficiency.")
+            performance_level = "medium"
         
         return JSONResponse({
             "columns": cols_a,
             "column_count": len(cols_a),
             "file_a_rows": row_count_a,
             "file_b_rows": row_count_b,
-            "files_compatible": True
+            "file_a_size_mb": round(size_a, 2) if size_a else None,
+            "file_b_size_mb": round(size_b, 2) if size_b else None,
+            "files_compatible": True,
+            "warnings": warnings,
+            "performance_level": performance_level,
+            "estimated_time": estimate_processing_time(max_rows, len(cols_a))
         })
         
     except Exception as e:
@@ -552,6 +661,7 @@ async def compare_files(
     file_a: str = Form(...), 
     file_b: str = Form(...), 
     num_columns: int = Form(...),
+    max_rows: int = Form(0),
     expected_combinations: str = Form(None),
     excluded_combinations: str = Form(None)
 ):
@@ -581,6 +691,22 @@ async def compare_files(
             VALUES (?, ?, ?, ?, 'queued', 'initializing', 0, ?)
         ''', (timestamp, file_a_name, file_b_name, num_columns, timestamp))
         run_id = cursor.lastrowid
+        
+        # Store run parameters for cloning
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS run_parameters (
+                run_id INTEGER PRIMARY KEY,
+                max_rows INTEGER,
+                expected_combinations TEXT,
+                excluded_combinations TEXT,
+                FOREIGN KEY (run_id) REFERENCES runs(run_id)
+            )
+        ''')
+        cursor.execute('''
+            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations)
+            VALUES (?, ?, ?, ?)
+        ''', (run_id, max_rows, expected_combos or '', excluded_combos or ''))
+        conn.commit()
         
         # Create job stages
         stages = [
@@ -644,7 +770,7 @@ async def compare_files(
         
         # Start background processing
         thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, parsed_combinations, parsed_exclusions))
+                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions))
         thread.daemon = True
         thread.start()
         
@@ -654,6 +780,54 @@ async def compare_files(
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+@app.get("/api/clone/{run_id}")
+async def get_run_for_clone(run_id: int):
+    """Get run parameters for cloning"""
+    try:
+        cursor = conn.cursor()
+        
+        # Ensure run_parameters table exists
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS run_parameters (
+                run_id INTEGER PRIMARY KEY,
+                max_rows INTEGER,
+                expected_combinations TEXT,
+                excluded_combinations TEXT,
+                FOREIGN KEY (run_id) REFERENCES runs(run_id)
+            )
+        ''')
+        conn.commit()
+        
+        # Get basic run info
+        cursor.execute('''
+            SELECT file_a, file_b, num_columns FROM runs WHERE run_id = ?
+        ''', (run_id,))
+        run_info = cursor.fetchone()
+        
+        if not run_info:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        # Get run parameters (may not exist for old runs)
+        cursor.execute('''
+            SELECT max_rows, expected_combinations, excluded_combinations 
+            FROM run_parameters WHERE run_id = ?
+        ''', (run_id,))
+        params = cursor.fetchone()
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "file_a": run_info[0],
+            "file_b": run_info[1],
+            "num_columns": run_info[2],
+            "max_rows": params[0] if params else 0,
+            "expected_combinations": params[1] if params and params[1] else "",
+            "excluded_combinations": params[2] if params and params[2] else ""
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error cloning run: {str(e)}"}, status_code=500)
 
 @app.get("/api/status/{run_id}")
 async def get_job_status(run_id: int):
