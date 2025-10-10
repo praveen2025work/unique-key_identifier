@@ -893,9 +893,15 @@ async def download_duplicate_records(run_id: int, side: str = Query(...), column
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error extracting duplicate records: {str(e)}")
 
-@app.get("/comparison/{run_id}/view", response_class=HTMLResponse)
-async def view_comparison(request: Request, run_id: int, columns: str = Query(...)):
-    """View comparison results in browser"""
+@app.get("/api/comparison/{run_id}/data")
+async def get_comparison_data(
+    run_id: int, 
+    columns: str = Query(...),
+    category: str = Query(...),  # 'matched', 'only_a', 'only_b'
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500)
+):
+    """API endpoint to get paginated comparison data"""
     cursor = conn.cursor()
     
     # Get run info
@@ -920,6 +926,80 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
         # Parse columns
         column_list = [col.strip() for col in columns.split(',')]
         
+        # Create comparison keys
+        df_a['_comparison_key'] = df_a[column_list].apply(lambda x: tuple(x), axis=1)
+        df_b['_comparison_key'] = df_b[column_list].apply(lambda x: tuple(x), axis=1)
+        
+        # Get unique keys
+        keys_a = set(df_a['_comparison_key'])
+        keys_b = set(df_b['_comparison_key'])
+        
+        # Calculate intersections and differences
+        matched_keys = keys_a & keys_b
+        only_a_keys = keys_a - keys_b
+        only_b_keys = keys_b - keys_a
+        
+        # Select the right dataset based on category
+        if category == 'matched':
+            df_filtered = df_a[df_a['_comparison_key'].isin(matched_keys)].copy()
+        elif category == 'only_a':
+            df_filtered = df_a[df_a['_comparison_key'].isin(only_a_keys)].copy()
+        elif category == 'only_b':
+            df_filtered = df_b[df_b['_comparison_key'].isin(only_b_keys)].copy()
+        else:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        
+        # Remove comparison key and sort
+        df_filtered.drop('_comparison_key', axis=1, inplace=True)
+        df_filtered = df_filtered.sort_values(column_list).reset_index(drop=True)
+        
+        # Get total count before pagination
+        total_count = len(df_filtered)
+        
+        # Apply pagination
+        df_page = df_filtered.iloc[offset:offset + limit]
+        records = df_page.to_dict('records') if not df_page.empty else []
+        
+        return JSONResponse({
+            "records": records,
+            "total": total_count,
+            "offset": offset,
+            "limit": limit,
+            "has_more": offset + limit < total_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error fetching comparison data: {str(e)}")
+
+@app.get("/comparison/{run_id}/view", response_class=HTMLResponse)
+async def view_comparison(request: Request, run_id: int, columns: str = Query(...)):
+    """View comparison results in browser with lazy loading"""
+    cursor = conn.cursor()
+    
+    # Get run info
+    cursor.execute('SELECT file_a, file_b, working_directory FROM runs WHERE run_id = ?', (run_id,))
+    run_info = cursor.fetchone()
+    if not run_info:
+        raise HTTPException(status_code=404, detail="Run not found")
+    
+    work_dir = run_info[2]
+    base_dir = work_dir if work_dir else SCRIPT_DIR
+    file_a_path = os.path.join(base_dir, run_info[0])
+    file_b_path = os.path.join(base_dir, run_info[1])
+    
+    if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
+        raise HTTPException(status_code=404, detail="Source files not found")
+    
+    try:
+        # Load both files for counts only
+        df_a, _ = read_data_file(file_a_path)
+        df_b, _ = read_data_file(file_b_path)
+        
+        # Parse columns
+        column_list = [col.strip() for col in columns.split(',')]
+        
         # Validate columns
         missing_a = [col for col in column_list if col not in df_a.columns]
         missing_b = [col for col in column_list if col not in df_b.columns]
@@ -934,33 +1014,18 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
         keys_a = set(df_a['_comparison_key'])
         keys_b = set(df_b['_comparison_key'])
         
-        # Calculate intersections and differences
-        matched_keys = keys_a & keys_b
-        only_a_keys = keys_a - keys_b
-        only_b_keys = keys_b - keys_a
-        
-        # Filter dataframes
-        df_matched_a = df_a[df_a['_comparison_key'].isin(matched_keys)].copy()
-        df_only_a = df_a[df_a['_comparison_key'].isin(only_a_keys)].copy()
-        df_only_b = df_b[df_b['_comparison_key'].isin(only_b_keys)].copy()
-        
-        # Remove comparison key column
-        df_matched_a.drop('_comparison_key', axis=1, inplace=True)
-        df_only_a.drop('_comparison_key', axis=1, inplace=True)
-        df_only_b.drop('_comparison_key', axis=1, inplace=True)
-        
-        # Sort by comparison columns
-        df_matched_a = df_matched_a.sort_values(column_list).reset_index(drop=True)
-        df_only_a = df_only_a.sort_values(column_list).reset_index(drop=True)
-        df_only_b = df_only_b.sort_values(column_list).reset_index(drop=True)
-        
-        # Convert to list of dicts (limit to first 100 for performance)
-        matched_records = df_matched_a.head(100).to_dict('records') if not df_matched_a.empty else []
-        only_a_records = df_only_a.head(100).to_dict('records') if not df_only_a.empty else []
-        only_b_records = df_only_b.head(100).to_dict('records') if not df_only_b.empty else []
+        # Calculate counts only (fast)
+        matched_count = len(keys_a & keys_b)
+        only_a_count = len(keys_a - keys_b)
+        only_b_count = len(keys_b - keys_a)
         
         # Calculate match rate
-        match_rate = round((len(df_matched_a) / max(len(df_a), 1)) * 100, 2)
+        match_rate = round((matched_count / max(len(df_a), 1)) * 100, 2)
+        
+        # Get column names for the first record to display headers
+        all_columns = df_a.columns.tolist()
+        if '_comparison_key' in all_columns:
+            all_columns.remove('_comparison_key')
         
         return templates.TemplateResponse("comparison_view.html", {
             "request": request,
@@ -971,13 +1036,11 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
             "file_b": run_info[1],
             "total_a": len(df_a),
             "total_b": len(df_b),
-            "matched_count": len(df_matched_a),
-            "only_a_count": len(df_only_a),
-            "only_b_count": len(df_only_b),
+            "matched_count": matched_count,
+            "only_a_count": only_a_count,
+            "only_b_count": only_b_count,
             "match_rate": match_rate,
-            "matched_records": matched_records,
-            "only_a_records": only_a_records,
-            "only_b_records": only_b_records
+            "all_columns": all_columns
         })
         
     except Exception as e:

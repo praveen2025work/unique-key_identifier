@@ -261,6 +261,7 @@
             overflow-y: auto;
             border-radius: 4px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         .badge {
@@ -314,6 +315,65 @@
                 transform: translateX(0);
                 opacity: 1;
             }
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #337ab7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .record-counter {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 10px;
+            border-bottom: 2px solid #337ab7;
+            z-index: 5;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: #337ab7;
+        }
+
+        .load-more-btn {
+            width: 100%;
+            padding: 12px;
+            background: #337ab7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.2s;
+        }
+
+        .load-more-btn:hover {
+            background: #286090;
+        }
+
+        .load-more-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
 
         @media (max-width: 768px) {
@@ -409,40 +469,32 @@
             </div>
 
             <!-- Matched Records Tab -->
-            <div id="matched-tab" class="tab-content active">
+            <div id="matched-tab" class="tab-content active" data-category="matched">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="color: #5cb85c; margin: 0; font-size: 1.1em;">✅ Matched ({{ matched_records|length }} shown)</h3>
-                    <span style="color: #666; font-size: 11px;">Click cells to copy | <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel</a> for all</span>
+                    <h3 style="color: #5cb85c; margin: 0; font-size: 1.1em;">✅ Matched</h3>
+                    <span style="color: #666; font-size: 11px;">
+                        <span id="matched-counter">Loading...</span> | 
+                        <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel for all</a>
+                    </span>
                 </div>
-                {% if matched_records %}
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                {% for col in matched_records[0].keys() %}
-                                <th>{{ col }}</th>
-                                {% endfor %}
-                            </tr>
+                {% if matched_count > 0 %}
+                <div class="table-container" id="matched-container" onscroll="handleScroll('matched')">
+                    <table class="data-table" id="matched-table">
+                        <thead id="matched-thead">
+                            <!-- Headers will be populated dynamically -->
                         </thead>
-                        <tbody>
-                            {% for row in matched_records[:50] %}
-                            <tr>
-                                {% for value in row.values() %}
-                                <td onclick="copyToClipboard('{{ value }}', this)">
-                                    {{ value }}
-                                    <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('{{ value }}', this.parentElement)">Copy</button>
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
+                        <tbody id="matched-tbody">
+                            <!-- Data will be loaded dynamically -->
                         </tbody>
                     </table>
+                    <div id="matched-loading" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        Loading more records...
+                    </div>
                 </div>
-                {% if matched_records|length > 50 %}
-                <div style="text-align: center; margin-top: 15px; color: #666;">
-                    Showing 50 of {{ matched_records|length }} records. Download Excel for complete data.
-                </div>
-                {% endif %}
+                <button id="matched-load-more" class="load-more-btn" onclick="loadMore('matched')" style="display: none;">
+                    Load More Records
+                </button>
                 {% else %}
                 <div class="empty-state">
                     <div class="empty-state-icon">🔍</div>
@@ -453,40 +505,32 @@
             </div>
 
             <!-- Only in Side A Tab -->
-            <div id="only-a-tab" class="tab-content">
+            <div id="only-a-tab" class="tab-content" data-category="only_a">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="color: #5bc0de; margin: 0; font-size: 1.1em;">📘 Only in A ({{ only_a_records|length }} shown)</h3>
-                    <span style="color: #666; font-size: 11px;">{{ file_a }} | Click cells to copy | <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel</a> for all</span>
+                    <h3 style="color: #5bc0de; margin: 0; font-size: 1.1em;">📘 Only in A</h3>
+                    <span style="color: #666; font-size: 11px;">
+                        <span id="only_a-counter">{{ file_a }}</span> | 
+                        <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel for all</a>
+                    </span>
                 </div>
-                {% if only_a_records %}
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                {% for col in only_a_records[0].keys() %}
-                                <th>{{ col }}</th>
-                                {% endfor %}
-                            </tr>
+                {% if only_a_count > 0 %}
+                <div class="table-container" id="only_a-container" onscroll="handleScroll('only_a')">
+                    <table class="data-table" id="only_a-table">
+                        <thead id="only_a-thead">
+                            <!-- Headers will be populated dynamically -->
                         </thead>
-                        <tbody>
-                            {% for row in only_a_records[:50] %}
-                            <tr>
-                                {% for value in row.values() %}
-                                <td onclick="copyToClipboard('{{ value }}', this)">
-                                    {{ value }}
-                                    <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('{{ value }}', this.parentElement)">Copy</button>
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
+                        <tbody id="only_a-tbody">
+                            <!-- Data will be loaded dynamically -->
                         </tbody>
                     </table>
+                    <div id="only_a-loading" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        Loading more records...
+                    </div>
                 </div>
-                {% if only_a_records|length > 50 %}
-                <div style="text-align: center; margin-top: 15px; color: #666;">
-                    Showing 50 of {{ only_a_records|length }} records. Download Excel for complete data.
-                </div>
-                {% endif %}
+                <button id="only_a-load-more" class="load-more-btn" onclick="loadMore('only_a')" style="display: none;">
+                    Load More Records
+                </button>
                 {% else %}
                 <div class="empty-state">
                     <div class="empty-state-icon">✨</div>
@@ -497,40 +541,32 @@
             </div>
 
             <!-- Only in Side B Tab -->
-            <div id="only-b-tab" class="tab-content">
+            <div id="only-b-tab" class="tab-content" data-category="only_b">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="color: #f0ad4e; margin: 0; font-size: 1.1em;">📙 Only in B ({{ only_b_records|length }} shown)</h3>
-                    <span style="color: #666; font-size: 11px;">{{ file_b }} | Click cells to copy | <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel</a> for all</span>
+                    <h3 style="color: #f0ad4e; margin: 0; font-size: 1.1em;">📙 Only in B</h3>
+                    <span style="color: #666; font-size: 11px;">
+                        <span id="only_b-counter">{{ file_b }}</span> | 
+                        <a href="/download/{{ run_id }}/comparison?columns={{ columns }}" style="color: #337ab7;">Excel for all</a>
+                    </span>
                 </div>
-                {% if only_b_records %}
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                {% for col in only_b_records[0].keys() %}
-                                <th>{{ col }}</th>
-                                {% endfor %}
-                            </tr>
+                {% if only_b_count > 0 %}
+                <div class="table-container" id="only_b-container" onscroll="handleScroll('only_b')">
+                    <table class="data-table" id="only_b-table">
+                        <thead id="only_b-thead">
+                            <!-- Headers will be populated dynamically -->
                         </thead>
-                        <tbody>
-                            {% for row in only_b_records[:50] %}
-                            <tr>
-                                {% for value in row.values() %}
-                                <td onclick="copyToClipboard('{{ value }}', this)">
-                                    {{ value }}
-                                    <button class="copy-btn" onclick="event.stopPropagation(); copyToClipboard('{{ value }}', this.parentElement)">Copy</button>
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
+                        <tbody id="only_b-tbody">
+                            <!-- Data will be loaded dynamically -->
                         </tbody>
                     </table>
+                    <div id="only_b-loading" class="loading-indicator" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        Loading more records...
+                    </div>
                 </div>
-                {% if only_b_records|length > 50 %}
-                <div style="text-align: center; margin-top: 15px; color: #666;">
-                    Showing 50 of {{ only_b_records|length }} records. Download Excel for complete data.
-                </div>
-                {% endif %}
+                <button id="only_b-load-more" class="load-more-btn" onclick="loadMore('only_b')" style="display: none;">
+                    Load More Records
+                </button>
                 {% else %}
                 <div class="empty-state">
                     <div class="empty-state-icon">✨</div>
@@ -543,6 +579,142 @@
     </div>
 
     <script>
+        // Configuration
+        const RUN_ID = {{ run_id }};
+        const COLUMNS = "{{ columns }}";
+        const PAGE_SIZE = 100;
+        const ALL_COLUMNS = {{ all_columns | tojson }};
+        
+        // State for each category
+        const state = {
+            matched: { offset: 0, total: {{ matched_count }}, loading: false, hasMore: true, loaded: false },
+            only_a: { offset: 0, total: {{ only_a_count }}, loading: false, hasMore: true, loaded: false },
+            only_b: { offset: 0, total: {{ only_b_count }}, loading: false, hasMore: true, loaded: false }
+        };
+
+        // Load data for a specific category
+        async function loadData(category) {
+            if (state[category].loading || !state[category].hasMore) {
+                return;
+            }
+
+            state[category].loading = true;
+            const loadingIndicator = document.getElementById(`${category}-loading`);
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+            }
+
+            try {
+                const response = await fetch(
+                    `/api/comparison/${RUN_ID}/data?columns=${encodeURIComponent(COLUMNS)}&category=${category}&offset=${state[category].offset}&limit=${PAGE_SIZE}`
+                );
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update state
+                state[category].offset += data.records.length;
+                state[category].hasMore = data.has_more;
+                state[category].loaded = true;
+                
+                // Render data
+                renderRecords(category, data.records);
+                
+                // Update counter
+                updateCounter(category);
+                
+                // Show/hide load more button
+                const loadMoreBtn = document.getElementById(`${category}-load-more`);
+                if (loadMoreBtn) {
+                    loadMoreBtn.style.display = data.has_more ? 'block' : 'none';
+                }
+                
+            } catch (error) {
+                console.error(`Error loading ${category} data:`, error);
+                showToast(`Error loading data: ${error.message}`);
+            } finally {
+                state[category].loading = false;
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+        }
+
+        // Render records into table
+        function renderRecords(category, records) {
+            const tbody = document.getElementById(`${category}-tbody`);
+            const thead = document.getElementById(`${category}-thead`);
+            
+            // Create headers if this is the first load
+            if (state[category].offset === records.length && records.length > 0) {
+                const headerRow = document.createElement('tr');
+                Object.keys(records[0]).forEach(col => {
+                    const th = document.createElement('th');
+                    th.textContent = col;
+                    headerRow.appendChild(th);
+                });
+                thead.innerHTML = '';
+                thead.appendChild(headerRow);
+            }
+            
+            // Add rows
+            records.forEach(record => {
+                const tr = document.createElement('tr');
+                Object.values(record).forEach(value => {
+                    const td = document.createElement('td');
+                    const displayValue = value === null || value === undefined ? '' : String(value);
+                    td.textContent = displayValue;
+                    td.onclick = function() { copyToClipboard(displayValue, this); };
+                    
+                    // Add copy button
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.onclick = function(e) { 
+                        e.stopPropagation(); 
+                        copyToClipboard(displayValue, td); 
+                    };
+                    td.appendChild(copyBtn);
+                    
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Update counter display
+        function updateCounter(category) {
+            const counter = document.getElementById(`${category}-counter`);
+            if (counter) {
+                const loaded = state[category].offset;
+                const total = state[category].total;
+                counter.textContent = `Showing ${loaded.toLocaleString()} of ${total.toLocaleString()} records`;
+            }
+        }
+
+        // Handle scroll for infinite loading
+        function handleScroll(category) {
+            const container = document.getElementById(`${category}-container`);
+            if (!container) return;
+            
+            const scrollPosition = container.scrollTop + container.clientHeight;
+            const scrollHeight = container.scrollHeight;
+            
+            // Load more when user is 200px from bottom
+            if (scrollHeight - scrollPosition < 200 && state[category].hasMore && !state[category].loading) {
+                loadData(category);
+            }
+        }
+
+        // Load more button click
+        function loadMore(category) {
+            loadData(category);
+        }
+
+        // Show tab
         function showTab(tabName) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
@@ -559,10 +731,15 @@
             
             // Add active class to clicked button
             event.target.classList.add('active');
+            
+            // Load data for this tab if not loaded yet
+            const category = tabName.replace(/-/g, '_');
+            if (!state[category].loaded && state[category].total > 0) {
+                loadData(category);
+            }
         }
 
         function copyToClipboard(text, element) {
-            // Create temporary textarea
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
@@ -574,7 +751,6 @@
                 document.execCommand('copy');
                 showToast('Copied: ' + (text.length > 30 ? text.substring(0, 30) + '...' : text));
                 
-                // Visual feedback
                 element.style.background = '#d9edf7';
                 setTimeout(() => {
                     element.style.background = '';
@@ -597,10 +773,8 @@
         }
 
         function copyAllColumnsFromKey() {
-            const keyColumns = '{{ columns }}';
-            
             const textarea = document.createElement('textarea');
-            textarea.value = keyColumns;
+            textarea.value = COLUMNS;
             textarea.style.position = 'fixed';
             textarea.style.opacity = '0';
             document.body.appendChild(textarea);
@@ -608,13 +782,21 @@
             
             try {
                 document.execCommand('copy');
-                showToast('✅ Copied key columns: ' + keyColumns);
+                showToast('✅ Copied key columns: ' + COLUMNS);
             } catch (err) {
                 showToast('❌ Failed to copy');
             }
             
             document.body.removeChild(textarea);
         }
+
+        // Initialize - load first tab data
+        window.addEventListener('DOMContentLoaded', () => {
+            // Load data for matched tab (default active)
+            if (state.matched.total > 0) {
+                loadData('matched');
+            }
+        });
     </script>
 </body>
 </html>
