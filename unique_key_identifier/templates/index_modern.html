@@ -174,10 +174,25 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <div class="text-blue-700">
-                                <p class="font-medium">Files must be in the <strong>unique_key_identifier</strong> folder</p>
+                                <p class="font-medium">Specify custom directory or use default folder</p>
                                 <p class="text-sm mt-1">Supports: <strong>.csv</strong>, <strong>.dat</strong>, <strong>.txt</strong> files (auto-detects delimiter)</p>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Working Directory Field -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">📁 Working Directory (Optional)</label>
+                        <input type="text" 
+                               x-model="workingDirectory" 
+                               @input="debouncePreview()"
+                               placeholder="Leave empty to use default (unique_key_identifier folder)"
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
+                        <p class="text-xs text-gray-500 mt-1">
+                            <strong>Default:</strong> Uses unique_key_identifier folder<br>
+                            <strong>Custom:</strong> Absolute path (e.g., /Users/name/data/) or relative path (e.g., ../data/)<br>
+                            Result files will be saved in: [directory]/analysis_results_run_[id]/
+                        </p>
                     </div>
                     
                     <div class="grid md:grid-cols-2 gap-6 mb-6">
@@ -566,6 +581,7 @@
                 // Form data
                 fileA: '',
                 fileB: '',
+                workingDirectory: '',
                 numColumns: 3,
                 maxRows: 0,  // 0 = auto-sampling
                 
@@ -631,6 +647,7 @@
                             this.fileB = data.file_b;
                             this.numColumns = data.num_columns;
                             this.maxRows = data.max_rows || 0;
+                            this.workingDirectory = data.working_directory || '';
                             
                             // Parse combinations
                             if (data.expected_combinations) {
@@ -679,7 +696,8 @@
                     this.showToast('info', 'Loading Files...', 'Reading file headers and counting rows...');
                     
                     try {
-                        const response = await fetch(`/api/preview-columns?file_a=${encodeURIComponent(this.fileA)}&file_b=${encodeURIComponent(this.fileB)}`);
+                        const workDirParam = this.workingDirectory ? `&working_directory=${encodeURIComponent(this.workingDirectory)}` : '';
+                        const response = await fetch(`/api/preview-columns?file_a=${encodeURIComponent(this.fileA)}&file_b=${encodeURIComponent(this.fileB)}${workDirParam}`);
                         const data = await response.json();
                         
                         this.columnsLoading = false;
@@ -873,6 +891,7 @@
                     formData.append('max_rows', this.maxRows || 0);  // 0 = auto
                     formData.append('expected_combinations', this.includedCombinations.join('\n'));
                     formData.append('excluded_combinations', this.excludedCombinations.join('\n'));
+                    formData.append('working_directory', this.workingDirectory || '');
                     
                     try {
                         const response = await fetch('/compare', {

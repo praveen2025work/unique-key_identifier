@@ -1,0 +1,268 @@
+═══════════════════════════════════════════════════════════════
+  ✅ CUSTOM DIRECTORY FEATURE - QUICK START
+═══════════════════════════════════════════════════════════════
+
+NEW FEATURE: Specify custom directories for each analysis run!
+
+═══════════════════════════════════════════════════════════════
+
+🎯 HOW IT WORKS:
+
+DEFAULT MODE (Leave empty):
+  • Files read from: unique_key_identifier/
+  • Results saved to: unique_key_identifier/results_cache/run_X/
+
+CUSTOM MODE (Specify directory):
+  • Files read from: [your_directory]/
+  • Results saved to: [your_directory]/analysis_results_run_X/
+
+═══════════════════════════════════════════════════════════════
+
+📋 USER INTERFACE:
+
+Home Page - NEW FIELD:
+┌──────────────────────────────────────────────────────────┐
+│ 📁 Working Directory (Optional)                          │
+│ ┌──────────────────────────────────────────────────────┐ │
+│ │ Leave empty to use default (unique_key_identifier)   │ │
+│ └──────────────────────────────────────────────────────┘ │
+│                                                          │
+│ Default: Uses unique_key_identifier folder              │
+│ Custom: Absolute (/Users/name/data/) or relative (../data/) │
+│ Result files saved in: [directory]/analysis_results_run_[id]/ │
+└──────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+
+📁 EXAMPLES:
+
+Example 1: Default Mode
+┌──────────────────────────────────────────────────────────┐
+│ Working Directory: [empty]                               │
+│ File A: trading_system_a.csv                             │
+│ File B: trading_system_b.csv                             │
+│                                                          │
+│ Files From: unique_key_identifier/                       │
+│ Results To: unique_key_identifier/results_cache/run_1/   │
+└──────────────────────────────────────────────────────────┘
+
+Example 2: Absolute Path
+┌──────────────────────────────────────────────────────────┐
+│ Working Directory: /Users/john/trading_data/             │
+│ File A: q4_data_a.csv                                    │
+│ File B: q4_data_b.csv                                    │
+│                                                          │
+│ Files From: /Users/john/trading_data/                    │
+│ Results To: /Users/john/trading_data/analysis_results_run_1/ │
+└──────────────────────────────────────────────────────────┘
+
+Example 3: Relative Path
+┌──────────────────────────────────────────────────────────┐
+│ Working Directory: ../data/                              │
+│ File A: export_a.csv                                     │
+│ File B: export_b.csv                                     │
+│                                                          │
+│ Files From: ../data/                                     │
+│ Results To: ../data/analysis_results_run_1/              │
+└──────────────────────────────────────────────────────────┘
+
+Example 4: Windows Path
+┌──────────────────────────────────────────────────────────┐
+│ Working Directory: C:\Data\Trading\                      │
+│ File A: system_a.csv                                     │
+│ File B: system_b.csv                                     │
+│                                                          │
+│ Files From: C:\Data\Trading\                             │
+│ Results To: C:\Data\Trading\analysis_results_run_1\      │
+└──────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+
+✅ WHAT GETS SAVED IN CUSTOM DIRECTORY:
+
+[your_directory]/analysis_results_run_1/
+├── analysis_csv_*.csv              # Analysis summary
+├── analysis_excel_*.xlsx           # Multi-sheet workbook
+├── unique_records_sideA_*.csv      # Unique records (Side A)
+├── unique_records_sideB_*.csv      # Unique records (Side B)
+├── duplicate_records_sideA_*.csv   # Duplicates (Side A)
+├── duplicate_records_sideB_*.csv   # Duplicates (Side B)
+└── comparison_*.xlsx               # Comparison files
+
+Result: All analysis files in one convenient location!
+
+═══════════════════════════════════════════════════════════════
+
+🎯 USE CASES:
+
+Use Case 1: Project Organization
+  Project: /projects/q4_trading/
+  Files: trades_a.csv, trades_b.csv
+  Results: /projects/q4_trading/analysis_results_run_1/
+  Benefit: All Q4 data stays together!
+
+Use Case 2: Multiple Data Sources
+  Source A: /data/source_a/ → analysis_results_run_1/
+  Source B: /data/source_b/ → analysis_results_run_2/
+  Default: unique_key_identifier/ → results_cache/run_3/
+  Benefit: Clear separation!
+
+Use Case 3: Network Drives
+  Directory: /Volumes/SharedDrive/TradingData/
+  Benefit: Team can access files!
+
+Use Case 4: Client Segregation
+  Client A: /clients/clientA/data/ → analysis_results_run_X/
+  Client B: /clients/clientB/data/ → analysis_results_run_Y/
+  Benefit: Data stays isolated!
+
+═══════════════════════════════════════════════════════════════
+
+🔧 HOW TO USE:
+
+Step 1: Start Application
+  python3 file_comparator.py
+  Open: http://localhost:8000
+
+Step 2: Enter Directory (Optional)
+  • Leave empty for default
+  • Or enter: /Users/name/my_data/
+  • Or enter: ../data/
+
+Step 3: Enter File Names
+  File A: my_file_a.csv
+  File B: my_file_b.csv
+
+Step 4: Configure Analysis
+  • Number of columns
+  • Optional combinations
+  • Click "Analyze Files"
+
+Step 5: Results Generated
+  • Check: [directory]/analysis_results_run_X/
+  • All files ready for offline use!
+
+═══════════════════════════════════════════════════════════════
+
+✅ FEATURES:
+
+Directory Validation:
+  • Checks if directory exists
+  • Verifies files are present
+  • Shows clear error if not found
+
+Path Flexibility:
+  • Absolute paths: /full/path/to/dir/
+  • Relative paths: ../data/, ../../files/
+  • Windows paths: C:\Data\
+
+Result Organization:
+  • Results in: [directory]/analysis_results_run_[id]/
+  • Easy to find
+  • Stays with source data
+
+Clone Support:
+  • Cloning preserves directory
+  • Rerun with same setup
+  • Directory included in clone
+
+═══════════════════════════════════════════════════════════════
+
+📊 WHAT'S STORED:
+
+Database Tracking:
+  • runs.working_directory
+  • run_parameters.working_directory
+  • result_files.file_path (full paths)
+
+File Resolution:
+  • All downloads use correct directory
+  • All views use correct directory
+  • All results use correct directory
+
+═══════════════════════════════════════════════════════════════
+
+🎉 BENEFITS:
+
+Organization:
+  ✅ Keep data by project/client
+  ✅ Results stay with source files
+  ✅ Easy to locate
+
+Flexibility:
+  ✅ Any directory on system
+  ✅ Network drives supported
+  ✅ Multiple directories at once
+
+Collaboration:
+  ✅ Shared folders work
+  ✅ Team access enabled
+  ✅ Central repositories
+
+Simplicity:
+  ✅ Optional (backward compatible)
+  ✅ Clear defaults
+  ✅ Easy to understand
+
+═══════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANT NOTES:
+
+Permissions:
+  • Need read access to directory
+  • Need write access for results
+  • Check permissions before analysis
+
+Path Tips:
+  • Use absolute paths for clarity
+  • Avoid spaces in paths (or quote them)
+  • Forward slashes work on all platforms
+
+Validation:
+  • Directory checked before analysis
+  • Error shown immediately if not found
+  • No wasted processing time
+
+═══════════════════════════════════════════════════════════════
+
+🧪 TESTING:
+
+Test 1: Default Mode
+  Directory: (empty)
+  Expected: Works as before ✓
+
+Test 2: Absolute Path
+  Directory: /Users/name/data/
+  Expected: Reads/writes from there ✓
+
+Test 3: Relative Path
+  Directory: ../test_data/
+  Expected: Resolves correctly ✓
+
+Test 4: Invalid Directory
+  Directory: /nonexistent/
+  Expected: Error before analysis ✓
+
+═══════════════════════════════════════════════════════════════
+
+🚀 READY TO USE!
+
+The custom directory feature is now active!
+
+Try it:
+  1. python3 file_comparator.py
+  2. Open http://localhost:8000
+  3. Enter a custom directory (or leave empty)
+  4. Run analysis
+  5. Check results in your directory!
+
+═══════════════════════════════════════════════════════════════
+
+Status: ✅ FEATURE COMPLETE!
+
+All files read from and results written to your specified
+directory. Perfect for organizing data by project, client,
+or any other structure you need! 🎊
+
+═══════════════════════════════════════════════════════════════
+

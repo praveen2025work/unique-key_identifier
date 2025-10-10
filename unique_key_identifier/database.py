@@ -25,7 +25,8 @@ def create_tables():
             progress_percent INTEGER DEFAULT 0,
             started_at TEXT,
             completed_at TEXT,
-            error_message TEXT
+            error_message TEXT,
+            working_directory TEXT
         )
     ''')
     cursor.execute('''
@@ -72,6 +73,7 @@ def create_tables():
             max_rows INTEGER,
             expected_combinations TEXT,
             excluded_combinations TEXT,
+            working_directory TEXT,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')

@@ -39,7 +39,7 @@ templates = Jinja2Templates(directory=os.path.join(SCRIPT_DIR, "templates"))
 # Job processing lock
 job_lock = threading.Lock()
 
-def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None):
+def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None, working_directory=None):
     """Background job to process file analysis"""
     try:
         # Pre-check file sizes
@@ -178,8 +178,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         try:
             # Generate analysis summary files
-            generate_analysis_csv(run_id)
-            generate_analysis_excel(run_id)
+            generate_analysis_csv(run_id, working_directory)
+            generate_analysis_excel(run_id, working_directory)
             
             # Generate files for top 10 combinations from each side
             # This prevents generating hundreds of files for large analyses
@@ -197,14 +197,14 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                     result = next((r for r in results if r['columns'] == columns), None)
                     if result:
                         if result['unique_rows'] > 0:
-                            generate_unique_records(run_id, side, columns, file_a_path, file_b_path)
+                            generate_unique_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
                             files_generated += 1
                         if result['duplicate_count'] > 0:
-                            generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path)
+                            generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
                             files_generated += 1
                 
                 # Generate comparison file for this combination
-                generate_comparison_file(run_id, columns, file_a_path, file_b_path)
+                generate_comparison_file(run_id, columns, file_a_path, file_b_path, working_directory)
                 files_generated += 1
             
             update_stage_status(run_id, 'generating_files', 'completed', f'Generated {files_generated} result files for offline access')
@@ -239,17 +239,25 @@ async def get_form(request: Request):
     return templates.TemplateResponse("index_modern.html", {"request": request, "runs": run_list})
 
 @app.get("/api/preview-columns")
-async def preview_columns(file_a: str, file_b: str):
+async def preview_columns(file_a: str, file_b: str, working_directory: str = Query(None)):
     """Preview columns from both files before analysis"""
     try:
         file_a_name = file_a.strip()
         file_b_name = file_b.strip()
+        work_dir = working_directory.strip() if working_directory else None
         
         if not file_a_name or not file_b_name:
             return JSONResponse({"error": "Please provide both file names"}, status_code=400)
         
-        file_a_path = os.path.join(script_dir, file_a_name)
-        file_b_path = os.path.join(script_dir, file_b_name)
+        # Determine base directory
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        
+        # Validate directory if specified
+        if work_dir and not os.path.isdir(base_dir):
+            return JSONResponse({"error": f"Directory not found: {base_dir}"}, status_code=400)
+        
+        file_a_path = os.path.join(base_dir, file_a_name)
+        file_b_path = os.path.join(base_dir, file_b_name)
         
         if not os.path.exists(file_a_path):
             return JSONResponse({"error": f"❌ File A not found: '{file_a_name}'. Please ensure the file is in the unique_key_identifier folder."}, status_code=404)
@@ -327,7 +335,8 @@ async def compare_files(
     num_columns: int = Form(...),
     max_rows: int = Form(0),
     expected_combinations: str = Form(None),
-    excluded_combinations: str = Form(None)
+    excluded_combinations: str = Form(None),
+    working_directory: str = Form(None)
 ):
     """Start async analysis job and return run_id"""
     try:
@@ -337,12 +346,20 @@ async def compare_files(
         file_b_name = file_b.strip()
         expected_combos = expected_combinations.strip() if expected_combinations else None
         excluded_combos = excluded_combinations.strip() if excluded_combinations else None
+        work_dir = working_directory.strip() if working_directory else None
 
         if not file_a_name or not file_b_name:
             return JSONResponse({"error": "Please provide both file names"}, status_code=400)
 
-        file_a_path = os.path.join(script_dir, file_a_name)
-        file_b_path = os.path.join(script_dir, file_b_name)
+        # Determine base directory
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        
+        # Validate directory exists
+        if work_dir and not os.path.isdir(base_dir):
+            return JSONResponse({"error": f"Directory not found: {base_dir}"}, status_code=400)
+
+        file_a_path = os.path.join(base_dir, file_a_name)
+        file_b_path = os.path.join(base_dir, file_b_name)
 
         if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
             return JSONResponse({"error": "One or both files not found in unique_key_identifier directory"}, status_code=400)
@@ -351,25 +368,16 @@ async def compare_files(
         cursor = conn.cursor()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute('''
-            INSERT INTO runs (timestamp, file_a, file_b, num_columns, status, current_stage, progress_percent, started_at)
-            VALUES (?, ?, ?, ?, 'queued', 'initializing', 0, ?)
-        ''', (timestamp, file_a_name, file_b_name, num_columns, timestamp))
+            INSERT INTO runs (timestamp, file_a, file_b, num_columns, status, current_stage, progress_percent, started_at, working_directory)
+            VALUES (?, ?, ?, ?, 'queued', 'initializing', 0, ?, ?)
+        ''', (timestamp, file_a_name, file_b_name, num_columns, timestamp, work_dir))
         run_id = cursor.lastrowid
         
         # Store run parameters for cloning
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS run_parameters (
-                run_id INTEGER PRIMARY KEY,
-                max_rows INTEGER,
-                expected_combinations TEXT,
-                excluded_combinations TEXT,
-                FOREIGN KEY (run_id) REFERENCES runs(run_id)
-            )
-        ''')
-        cursor.execute('''
-            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations)
-            VALUES (?, ?, ?, ?)
-        ''', (run_id, max_rows, expected_combos or '', excluded_combos or ''))
+            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or ''))
         conn.commit()
         
         # Create job stages
@@ -435,7 +443,7 @@ async def compare_files(
         
         # Start background processing
         thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions))
+                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir))
         thread.daemon = True
         thread.start()
         
@@ -475,7 +483,7 @@ async def get_run_for_clone(run_id: int):
         
         # Get run parameters (may not exist for old runs)
         cursor.execute('''
-            SELECT max_rows, expected_combinations, excluded_combinations 
+            SELECT max_rows, expected_combinations, excluded_combinations, working_directory
             FROM run_parameters WHERE run_id = ?
         ''', (run_id,))
         params = cursor.fetchone()
@@ -487,7 +495,8 @@ async def get_run_for_clone(run_id: int):
             "num_columns": run_info[2],
             "max_rows": params[0] if params else 0,
             "expected_combinations": params[1] if params and params[1] else "",
-            "excluded_combinations": params[2] if params and params[2] else ""
+            "excluded_combinations": params[2] if params and params[2] else "",
+            "working_directory": params[3] if params and params[3] else ""
         })
     except Exception as e:
         import traceback
@@ -713,14 +722,16 @@ async def download_unique_records(run_id: int, side: str = Query(...), columns: 
     cursor = conn.cursor()
     
     # Get run info
-    cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
+    cursor.execute('SELECT file_a, file_b, working_directory FROM runs WHERE run_id = ?', (run_id,))
     run_info = cursor.fetchone()
     if not run_info:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found in database")
     
     # Determine which file to load
     file_name = run_info[0] if side == 'A' else run_info[1]
-    file_path = os.path.join(script_dir, file_name)
+    work_dir = run_info[2]
+    base_dir = work_dir if work_dir else SCRIPT_DIR
+    file_path = os.path.join(base_dir, file_name)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Source file not found: {file_name}")
@@ -794,14 +805,16 @@ async def download_duplicate_records(run_id: int, side: str = Query(...), column
     cursor = conn.cursor()
     
     # Get run info
-    cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
+    cursor.execute('SELECT file_a, file_b, working_directory FROM runs WHERE run_id = ?', (run_id,))
     run_info = cursor.fetchone()
     if not run_info:
         raise HTTPException(status_code=404, detail="Run not found")
     
     # Determine which file to load
     file_name = run_info[0] if side == 'A' else run_info[1]
-    file_path = os.path.join(script_dir, file_name)
+    work_dir = run_info[2]
+    base_dir = work_dir if work_dir else SCRIPT_DIR
+    file_path = os.path.join(base_dir, file_name)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Source file not found: {file_name}")
@@ -871,13 +884,15 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
     cursor = conn.cursor()
     
     # Get run info
-    cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
+    cursor.execute('SELECT file_a, file_b, working_directory FROM runs WHERE run_id = ?', (run_id,))
     run_info = cursor.fetchone()
     if not run_info:
         raise HTTPException(status_code=404, detail="Run not found")
     
-    file_a_path = os.path.join(script_dir, run_info[0])
-    file_b_path = os.path.join(script_dir, run_info[1])
+    work_dir = run_info[2]
+    base_dir = work_dir if work_dir else SCRIPT_DIR
+    file_a_path = os.path.join(base_dir, run_info[0])
+    file_b_path = os.path.join(base_dir, run_info[1])
     
     if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
         raise HTTPException(status_code=404, detail="Source files not found")
@@ -978,8 +993,8 @@ async def download_comparison_files(run_id: int, columns: str = Query(...)):
     if not run_info:
         raise HTTPException(status_code=404, detail="Run not found")
     
-    file_a_path = os.path.join(script_dir, run_info[0])
-    file_b_path = os.path.join(script_dir, run_info[1])
+    file_a_path = os.path.join(SCRIPT_DIR, run_info[0])
+    file_b_path = os.path.join(SCRIPT_DIR, run_info[1])
     
     if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
         raise HTTPException(status_code=404, detail="Source files not found")
@@ -1115,8 +1130,14 @@ async def get_run(request: Request, run_id: int, group: int = Query(None), page:
         if not run_info:
             raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
 
+        # Get working directory for this run
+        cursor.execute('SELECT working_directory FROM runs WHERE run_id = ?', (run_id,))
+        dir_info = cursor.fetchone()
+        work_dir = dir_info[0] if dir_info else None
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        
         # Try to load the files to get column names
-        file_a_path = os.path.join(script_dir, run_info[1])
+        file_a_path = os.path.join(base_dir, run_info[1])
         columns_list = []
         try:
             if os.path.exists(file_a_path):

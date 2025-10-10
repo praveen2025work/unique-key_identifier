@@ -18,13 +18,23 @@ def ensure_results_dir():
     """Ensure results cache directory exists"""
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
-def get_run_dir(run_id):
-    """Get directory for specific run results"""
-    run_dir = os.path.join(RESULTS_DIR, f"run_{run_id}")
+def get_run_dir(run_id, working_directory=None):
+    """
+    Get directory for specific run results
+    If working_directory is specified, create results subfolder there
+    Otherwise use default results_cache directory
+    """
+    if working_directory:
+        # Use working directory for results
+        run_dir = os.path.join(working_directory, f"analysis_results_run_{run_id}")
+    else:
+        # Use default cache directory
+        run_dir = os.path.join(RESULTS_DIR, f"run_{run_id}")
+    
     os.makedirs(run_dir, exist_ok=True)
     return run_dir
 
-def save_result_file(run_id, file_type, content, side=None, columns=None, extension='csv'):
+def save_result_file(run_id, file_type, content, side=None, columns=None, extension='csv', working_directory=None):
     """
     Save a result file and register it in database
     
@@ -35,12 +45,13 @@ def save_result_file(run_id, file_type, content, side=None, columns=None, extens
         side: Side identifier (A or B) if applicable
         columns: Column combination if applicable
         extension: File extension (csv, xlsx)
+        working_directory: Custom directory for this run (optional)
     
     Returns:
         file_path: Path to saved file
     """
     ensure_results_dir()
-    run_dir = get_run_dir(run_id)
+    run_dir = get_run_dir(run_id, working_directory)
     
     # Generate filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -76,7 +87,7 @@ def save_result_file(run_id, file_type, content, side=None, columns=None, extens
     
     return file_path
 
-def generate_analysis_csv(run_id):
+def generate_analysis_csv(run_id, working_directory=None):
     """Generate CSV file with analysis results"""
     cursor = conn.cursor()
     
@@ -111,9 +122,9 @@ def generate_analysis_csv(run_id):
         ])
     
     content = output.getvalue()
-    return save_result_file(run_id, 'analysis_csv', content, extension='csv')
+    return save_result_file(run_id, 'analysis_csv', content, extension='csv', working_directory=working_directory)
 
-def generate_analysis_excel(run_id):
+def generate_analysis_excel(run_id, working_directory=None):
     """Generate Excel file with analysis results"""
     cursor = conn.cursor()
     
@@ -164,9 +175,9 @@ def generate_analysis_excel(run_id):
             df_b.to_excel(writer, sheet_name='Side B', index=False)
     
     content = output.getvalue()
-    return save_result_file(run_id, 'analysis_excel', content, extension='xlsx')
+    return save_result_file(run_id, 'analysis_excel', content, extension='xlsx', working_directory=working_directory)
 
-def generate_unique_records(run_id, side, columns, file_a_path, file_b_path):
+def generate_unique_records(run_id, side, columns, file_a_path, file_b_path, working_directory=None):
     """Generate unique records file for a specific combination"""
     file_name = file_a_path if side == 'A' else file_b_path
     
@@ -195,12 +206,12 @@ def generate_unique_records(run_id, side, columns, file_a_path, file_b_path):
         unique_df.to_csv(output, index=False)
         
         content = output.getvalue()
-        return save_result_file(run_id, 'unique_records', content, side=side, columns=columns, extension='csv')
+        return save_result_file(run_id, 'unique_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
     except Exception as e:
         print(f"Error generating unique records for {side}/{columns}: {str(e)}")
         return None
 
-def generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path):
+def generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path, working_directory=None):
     """Generate duplicate records file for a specific combination"""
     file_name = file_a_path if side == 'A' else file_b_path
     
@@ -237,12 +248,12 @@ def generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path):
         duplicate_df.to_csv(output, index=False)
         
         content = output.getvalue()
-        return save_result_file(run_id, 'duplicate_records', content, side=side, columns=columns, extension='csv')
+        return save_result_file(run_id, 'duplicate_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
     except Exception as e:
         print(f"Error generating duplicate records for {side}/{columns}: {str(e)}")
         return None
 
-def generate_comparison_file(run_id, columns, file_a_path, file_b_path):
+def generate_comparison_file(run_id, columns, file_a_path, file_b_path, working_directory=None):
     """Generate comparison Excel file (matched, only A, only B)"""
     try:
         # Load both files
@@ -316,7 +327,7 @@ def generate_comparison_file(run_id, columns, file_a_path, file_b_path):
                 df_only_b.to_excel(writer, sheet_name='Only_In_SideB', index=False)
         
         content = output.getvalue()
-        return save_result_file(run_id, 'comparison', content, columns=columns, extension='xlsx')
+        return save_result_file(run_id, 'comparison', content, columns=columns, extension='xlsx', working_directory=working_directory)
     except Exception as e:
         print(f"Error generating comparison file for {columns}: {str(e)}")
         return None
