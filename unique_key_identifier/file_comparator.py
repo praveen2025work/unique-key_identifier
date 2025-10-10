@@ -576,7 +576,7 @@ async def download_results_csv(run_id: int):
     # Check for pre-generated file first
     cached_file = get_result_file_path(run_id, 'analysis_csv')
     if cached_file and os.path.exists(cached_file):
-    cursor = conn.cursor()
+        cursor = conn.cursor()
         cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
         run_info = cursor.fetchone()
         if run_info:
@@ -628,7 +628,7 @@ async def download_results_excel(run_id: int):
     # Check for pre-generated file first
     cached_file = get_result_file_path(run_id, 'analysis_excel')
     if cached_file and os.path.exists(cached_file):
-    cursor = conn.cursor()
+        cursor = conn.cursor()
         cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
         run_info = cursor.fetchone()
         if run_info:
