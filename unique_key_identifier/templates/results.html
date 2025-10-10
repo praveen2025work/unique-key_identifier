@@ -15,12 +15,13 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
 
         .container {
-            max-width: 1600px;
-            margin: 0 auto;
+            width: 100%;
+            padding: 20px;
         }
 
         header {
@@ -345,9 +346,71 @@
             color: #666;
             margin-top: 4px;
         }
+
+        /* Loading Spinner */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #e0e0e0;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading Results...</div>
+            <div class="loading-subtext">Please wait while we fetch your data</div>
+        </div>
+    </div>
     <div class="container">
         <header>
             <h1>📊 Analysis Results</h1>
@@ -683,10 +746,41 @@
     </div>
     
     <script>
+        // Show loading spinner on page load
+        window.addEventListener('load', function() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        });
+
+        // Show loading spinner for navigation
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('active');
+        }
+
+        // Attach loading to all navigation links and buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            // Attach to buttons that navigate
+            const navButtons = document.querySelectorAll('a.btn, a.group-btn');
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    if (!this.getAttribute('href').startsWith('/download')) {
+                        showLoading();
+                    }
+                });
+            });
+
+            // Attach to pagination links
+            const paginationLinks = document.querySelectorAll('.pagination a');
+            paginationLinks.forEach(link => {
+                link.addEventListener('click', showLoading);
+            });
+        });
+
         async function cloneRun(runId) {
             if (!confirm(`Clone Run #${runId}?\n\nThis will copy all settings to the home page where you can modify and re-analyze.`)) {
                 return;
             }
+            
+            showLoading();
             
             try {
                 const response = await fetch(`/api/clone/${runId}`);

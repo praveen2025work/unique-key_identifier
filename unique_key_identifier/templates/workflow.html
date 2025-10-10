@@ -15,12 +15,13 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
+            padding: 20px;
         }
 
         header {
@@ -283,9 +284,66 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Loading Overlay for Navigation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #e0e0e0;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        .loading-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay for Navigation -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading...</div>
+            <div class="loading-subtext">Please wait</div>
+        </div>
+    </div>
     <div class="container">
         <header>
             <h1>🔄 Workflow Status</h1>
@@ -370,6 +428,43 @@
     <script>
         let pollInterval;
         const runId = {{ run_id }};
+        
+        // Show loading spinner for navigation
+        function showLoading(message = 'Loading...', subtext = 'Please wait') {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.querySelector('.loading-text').textContent = message;
+            overlay.querySelector('.loading-subtext').textContent = subtext;
+            overlay.classList.add('active');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('active');
+        }
+
+        // Attach loading to navigation buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const homeBtn = document.querySelector('button[onclick*="location.href=\'/\'"]');
+            if (homeBtn) {
+                homeBtn.addEventListener('click', function(e) {
+                    showLoading('Navigating to Home...', 'Please wait');
+                });
+            }
+
+            const viewResultsBtn = document.getElementById('viewResultsBtn');
+            if (viewResultsBtn) {
+                viewResultsBtn.addEventListener('click', function() {
+                    showLoading('Loading Results...', 'Fetching your analysis data');
+                });
+            }
+
+            const downloadBtns = document.querySelectorAll('button[onclick*="download"]');
+            downloadBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showLoading('Preparing Download...', 'Your file will start downloading shortly');
+                    setTimeout(hideLoading, 2000);
+                });
+            });
+        });
         
         async function updateStatus() {
             try {
@@ -466,6 +561,8 @@
             if (!confirm(`Clone Run #${runId}?\n\nThis will copy all settings to the home page where you can modify and re-analyze.`)) {
                 return;
             }
+            
+            showLoading('Cloning Run...', 'Copying settings to home page');
             
             try {
                 const response = await fetch(`/api/clone/${runId}`);
