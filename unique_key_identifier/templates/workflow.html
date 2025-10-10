@@ -408,6 +408,14 @@
                 <span class="spinner"></span> Auto-refreshing every 5 seconds...
             </div>
 
+            <!-- Data Quality Results Section -->
+            <div id="dataQualitySection" style="display: none; margin-top: 30px;">
+                <h3 style="margin-bottom: 15px;">🔍 Data Quality Check Results</h3>
+                <div id="dataQualityContent" class="card" style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 20px;">
+                    <!-- Quality results will be loaded here -->
+                </div>
+            </div>
+
             <div class="action-buttons">
                 <button class="btn" onclick="window.location.href='/'">← Back to Home</button>
                 <button class="btn" onclick="cloneRun({{ run_id }})" style="background: #10b981;">🔄 Clone This Run</button>
@@ -485,6 +493,9 @@
                 // Update stages
                 updateStages(data.stages);
                 
+                // Check for data quality results
+                fetchDataQualityResults();
+                
                 // If completed or error, show results button and stop polling
                 if (data.status === 'completed') {
                     document.getElementById('viewResultsBtn').style.display = 'block';
@@ -509,10 +520,12 @@
             
             const stageNames = {
                 'reading_files': '📁 Reading CSV Files',
+                'data_quality_check': '🔍 Data Quality Check',
                 'validating_data': '✓ Validating Data',
                 'analyzing_file_a': '📊 Analyzing File A',
                 'analyzing_file_b': '📊 Analyzing File B',
-                'storing_results': '💾 Storing Results'
+                'storing_results': '💾 Storing Results',
+                'generating_files': '📄 Generating Files'
             };
             
             const stageIcons = {
@@ -545,6 +558,106 @@
                 
                 container.appendChild(stageDiv);
             });
+        }
+        
+        async function fetchDataQualityResults() {
+            try {
+                const response = await fetch(`/api/data-quality/${runId}`);
+                if (!response.ok) return; // No quality data available
+                
+                const qualityData = await response.json();
+                const section = document.getElementById('dataQualitySection');
+                const content = document.getElementById('dataQualityContent');
+                
+                if (qualityData && qualityData.summary) {
+                    section.style.display = 'block';
+                    
+                    let html = `
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="margin-bottom: 10px;">${qualityData.summary.status_message}</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                                <div style="background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 12px; color: #666;">Total Issues</div>
+                                    <div style="font-size: 24px; font-weight: 600; color: #333;">${qualityData.summary.total_issues}</div>
+                                </div>
+                                <div style="background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 12px; color: #666;">High Severity</div>
+                                    <div style="font-size: 24px; font-weight: 600; color: #ef4444;">${qualityData.summary.high_severity_count}</div>
+                                </div>
+                                <div style="background: white; padding: 15px; border-radius: 8px;">
+                                    <div style="font-size: 12px; color: #666;">Medium Severity</div>
+                                    <div style="font-size: 24px; font-weight: 600; color: #f59e0b;">${qualityData.summary.medium_severity_count}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Display discrepancies
+                    if (qualityData.discrepancies && qualityData.discrepancies.length > 0) {
+                        html += `
+                            <div style="margin-top: 20px;">
+                                <h4 style="margin-bottom: 10px;">🚨 Cross-File Issues</h4>
+                                <div style="max-height: 300px; overflow-y: auto;">
+                        `;
+                        
+                        qualityData.discrepancies.slice(0, 10).forEach(disc => {
+                            const bgColor = disc.severity === 'high' ? '#fee2e2' : '#fef3c7';
+                            const borderColor = disc.severity === 'high' ? '#ef4444' : '#f59e0b';
+                            html += `
+                                <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 12px; margin-bottom: 10px; border-radius: 4px;">
+                                    <strong>${disc.type.replace('_', ' ').toUpperCase()}</strong>
+                                    ${disc.column ? ` - ${disc.column}` : ''}
+                                    <div style="margin-top: 5px; font-size: 14px;">${disc.message}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        html += `</div></div>`;
+                    }
+                    
+                    // Display file-specific issues
+                    if (qualityData.file1_report && qualityData.file1_report.overall_issues.length > 0) {
+                        html += `
+                            <div style="margin-top: 20px;">
+                                <h4 style="margin-bottom: 10px;">⚠️ ${qualityData.file1_report.file_name} Issues</h4>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                        `;
+                        
+                        qualityData.file1_report.overall_issues.slice(0, 5).forEach(issue => {
+                            html += `
+                                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
+                                    <strong>${issue.column}</strong>: ${issue.issue}
+                                </div>
+                            `;
+                        });
+                        
+                        html += `</div></div>`;
+                    }
+                    
+                    if (qualityData.file2_report && qualityData.file2_report.overall_issues.length > 0) {
+                        html += `
+                            <div style="margin-top: 20px;">
+                                <h4 style="margin-bottom: 10px;">⚠️ ${qualityData.file2_report.file_name} Issues</h4>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                        `;
+                        
+                        qualityData.file2_report.overall_issues.slice(0, 5).forEach(issue => {
+                            html += `
+                                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 10px; margin-bottom: 8px; border-radius: 4px;">
+                                    <strong>${issue.column}</strong>: ${issue.issue}
+                                </div>
+                            `;
+                        });
+                        
+                        html += `</div></div>`;
+                    }
+                    
+                    content.innerHTML = html;
+                }
+            } catch (error) {
+                // Silently fail if quality data not available
+                console.log('No quality data available');
+            }
         }
         
         // Start polling

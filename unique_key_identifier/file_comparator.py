@@ -6,6 +6,7 @@ from fastapi import FastAPI, Form, HTTPException, Request, BackgroundTasks, Quer
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import pandas as pd
+import numpy as np
 import os
 from datetime import datetime
 import uvicorn
@@ -28,6 +29,7 @@ from result_generator import (
     generate_unique_records, generate_duplicate_records, generate_comparison_file,
     get_result_file_path
 )
+from data_quality import perform_data_quality_check, perform_single_file_quality_check
 
 app = FastAPI()
 templates = Jinja2Templates(directory=os.path.join(SCRIPT_DIR, "templates"))
@@ -40,7 +42,7 @@ templates = Jinja2Templates(directory=os.path.join(SCRIPT_DIR, "templates"))
 # Job processing lock
 job_lock = threading.Lock()
 
-def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None, working_directory=None):
+def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None, working_directory=None, data_quality_check=False):
     """Background job to process file analysis"""
     try:
         # Pre-check file sizes
@@ -95,6 +97,33 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         update_stage_status(run_id, 'reading_files', 'completed', f'Loaded {len(df_a)} and {len(df_b)} rows')
         update_job_status(run_id, progress=20)
+        
+        # Stage 1.5: Data Quality Check (if enabled)
+        quality_results = None
+        if data_quality_check:
+            update_job_status(run_id, stage='data_quality_check', progress=22)
+            update_stage_status(run_id, 'data_quality_check', 'in_progress', 'Analyzing column patterns and data types')
+            
+            file_a_name = os.path.basename(file_a_path)
+            file_b_name = os.path.basename(file_b_path)
+            quality_results = perform_data_quality_check(df_a, df_b, file_a_name, file_b_name)
+            
+            # Store quality results in database
+            cursor = conn.cursor()
+            import json
+            cursor.execute('''
+                INSERT OR REPLACE INTO data_quality_results 
+                (run_id, quality_summary, quality_data)
+                VALUES (?, ?, ?)
+            ''', (run_id, 
+                  quality_results['summary']['status_message'], 
+                  json.dumps(quality_results)))
+            conn.commit()
+            
+            status_icon = "✅" if quality_results['summary']['status'] == 'pass' else "⚠️"
+            update_stage_status(run_id, 'data_quality_check', 'completed', 
+                              f"{status_icon} {quality_results['summary']['status_message']}")
+            update_job_status(run_id, progress=25)
         
         # Stage 2: Validating Data
         update_job_status(run_id, stage='validating_data', progress=25)
@@ -248,6 +277,11 @@ async def get_form(request: Request):
     run_list = [{"id": r[0], "label": f"Run {r[0]} - {r[1]} (Files: {r[2]}, {r[3]}, Columns: {r[4]})"} for r in runs]
     return templates.TemplateResponse("index_modern.html", {"request": request, "runs": run_list})
 
+@app.get("/data-quality", response_class=HTMLResponse)
+async def data_quality_page(request: Request):
+    """Standalone data quality check page"""
+    return templates.TemplateResponse("data_quality.html", {"request": request})
+
 @app.get("/api/preview-columns")
 async def preview_columns(file_a: str, file_b: str, working_directory: str = Query(None)):
     """Preview columns from both files before analysis"""
@@ -351,7 +385,8 @@ async def compare_files(
     max_rows: int = Form(0),
     expected_combinations: str = Form(None),
     excluded_combinations: str = Form(None),
-    working_directory: str = Form(None)
+    working_directory: str = Form(None),
+    data_quality_check: bool = Form(False)
 ):
     """Start async analysis job and return run_id"""
     try:
@@ -390,20 +425,29 @@ async def compare_files(
         
         # Store run parameters for cloning
         cursor.execute('''
-            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or ''))
+            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory, data_quality_check)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or '', 1 if data_quality_check else 0))
         conn.commit()
         
-        # Create job stages
+        # Create job stages - conditionally include data quality check
         stages = [
             ('reading_files', 1, 'pending'),
-            ('validating_data', 2, 'pending'),
-            ('analyzing_file_a', 3, 'pending'),
-            ('analyzing_file_b', 4, 'pending'),
-            ('storing_results', 5, 'pending'),
-            ('generating_files', 6, 'pending')
         ]
+        
+        if data_quality_check:
+            stages.append(('data_quality_check', 2, 'pending'))
+            stage_offset = 1
+        else:
+            stage_offset = 0
+        
+        stages.extend([
+            ('validating_data', 2 + stage_offset, 'pending'),
+            ('analyzing_file_a', 3 + stage_offset, 'pending'),
+            ('analyzing_file_b', 4 + stage_offset, 'pending'),
+            ('storing_results', 5 + stage_offset, 'pending'),
+            ('generating_files', 6 + stage_offset, 'pending')
+        ])
         
         for stage_name, order, status in stages:
             cursor.execute('''
@@ -458,7 +502,7 @@ async def compare_files(
         
         # Start background processing
         thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir))
+                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check))
         thread.daemon = True
         thread.start()
         
@@ -469,19 +513,87 @@ async def compare_files(
         traceback.print_exc()
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
+@app.post("/api/data-quality-check")
+async def check_data_quality(
+    file_a: str = Form(...),
+    file_b: str = Form(...),
+    working_directory: str = Form(None)
+):
+    """Standalone data quality check without full analysis"""
+    try:
+        file_a_name = file_a.strip()
+        file_b_name = file_b.strip()
+        work_dir = working_directory.strip() if working_directory else None
+        
+        if not file_a_name or not file_b_name:
+            return JSONResponse({"error": "Please provide both file names"}, status_code=400)
+        
+        # Determine base directory
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        
+        if work_dir and not os.path.isdir(base_dir):
+            return JSONResponse({"error": f"Directory not found: {base_dir}"}, status_code=400)
+        
+        file_a_path = os.path.join(base_dir, file_a_name)
+        file_b_path = os.path.join(base_dir, file_b_name)
+        
+        if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
+            return JSONResponse({"error": "One or both files not found"}, status_code=404)
+        
+        # Read files
+        df_a, _ = read_data_file(file_a_path)
+        df_b, _ = read_data_file(file_b_path)
+        
+        # Perform quality check
+        quality_results = perform_data_quality_check(df_a, df_b, file_a_name, file_b_name)
+        
+        return JSONResponse(quality_results)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error performing quality check: {str(e)}"}, status_code=500)
+
+@app.get("/api/data-quality/{run_id}")
+async def get_data_quality_results(run_id: int):
+    """Get data quality results for a specific run"""
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT quality_summary, quality_data 
+            FROM data_quality_results 
+            WHERE run_id = ?
+        ''', (run_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return JSONResponse({"error": "No quality check data found for this run"}, status_code=404)
+        
+        import json
+        quality_data = json.loads(result[1])
+        
+        return JSONResponse(quality_data)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error retrieving quality results: {str(e)}"}, status_code=500)
+
 @app.get("/api/clone/{run_id}")
 async def get_run_for_clone(run_id: int):
     """Get run parameters for cloning"""
     try:
         cursor = conn.cursor()
         
-        # Ensure run_parameters table exists
+        # Ensure run_parameters table exists with data_quality_check column
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS run_parameters (
                 run_id INTEGER PRIMARY KEY,
                 max_rows INTEGER,
                 expected_combinations TEXT,
                 excluded_combinations TEXT,
+                working_directory TEXT,
+                data_quality_check INTEGER DEFAULT 0,
                 FOREIGN KEY (run_id) REFERENCES runs(run_id)
             )
         ''')
@@ -498,7 +610,7 @@ async def get_run_for_clone(run_id: int):
         
         # Get run parameters (may not exist for old runs)
         cursor.execute('''
-            SELECT max_rows, expected_combinations, excluded_combinations, working_directory
+            SELECT max_rows, expected_combinations, excluded_combinations, working_directory, data_quality_check
             FROM run_parameters WHERE run_id = ?
         ''', (run_id,))
         params = cursor.fetchone()
@@ -511,7 +623,8 @@ async def get_run_for_clone(run_id: int):
             "max_rows": params[0] if params else 0,
             "expected_combinations": params[1] if params and params[1] else "",
             "excluded_combinations": params[2] if params and params[2] else "",
-            "working_directory": params[3] if params and params[3] else ""
+            "working_directory": params[3] if params and params[3] else "",
+            "data_quality_check": params[4] if params and len(params) > 4 else 0
         })
     except Exception as e:
         import traceback
@@ -958,14 +1071,21 @@ async def get_comparison_data(
         
         # Apply pagination
         df_page = df_filtered.iloc[offset:offset + limit]
-        records = df_page.to_dict('records') if not df_page.empty else []
+        
+        # Convert pandas data to native Python types for JSON serialization
+        if not df_page.empty:
+            # Replace NaN/NaT with None and convert to native types
+            df_page = df_page.replace({pd.NaT: None, np.nan: None})
+            records = df_page.astype(object).where(pd.notnull(df_page), None).to_dict('records')
+        else:
+            records = []
         
         return JSONResponse({
             "records": records,
-            "total": total_count,
-            "offset": offset,
-            "limit": limit,
-            "has_more": offset + limit < total_count
+            "total": int(total_count),
+            "offset": int(offset),
+            "limit": int(limit),
+            "has_more": bool(offset + limit < total_count)
         })
         
     except Exception as e:
@@ -1027,20 +1147,21 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
         if '_comparison_key' in all_columns:
             all_columns.remove('_comparison_key')
         
+        # Convert all values to native Python types to avoid JSON serialization issues
         return templates.TemplateResponse("comparison_view.html", {
             "request": request,
-            "run_id": run_id,
-            "columns": columns,
+            "run_id": int(run_id),
+            "columns": str(columns),
             "columns_display": columns.replace(',', ', '),
-            "file_a": run_info[0],
-            "file_b": run_info[1],
-            "total_a": len(df_a),
-            "total_b": len(df_b),
-            "matched_count": matched_count,
-            "only_a_count": only_a_count,
-            "only_b_count": only_b_count,
-            "match_rate": match_rate,
-            "all_columns": all_columns
+            "file_a": str(run_info[0]),
+            "file_b": str(run_info[1]),
+            "total_a": int(len(df_a)),
+            "total_b": int(len(df_b)),
+            "matched_count": int(matched_count),
+            "only_a_count": int(only_a_count),
+            "only_b_count": int(only_b_count),
+            "match_rate": float(match_rate),
+            "all_columns": [str(col) for col in all_columns]
         })
         
     except Exception as e:

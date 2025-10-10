@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Quality Check - File Analysis Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-600 to-purple-600 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="text-center text-white mb-8">
+            <h1 class="text-4xl font-bold mb-2">🔍 Data Quality Check</h1>
+            <p class="text-lg opacity-90">Identify data quality issues before analysis</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-2xl p-8 mb-8">
+            <form id="qualityForm" onsubmit="checkQuality(event)" class="space-y-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">📄 File A</label>
+                        <input type="text" id="fileA" required
+                               placeholder="e.g., trading_system_a.csv"
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">📄 File B</label>
+                        <input type="text" id="fileB" required
+                               placeholder="e.g., trading_system_b.csv"
+                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">📁 Working Directory (Optional)</label>
+                    <input type="text" id="workingDirectory"
+                           placeholder="Leave empty to use default directory"
+                           class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition">
+                </div>
+
+                <button type="submit" id="checkBtn"
+                        class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
+                    <span id="btnText">🔍 Check Data Quality</span>
+                    <span id="btnLoading" class="hidden">
+                        <span class="animate-pulse">⟳ Analyzing...</span>
+                    </span>
+                </button>
+
+                <div class="flex gap-4">
+                    <a href="/" class="flex-1 text-center bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition">
+                        ← Back to Home
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="hidden">
+            <div class="bg-white rounded-lg shadow-2xl p-8">
+                <h2 class="text-2xl font-bold mb-6">Quality Check Results</h2>
+                <div id="resultsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkQuality(event) {
+            event.preventDefault();
+            
+            const btn = document.getElementById('checkBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            const resultsContainer = document.getElementById('resultsContainer');
+            const resultsContent = document.getElementById('resultsContent');
+            
+            // Show loading
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoading.classList.remove('hidden');
+            resultsContainer.classList.add('hidden');
+            
+            const formData = new FormData();
+            formData.append('file_a', document.getElementById('fileA').value);
+            formData.append('file_b', document.getElementById('fileB').value);
+            formData.append('working_directory', document.getElementById('workingDirectory').value);
+            
+            try {
+                const response = await fetch('/api/data-quality-check', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsContent.innerHTML = `
+                        <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg">
+                            <h3 class="text-red-800 font-bold text-lg mb-2">❌ Error</h3>
+                            <p class="text-red-700">${data.error}</p>
+                        </div>
+                    `;
+                } else {
+                    renderResults(data);
+                }
+                
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+            } catch (error) {
+                resultsContent.innerHTML = `
+                    <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg">
+                        <h3 class="text-red-800 font-bold text-lg mb-2">❌ Network Error</h3>
+                        <p class="text-red-700">${error.message}</p>
+                    </div>
+                `;
+                resultsContainer.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoading.classList.add('hidden');
+            }
+        }
+        
+        function renderResults(data) {
+            const content = document.getElementById('resultsContent');
+            const summary = data.summary;
+            
+            let statusColor = 'green';
+            let statusIcon = '✅';
+            if (summary.status === 'critical') {
+                statusColor = 'red';
+                statusIcon = '⚠️';
+            } else if (summary.status === 'warning') {
+                statusColor = 'yellow';
+                statusIcon = '⚠️';
+            } else if (summary.status === 'minor') {
+                statusColor = 'blue';
+                statusIcon = 'ℹ️';
+            }
+            
+            let html = `
+                <div class="bg-${statusColor}-50 border-l-4 border-${statusColor}-500 p-6 rounded-r-lg mb-6">
+                    <h3 class="text-${statusColor}-800 font-bold text-xl mb-2">${statusIcon} ${summary.status_message}</h3>
+                    <div class="grid grid-cols-3 gap-4 mt-4">
+                        <div class="bg-white p-4 rounded-lg">
+                            <div class="text-gray-600 text-sm">Total Issues</div>
+                            <div class="text-3xl font-bold text-gray-800">${summary.total_issues}</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <div class="text-gray-600 text-sm">High Severity</div>
+                            <div class="text-3xl font-bold text-red-600">${summary.high_severity_count}</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg">
+                            <div class="text-gray-600 text-sm">Medium Severity</div>
+                            <div class="text-3xl font-bold text-yellow-600">${summary.medium_severity_count}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Cross-file discrepancies
+            if (data.discrepancies && data.discrepancies.length > 0) {
+                html += `
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold mb-4">🚨 Cross-File Issues (${data.discrepancies.length})</h3>
+                        <div class="space-y-3 max-h-96 overflow-y-auto">
+                `;
+                
+                data.discrepancies.forEach(disc => {
+                    const bgColor = disc.severity === 'high' ? 'bg-red-50 border-red-400' : 'bg-yellow-50 border-yellow-400';
+                    html += `
+                        <div class="${bgColor} border-l-4 p-4 rounded-r-lg">
+                            <div class="font-semibold text-gray-800">${disc.type.replace(/_/g, ' ').toUpperCase()}</div>
+                            ${disc.column ? `<div class="text-sm text-gray-600 mt-1">Column: <strong>${disc.column}</strong></div>` : ''}
+                            <div class="text-gray-700 mt-2">${disc.message}</div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+            }
+            
+            // File-specific issues
+            [data.file1_report, data.file2_report].forEach(report => {
+                if (report && report.overall_issues.length > 0) {
+                    html += `
+                        <div class="mb-6">
+                            <h3 class="text-xl font-bold mb-4">⚠️ ${report.file_name} - ${report.overall_issues.length} Issues</h3>
+                            <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div><strong>Total Rows:</strong> ${report.total_rows.toLocaleString()}</div>
+                                    <div><strong>Total Columns:</strong> ${report.total_columns}</div>
+                                </div>
+                            </div>
+                            <div class="space-y-2 max-h-80 overflow-y-auto">
+                    `;
+                    
+                    report.overall_issues.forEach(issue => {
+                        const severity = issue.severity || 'medium';
+                        const color = severity === 'high' ? 'red' : 'yellow';
+                        html += `
+                            <div class="bg-${color}-50 border-l-4 border-${color}-400 p-3 rounded-r-lg">
+                                <div class="font-semibold text-gray-800">${issue.column}</div>
+                                <div class="text-sm text-gray-700 mt-1">${issue.issue}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div></div>`;
+                }
+            });
+            
+            // Column details (expandable)
+            html += `
+                <details class="mt-6">
+                    <summary class="cursor-pointer text-lg font-semibold text-indigo-600 hover:text-indigo-800">
+                        📊 View Detailed Column Analysis
+                    </summary>
+                    <div class="mt-4 space-y-6">
+            `;
+            
+            [data.file1_report, data.file2_report].forEach(report => {
+                if (report) {
+                    html += `
+                        <div>
+                            <h4 class="text-lg font-bold mb-3">${report.file_name}</h4>
+                            <div class="grid gap-3">
+                    `;
+                    
+                    Object.entries(report.columns).forEach(([colName, colData]) => {
+                        const consistencyColor = colData.consistency >= 95 ? 'green' : colData.consistency >= 80 ? 'yellow' : 'red';
+                        html += `
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="font-semibold text-gray-800 mb-2">${colName}</div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                    <div>
+                                        <div class="text-gray-600">Pattern</div>
+                                        <div class="font-semibold">${colData.pattern_type}</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-600">Consistency</div>
+                                        <div class="font-semibold text-${consistencyColor}-600">${colData.consistency}%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-600">Nulls</div>
+                                        <div class="font-semibold">${colData.null_percentage}%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-gray-600">Values</div>
+                                        <div class="font-semibold">${colData.non_null_values.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                ${colData.issues.length > 0 ? `
+                                    <div class="mt-2 text-sm text-red-600">
+                                        ${colData.issues.map(issue => `• ${issue}`).join('<br>')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div></div>`;
+                }
+            });
+            
+            html += `</div></details>`;
+            
+            content.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+

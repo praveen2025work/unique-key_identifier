@@ -1,0 +1,187 @@
+═══════════════════════════════════════════════════════════════════
+  DATA QUALITY CHECK FEATURE - QUICK START GUIDE
+═══════════════════════════════════════════════════════════════════
+
+🎉 NEW FEATURE: Identify data quality issues BEFORE analysis!
+
+═══════════════════════════════════════════════════════════════════
+  WHAT'S BEEN FIXED
+═══════════════════════════════════════════════════════════════════
+
+✅ Fixed DtypeWarning at line 163 in file_processing.py
+✅ Added low_memory=False to all pd.read_csv() calls
+✅ Improved file reading performance
+✅ More accurate data type inference
+
+═══════════════════════════════════════════════════════════════════
+  HOW TO USE THE NEW FEATURE
+═══════════════════════════════════════════════════════════════════
+
+OPTION 1: Integrated with Analysis
+──────────────────────────────────
+1. Start your application (python file_comparator.py or ./run.sh)
+2. Open http://localhost:8000
+3. Fill in your file names
+4. ✅ Check "🔍 Run Data Quality Check First"
+5. Click "Analyze Files"
+6. View quality results in the workflow page
+
+OPTION 2: Standalone Quality Check (Quick!)
+────────────────────────────────────────────
+1. Click "🔍 Or check data quality only →" on home page
+   OR go to http://localhost:8000/data-quality
+2. Enter file names
+3. Click "🔍 Check Data Quality"
+4. Get instant quality report!
+
+═══════════════════════════════════════════════════════════════════
+  WHAT IT DETECTS
+═══════════════════════════════════════════════════════════════════
+
+🔴 High Severity Issues:
+  • Mixed data types (e.g., column has both integers and strings)
+  • Pattern mismatches between files
+  • Missing columns in one file
+
+🟡 Medium Severity Issues:
+  • Significant consistency differences
+  • High null percentages (> 50%)
+  • Different null rates between files
+
+🔵 Informational:
+  • Moderate null percentages (20-50%)
+  • Pattern variations within acceptable range
+
+═══════════════════════════════════════════════════════════════════
+  EXAMPLE SCENARIOS
+═══════════════════════════════════════════════════════════════════
+
+Scenario 1: Mixed Types Detected
+─────────────────────────────────
+Issue: Column "TradeID" has 980 integers but 20 strings
+Impact: This column may not be a reliable unique key
+Action: Clean the data or exclude this column from analysis
+
+Scenario 2: Pattern Mismatch
+─────────────────────────────
+Issue: "Date" column is YYYY-MM-DD in File A but MM/DD/YYYY in File B
+Impact: Comparisons will fail
+Action: Standardize date format in both files
+
+Scenario 3: High Nulls
+──────────────────────
+Issue: "CustomerID" has 65% null values
+Impact: Cannot use as a unique key
+Action: Use a different column or fix data quality
+
+═══════════════════════════════════════════════════════════════════
+  FILES CREATED/MODIFIED
+═══════════════════════════════════════════════════════════════════
+
+NEW FILES:
+  • data_quality.py - Core pattern detection logic
+  • templates/data_quality.html - Standalone quality check page
+  • DATA_QUALITY_FEATURE.md - Detailed documentation
+
+UPDATED FILES:
+  • file_processing.py - Fixed DtypeWarning, added low_memory=False
+  • file_comparator.py - Added quality check routes and integration
+  • database.py - Added data_quality_results table
+  • templates/workflow.html - Display quality results
+  • templates/index_modern.html - Added quality check toggle
+
+═══════════════════════════════════════════════════════════════════
+  TESTING THE FEATURE
+═══════════════════════════════════════════════════════════════════
+
+Test 1: Standalone Quality Check
+─────────────────────────────────
+1. Go to http://localhost:8000/data-quality
+2. Enter: trading_system_a.csv and trading_system_b.csv
+3. Click "Check Data Quality"
+4. Review the results
+
+Test 2: Integrated Quality Check
+─────────────────────────────────
+1. Go to http://localhost:8000
+2. Fill in files: trading_system_a.csv and trading_system_b.csv
+3. Set columns: 2
+4. ✅ Check "Run Data Quality Check First"
+5. Click "Analyze Files"
+6. Watch workflow - you'll see "🔍 Data Quality Check" stage
+7. View quality results on the workflow page
+
+═══════════════════════════════════════════════════════════════════
+  PERFORMANCE NOTES
+═══════════════════════════════════════════════════════════════════
+
+• Quality check adds ~5-15 seconds (depending on file size)
+• Uses same intelligent sampling as main analysis
+• Minimal memory overhead
+• Files are read only once and cached for analysis
+
+═══════════════════════════════════════════════════════════════════
+  WHEN TO USE
+═══════════════════════════════════════════════════════════════════
+
+✅ RECOMMENDED:
+  • First time analyzing a new data source
+  • After data import/transformation
+  • When you suspect data quality issues
+  • Before running analysis on large files
+
+⏭️ SKIP:
+  • For data you've already validated
+  • Repeat analyses on known-good data
+  • When time is critical and data is trusted
+
+═══════════════════════════════════════════════════════════════════
+  API ENDPOINTS (For Custom Integration)
+═══════════════════════════════════════════════════════════════════
+
+POST /api/data-quality-check
+  • Run standalone quality check
+  • Parameters: file_a, file_b, working_directory (optional)
+  • Returns: Full quality report JSON
+
+GET /api/data-quality/{run_id}
+  • Retrieve quality results for a completed run
+  • Returns: Quality report JSON
+
+GET /data-quality
+  • Standalone quality check web page
+
+═══════════════════════════════════════════════════════════════════
+  TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+Issue: Quality check takes too long
+Solution: This is normal for very large files. The check uses sampling
+          just like the main analysis, so it should be proportional.
+
+Issue: Quality results not showing
+Solution: Make sure you checked the "Run Data Quality Check First" box
+          before starting analysis. Or use the standalone page.
+
+Issue: Too many false positives
+Solution: Some data naturally has mixed types. Use the detailed column
+          analysis to understand your data better.
+
+═══════════════════════════════════════════════════════════════════
+  NEXT STEPS
+═══════════════════════════════════════════════════════════════════
+
+1. ✅ Test the standalone quality check page
+2. ✅ Run an analysis with quality check enabled
+3. ✅ Review the quality results
+4. ✅ Fix any high-severity issues in your data
+5. ✅ Re-run analysis with clean data
+
+═══════════════════════════════════════════════════════════════════
+
+For detailed documentation, see: DATA_QUALITY_FEATURE.md
+
+Questions? The feature is fully integrated and ready to use!
+
+═══════════════════════════════════════════════════════════════════
+

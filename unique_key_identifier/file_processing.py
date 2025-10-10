@@ -89,10 +89,10 @@ def read_large_file_with_sampling(file_path, sample_size=SAMPLE_SIZE_FOR_LARGE_F
     if row_count is None or row_count <= sample_size:
         # File is small enough to read entirely
         try:
-            df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', on_bad_lines='skip')
+            df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', on_bad_lines='skip', low_memory=False)
             return df, delimiter
         except UnicodeDecodeError:
-            df = pd.read_csv(file_path, sep=delimiter, encoding='latin-1', on_bad_lines='skip')
+            df = pd.read_csv(file_path, sep=delimiter, encoding='latin-1', on_bad_lines='skip', low_memory=False)
             return df, delimiter
     
     # For very large files, use stratified sampling
@@ -106,7 +106,8 @@ def read_large_file_with_sampling(file_path, sample_size=SAMPLE_SIZE_FOR_LARGE_F
             sep=delimiter, 
             encoding='utf-8', 
             on_bad_lines='skip',
-            skiprows=lambda i: i > 0 and i % skip_interval != 0
+            skiprows=lambda i: i > 0 and i % skip_interval != 0,
+            low_memory=False
         )
         
         # Ensure we don't exceed sample size
@@ -120,7 +121,8 @@ def read_large_file_with_sampling(file_path, sample_size=SAMPLE_SIZE_FOR_LARGE_F
             sep=delimiter, 
             encoding='latin-1', 
             on_bad_lines='skip',
-            skiprows=lambda i: i > 0 and i % skip_interval != 0
+            skiprows=lambda i: i > 0 and i % skip_interval != 0,
+            low_memory=False
         )
         if len(df) > sample_size:
             df = df.head(sample_size)
@@ -153,18 +155,19 @@ def read_data_file(file_path, nrows=None, sample_for_large=False):
             skip_rows = max(1, row_count // MEMORY_EFFICIENT_THRESHOLD)
             try:
                 df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', 
-                               on_bad_lines='skip', skiprows=lambda i: i % skip_rows != 0 and i > 0)
+                               on_bad_lines='skip', skiprows=lambda i: i % skip_rows != 0 and i > 0,
+                               low_memory=False)
                 return df, delimiter
             except:
                 pass  # Fall back to normal reading
     
     # Read file with detected delimiter
     try:
-        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='utf-8', on_bad_lines='skip')
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='utf-8', on_bad_lines='skip', low_memory=False)
         return df, delimiter
     except UnicodeDecodeError:
         # Try with different encoding
-        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='latin-1', on_bad_lines='skip')
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='latin-1', on_bad_lines='skip', low_memory=False)
         return df, delimiter
     except Exception as e:
         raise ValueError(f"Error reading file: {str(e)}")

@@ -28,6 +28,28 @@
     <style>
         [x-cloak] { display: none !important; }
         
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        /* Animations */
         @keyframes slideIn {
             from {
                 opacity: 0;
@@ -52,6 +74,177 @@
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 1000px 100%;
             animation: shimmer 2s infinite;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .animate-scale-in {
+            animation: scaleIn 0.2s ease-out;
+        }
+        
+        /* Enhanced Button Styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Column Button Hover Effect */
+        .column-btn {
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .column-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(102, 126, 234, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+        
+        .column-btn:hover::before {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .column-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Combination Chip Styles */
+        .combo-chip {
+            transition: all 0.2s ease;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+            backdrop-filter: blur(10px);
+        }
+        
+        .combo-chip:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transform: translateX(2px);
+        }
+        
+        /* Builder Area Enhancement */
+        .builder-area {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(249, 250, 251, 0.95) 100%);
+            border: 2px dashed rgba(156, 163, 175, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .builder-area.has-items {
+            border-style: solid;
+            border-color: rgba(156, 163, 175, 0.5);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(249, 250, 251, 1) 100%);
+        }
+        
+        /* Tag/Chip Removal Animation */
+        @keyframes chipRemove {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8) rotateZ(5deg);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0) rotateZ(10deg);
+            }
+        }
+        
+        /* Panel Glow Effects */
+        .panel-glow-green {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+        
+        .panel-glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+        }
+        
+        /* Input Focus Enhancement */
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Loading Pulse */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Smooth Section Transitions */
+        .section-card {
+            transition: all 0.3s ease;
+        }
+        
+        .section-card:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Badge Improvements */
+        .badge {
+            font-weight: 600;
+            letter-spacing: 0.025em;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Toggle Switch Enhancement */
+        .toggle-switch {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
     </style>
 </head>
@@ -148,167 +341,173 @@
     </div>
     
     <!-- Main Container -->
-    <div class="min-h-screen flex flex-col">
+    <div class="h-screen flex flex-col overflow-hidden">
         <!-- Header -->
-        <header class="bg-white bg-opacity-10 backdrop-blur-md border-b border-white border-opacity-20">
-            <div class="w-full px-6 py-6">
-                <h1 class="text-4xl font-bold text-white text-center flex items-center justify-center space-x-3">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <header class="bg-white bg-opacity-10 backdrop-blur-md border-b border-white border-opacity-20 flex-shrink-0">
+            <div class="w-full px-3 py-2">
+                <h1 class="text-xl font-bold text-white text-center flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                     </svg>
                     <span>Unique Key Identifier</span>
                 </h1>
-                <p class="text-white text-opacity-90 text-center mt-2 text-lg">Advanced Column Combination Analysis & Validation</p>
             </div>
         </header>
         
         <!-- Main Content -->
-        <div class="flex-1 w-full px-6 py-8">
+        <div class="flex-1 w-full px-2 py-2 overflow-y-auto">
             
-            <!-- Configuration Card -->
-            <div class="bg-white rounded-2xl shadow-2xl p-8 mb-6 animate-slide-in">
+            <!-- Single Full-Width Layout -->
+            <div class="space-y-1 h-full flex flex-col">
+                <!-- Configuration Panel - More Compact -->
+                <div class="bg-white rounded-xl shadow-lg p-2 animate-slide-in text-sm flex-shrink-0 section-card">
+                    <h2 class="text-sm font-bold text-gray-800 mb-1 flex items-center">
+                        <svg class="w-3 h-3 mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        Configuration
+                    </h2>
+                    
                 <form @submit.prevent="submitAnalysis">
-                    <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            <div class="text-blue-700">
-                                <p class="font-medium">Specify custom directory or use default folder</p>
-                                <p class="text-sm mt-1">Supports: <strong>.csv</strong>, <strong>.dat</strong>, <strong>.txt</strong> files (auto-detects delimiter)</p>
-                            </div>
+                    <!-- All fields in horizontal rows - More compact -->
+                    <div class="grid grid-cols-12 gap-1.5 mb-1">
+                        <!-- Row 1: Directory, File A, File B -->
+                        <div class="col-span-3">
+                            <label class="block text-gray-700 font-semibold mb-0.5 text-xs">📁 Directory</label>
+                            <input type="text" 
+                                   x-model="workingDirectory" 
+                                   @input="debouncePreview()"
+                                   placeholder="Default folder"
+                                   class="w-full px-2 py-1 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
                         </div>
-                    </div>
-                    
-                    <!-- Working Directory Field -->
-                    <div class="mb-6">
-                        <label class="block text-gray-700 font-semibold mb-2">📁 Working Directory (Optional)</label>
-                        <input type="text" 
-                               x-model="workingDirectory" 
-                               @input="debouncePreview()"
-                               placeholder="Leave empty to use default (unique_key_identifier folder)"
-                               class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                        <p class="text-xs text-gray-500 mt-1">
-                            <strong>Default:</strong> Uses unique_key_identifier folder<br>
-                            <strong>Custom:</strong> Absolute path (e.g., /Users/name/data/) or relative path (e.g., ../data/)<br>
-                            Result files will be saved in: [directory]/analysis_results_run_[id]/
-                        </p>
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">📄 File A Name</label>
+                        
+                        <div class="col-span-3">
+                            <label class="block text-gray-700 font-semibold mb-0.5 text-xs">📄 File A</label>
                             <input type="text" 
                                    x-model="fileA" 
                                    @input="debouncePreview()"
-                                   placeholder="data_file_a.csv (or .dat, .txt)"
+                                   placeholder="file_a.csv"
                                    required
-                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                            <p class="text-xs text-gray-500 mt-1">Example: trading_data.csv, records.dat, export.txt</p>
+                                   class="w-full px-2 py-1 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
                         </div>
                         
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">📄 File B Name</label>
+                        <div class="col-span-3">
+                            <label class="block text-gray-700 font-semibold mb-0.5 text-xs">📄 File B</label>
                             <input type="text" 
                                    x-model="fileB" 
                                    @input="debouncePreview()"
-                                   placeholder="data_file_b.csv (or .dat, .txt)"
+                                   placeholder="file_b.csv"
                                    required
-                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                            <p class="text-xs text-gray-500 mt-1">Example: trading_data.csv, records.dat, export.txt</p>
+                                   class="w-full px-2 py-1 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
                         </div>
-                    </div>
-                    
-                    <div class="grid md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">🔢 Number of Columns to Combine</label>
+                        
+                        <!-- Row 1: Columns, Row Limit, Quality Check -->
+                        <div class="col-span-1">
+                            <label class="block text-gray-700 font-semibold mb-0.5 text-xs">🔢 Cols</label>
                             <input type="number" 
                                    x-model="numColumns" 
                                    :readonly="includedCombinations.length > 0"
                                    min="1"
                                    required
                                    :class="includedCombinations.length > 0 ? 'bg-gray-100 cursor-not-allowed' : ''"
-                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                            <p x-show="includedCombinations.length === 0" class="text-sm text-gray-600 mt-2">
-                                Used for auto-discovery mode (when no INCLUDE combinations specified)
-                            </p>
-                            <div x-show="includedCombinations.length > 0" class="bg-blue-50 border-l-4 border-primary p-3 mt-2 rounded-r-lg">
-                                <p class="text-sm text-gray-700"><strong class="text-primary">ℹ️ Field Disabled:</strong> This field is not used when INCLUDE combinations are specified.</p>
-                            </div>
+                                   class="w-full px-2 py-1 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
                         </div>
                         
-                        <div>
-                            <label class="block text-gray-700 font-semibold mb-2">📊 Row Limit (Optional)</label>
+                        <div class="col-span-1">
+                            <label class="block text-gray-700 font-semibold mb-0.5 text-xs">📊 Rows</label>
                             <input type="number" 
                                    x-model="maxRows" 
                                    min="0"
-                                   placeholder="0 = Auto (recommended)"
-                                   class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                            <p class="text-sm text-gray-600 mt-2">
-                                <strong>0 or empty:</strong> Auto-sampling for large files<br>
-                                <strong>Specific number:</strong> Analyze only first N rows
-                            </p>
-                            <div x-show="maxRows > 0 && maxRows < 10000" class="bg-yellow-50 border-l-4 border-yellow-400 p-2 mt-2 rounded-r-lg">
-                                <p class="text-xs text-yellow-700">⚠️ Small sample may affect accuracy</p>
-                            </div>
+                                   placeholder="0"
+                                   class="w-full px-2 py-1 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
+                        </div>
+                        
+                        <div class="col-span-1 flex items-end">
+                            <button type="submit" 
+                                    :disabled="loading"
+                                    title="Analyze Files"
+                                    class="w-full btn-primary text-white font-semibold py-1 px-2 rounded-lg text-xs shadow-md">
+                                ⚡ Analyze
+                            </button>
                         </div>
                     </div>
                     
-                    <button type="submit" 
-                            :disabled="loading"
-                            class="w-full bg-gradient-to-r from-primary to-secondary text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        <span>Analyze Files</span>
-                    </button>
-                </form>
-                
-                <!-- Previous Runs -->
-                <div class="mt-8 pt-8 border-t border-gray-200" x-show="runs.length > 0">
-                    <label class="block text-gray-700 font-semibold mb-3">📊 Previous Analysis</label>
-                    <div class="grid md:grid-cols-2 gap-3">
-                        <select @change="if($event.target.value) window.location.href='/run/' + $event.target.value"
-                                class="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary focus:ring-opacity-20 transition">
-                            <option value="">View Results...</option>
-                            <template x-for="run in runs" :key="run.id">
-                                <option :value="run.id" x-text="run.label"></option>
-                            </template>
-                        </select>
-                        <select @change="if($event.target.value) cloneRun($event.target.value)"
-                                class="px-4 py-3 border-2 border-green-400 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-400 focus:ring-opacity-20 transition bg-green-50">
-                            <option value="">🔄 Clone Settings...</option>
-                            <template x-for="run in runs" :key="run.id">
-                                <option :value="run.id" x-text="run.label"></option>
-                            </template>
-                        </select>
+                    <!-- Row 2: Quality Check and Previous Analysis - More compact -->
+                    <div class="grid grid-cols-12 gap-1.5">
+                        <div class="col-span-2 flex items-center">
+                            <label class="flex items-center cursor-pointer text-xs">
+                                <input type="checkbox" 
+                                       x-model="dataQualityCheck"
+                                       class="mr-1 h-3 w-3 text-primary border-gray-300 rounded">
+                                <span class="font-semibold text-gray-700">Quality Check</span>
+                            </label>
+                        </div>
+                        
+                        <div class="col-span-5" x-show="runs.length > 0">
+                            <select @change="if($event.target.value) window.location.href='/run/' + $event.target.value"
+                                    class="w-full px-2 py-0.5 text-xs border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm">
+                                <option value="">📊 View Results...</option>
+                                <template x-for="run in runs" :key="run.id">
+                                    <option :value="run.id" x-text="run.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        
+                        <div class="col-span-5" x-show="runs.length > 0">
+                            <select @change="if($event.target.value) cloneRun($event.target.value)"
+                                    class="w-full px-2 py-0.5 text-xs border-2 border-green-400 rounded-lg focus:border-green-500 transition-all bg-green-50 shadow-sm hover:shadow-md">
+                                <option value="">🔄 Clone Settings...</option>
+                                <template x-for="run in runs" :key="run.id">
+                                    <option :value="run.id" x-text="run.label"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-600 mt-2">
-                        <strong>View:</strong> See previous results | 
-                        <strong class="text-green-600">Clone:</strong> Copy settings to form for new analysis
-                    </p>
+                </form>
                 </div>
-            </div>
+
+                
+                <!-- Columns & Selection Panel (Full Width) - Flexible height -->
+                <div class="bg-white rounded-xl shadow-lg p-2 animate-slide-in text-sm flex-1 flex flex-col overflow-hidden section-card">
+                    <h2 class="text-sm font-bold text-gray-800 mb-1 flex items-center flex-shrink-0">
+                        <svg class="w-3 h-3 mr-1 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 0v10"></path>
+                        </svg>
+                        Available Columns & Combination Builder
+                    </h2>
+                    
+                    <!-- Initial State -->
+                    <div x-show="!fileA && !fileB && !columnsLoading" class="text-center py-16 animate-fade-in">
+                        <svg class="w-20 h-20 mx-auto text-gray-300 mb-4 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3 class="text-lg font-bold gradient-text mb-2">No Files Selected</h3>
+                        <p class="text-gray-500 text-sm">📝 Enter file names in the configuration panel to see available columns</p>
+                    </div>
             
             <!-- Loading Indicator for Column Preview -->
             <div x-show="columnsLoading" 
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 transform translate-y-4"
                  x-transition:enter-end="opacity-100 transform translate-y-0"
-                 class="bg-white rounded-2xl shadow-2xl p-8 mb-6 text-center"
+                 class="text-center py-12"
                  x-cloak>
                 <div class="flex flex-col items-center space-y-4">
-                    <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <div>
-                        <h3 class="text-xl font-bold text-gray-800">🔍 Loading Files...</h3>
-                        <p class="text-gray-600 mt-2">Reading headers and counting rows</p>
-                        <p class="text-sm text-gray-500 mt-1">This may take a few seconds for large files</p>
+                    <div class="relative">
+                        <div class="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <div class="absolute inset-0 w-16 h-16 border-4 border-secondary border-b-transparent rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 1s;"></div>
                     </div>
-                    <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <div>
+                        <h3 class="text-xl font-bold gradient-text">🔍 Loading Files...</h3>
+                        <p class="text-gray-600 mt-2 text-sm font-medium">Reading headers and counting rows</p>
+                        <p class="text-xs text-gray-500 mt-1 italic">This may take a few seconds for large files</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
                         <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
                         </svg>
-                        <span x-text="'Processing: ' + fileA + ' & ' + fileB"></span>
+                        <span x-text="'Processing: ' + fileA + ' & ' + fileB" class="font-medium"></span>
                     </div>
                 </div>
             </div>
@@ -318,29 +517,29 @@
                  x-transition:enter="transition ease-out duration-300"
                  x-transition:enter-start="opacity-0 transform translate-y-4"
                  x-transition:enter-end="opacity-100 transform translate-y-0"
-                 class="bg-white rounded-2xl shadow-2xl overflow-hidden mb-6"
+                 class="flex-1 flex flex-col overflow-hidden"
                  x-cloak>
                 
-                <!-- Info Bar -->
-                <div class="bg-gradient-to-r from-primary to-secondary text-white px-6 py-4">
-                    <div class="flex flex-wrap items-center justify-between gap-4">
-                        <div class="flex flex-wrap items-center gap-6">
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Info Bar - More compact -->
+                <div class="bg-gradient-to-r from-primary to-secondary text-white px-2 py-1.5 flex-shrink-0 rounded-lg shadow-md">
+                    <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center space-x-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                                 <span class="font-semibold">File A:</span>
                                 <span x-text="fileInfo.rowsA + ' rows'"></span>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex items-center space-x-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
                                 <span class="font-semibold">File B:</span>
                                 <span x-text="fileInfo.rowsB + ' rows'"></span>
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="flex items-center space-x-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"></path>
                                 </svg>
                                 <span class="font-semibold">Columns:</span>
@@ -348,8 +547,8 @@
                             </div>
                         </div>
                         <button @click="resetAll()" 
-                                class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg font-semibold transition flex items-center space-x-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                class="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded-lg font-semibold transition-all flex items-center space-x-1 hover:shadow-md hover:scale-105">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
                             <span>Reset All</span>
@@ -357,122 +556,93 @@
                     </div>
                 </div>
                 
-                <div class="grid lg:grid-cols-3 gap-0 divide-x divide-gray-200">
+                <div class="grid grid-cols-12 gap-2 flex-1 overflow-hidden">
                     
-                    <!-- Column Pool -->
-                    <div class="p-6 bg-gray-50">
-                        <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
-                            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
-                            </svg>
-                            <span>Available Columns</span>
-                        </h3>
-                        <p class="text-sm text-gray-600 mb-4">Click to add to active builder</p>
-                        
+                    <!-- Column Pool - Reduced from col-span-4 to col-span-3 (10% reduction) -->
+                    <div class="col-span-3 p-2 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex flex-col overflow-hidden shadow-inner">
                         <!-- Builder Toggle -->
-                        <div class="bg-white p-4 rounded-lg mb-4 shadow-sm">
-                            <p class="text-xs font-semibold text-gray-600 mb-2">🎯 Add columns to:</p>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <button @click="activeBuilder = 'include'" 
-                                        :class="activeBuilder === 'include' ? 'bg-green-500 text-white scale-105' : 'bg-gray-200 text-gray-700'"
-                                        class="px-4 py-2 rounded-lg font-semibold text-sm transition-all transform">
-                                    ✅ INCLUDE
-                                </button>
-                                <button @click="activeBuilder = 'exclude'" 
-                                        :class="activeBuilder === 'exclude' ? 'bg-red-500 text-white scale-105' : 'bg-gray-200 text-gray-700'"
-                                        class="px-4 py-2 rounded-lg font-semibold text-sm transition-all transform">
-                                    ❌ EXCLUDE
-                                </button>
-                            </div>
-                            <p class="text-xs text-center" 
-                               :class="activeBuilder === 'include' ? 'text-green-600' : 'text-red-600'"
-                               x-text="'➜ Currently adding to ' + activeBuilder.toUpperCase() + ' builder'"></p>
+                        <div class="flex items-center justify-between mb-2 flex-shrink-0">
+                            <span class="text-xs font-bold text-gray-700 flex items-center space-x-1">
+                                <span class="inline-block w-2 h-2 rounded-full animate-pulse" :class="activeBuilder === 'include' ? 'bg-green-500' : 'bg-red-500'"></span>
+                                <span :class="activeBuilder === 'include' ? 'text-green-600' : 'text-red-600'" x-text="activeBuilder === 'include' ? '✅ Include Mode' : '❌ Exclude Mode'"></span>
+                            </span>
+                            <button @click="activeBuilder = activeBuilder === 'include' ? 'exclude' : 'include'"
+                                    class="relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 toggle-switch"
+                                    :class="activeBuilder === 'include' ? 'bg-green-500' : 'bg-red-500'">
+                                <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition-all duration-200 ease-in-out"
+                                      :class="activeBuilder === 'include' ? 'translate-x-5' : 'translate-x-0'"></span>
+                            </button>
                         </div>
                         
-                        <!-- Quick Actions -->
-                        <div class="bg-yellow-50 border-2 border-yellow-300 p-3 rounded-lg mb-4">
-                            <p class="text-xs font-semibold text-yellow-800 mb-2">⚡ Quick Actions:</p>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button @click="selectAllColumns()" 
-                                        class="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 px-3 py-2 rounded-lg text-xs font-semibold transition">
-                                    ✓ Select All
-                                </button>
-                                <button @click="deselectAllColumns()" 
-                                        class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 py-2 rounded-lg text-xs font-semibold transition">
-                                    ✗ Clear
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Columns List -->
-                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Columns List (Horizontal) - Full height -->
+                        <div class="flex flex-wrap gap-1.5 overflow-y-auto p-2 bg-white rounded-lg border-2 border-gray-200 flex-1 shadow-sm">
                             <template x-for="col in columns" :key="col">
                                 <button @click="addColumnToActiveBuilder(col)" 
-                                        class="w-full text-left px-4 py-2 bg-white hover:bg-primary hover:text-white rounded-lg transition-all transform hover:translate-x-1 text-sm font-medium border border-gray-200 hover:border-primary">
-                                    <span x-text="col"></span>
+                                        class="column-btn px-2.5 py-1 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-primary hover:to-secondary hover:text-white rounded-lg text-xs font-semibold border border-gray-300 hover:border-primary transition-all whitespace-nowrap shadow-sm hover:shadow-md">
+                                    <span x-text="col" class="relative z-10"></span>
                                 </button>
                             </template>
                         </div>
                     </div>
                     
-                    <!-- Include Panel -->
-                    <div class="p-6 bg-gradient-to-br from-green-50 to-emerald-50">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-green-600 flex items-center space-x-2">
-                                <span>✅ INCLUDE</span>
-                                <span class="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm font-bold" x-text="includedCombinations.length"></span>
-                            </h3>
-                            <button @click="clearInclude()" 
-                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">
-                                Clear
-                            </button>
+                    <!-- Include Panel - Better space distribution -->
+                    <div class="col-span-4 p-2 bg-gradient-to-br from-green-50 to-green-100 rounded-xl flex flex-col overflow-hidden panel-glow-green shadow-md">
+                        <div class="flex items-center justify-between mb-2 flex-shrink-0">
+                            <span class="text-xs font-bold text-green-700 flex items-center space-x-1.5">
+                                <span class="text-sm">✅</span>
+                                <span>Include Combinations</span>
+                                <span class="badge bg-green-500 text-white px-2 py-0.5 rounded-full text-xs shadow-sm" x-text="includedCombinations.length"></span>
+                            </span>
                         </div>
-                        <p class="text-sm text-green-700 mb-4">Analyze only these combinations</p>
                         
                         <!-- Builder -->
-                        <div class="bg-white border-2 border-dashed border-green-400 rounded-lg p-4 mb-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <p class="text-sm font-semibold text-green-600">🎨 Build Combination:</p>
-                                <span class="text-xs text-green-600 font-semibold" x-text="includeBuilder.length + ' selected'"></span>
-                            </div>
-                            <div class="min-h-20 max-h-40 overflow-y-auto bg-green-50 rounded-lg p-3 mb-3">
+                        <div class="bg-white border-2 border-green-300 rounded-lg p-2 mb-2 flex-shrink-0 shadow-sm">
+                            <div class="builder-area min-h-12 max-h-32 overflow-y-auto rounded-lg p-2 mb-2" 
+                                 :class="includeBuilder.length > 0 ? 'has-items bg-green-50' : 'bg-gradient-to-br from-green-50 to-white'">
                                 <template x-if="includeBuilder.length === 0">
-                                    <p class="text-gray-400 text-sm text-center py-4">Click columns from left to build...</p>
+                                    <p class="text-gray-400 text-xs text-center py-2 italic">👆 Click columns to add...</p>
                                 </template>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-1.5">
                                     <template x-for="(col, idx) in includeBuilder" :key="idx">
-                                        <div class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center space-x-2">
+                                        <div class="bg-gradient-to-r from-green-500 to-green-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md hover:shadow-lg transition-all hover:scale-105 animate-scale-in">
                                             <span x-text="col"></span>
-                                            <button @click="includeBuilder.splice(idx, 1)" class="hover:text-red-200 font-bold">×</button>
+                                            <button @click="includeBuilder.splice(idx, 1)" class="hover:text-red-200 font-bold text-base leading-none hover:scale-125 transition-transform">×</button>
                                         </div>
                                     </template>
                                 </div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-1.5">
                                 <button @click="addIncludeCombination()" 
-                                        class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
-                                    ➕ Add Combination
+                                        title="Add this combination to the list"
+                                        class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white p-1.5 rounded-lg text-xs font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
                                 </button>
                                 <button @click="includeBuilder = []" 
-                                        class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
-                                    Clear
+                                        title="Clear the builder"
+                                        class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white px-2 py-1 rounded-lg text-xs font-semibold transition-all shadow-md hover:shadow-lg">
+                                    🗑️ Clear
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Saved Combinations -->
-                        <div class="bg-white bg-opacity-70 rounded-lg p-4 max-h-64 overflow-y-auto">
-                            <p class="text-xs font-semibold text-green-700 mb-3">📌 Saved Combinations:</p>
+                        <!-- Saved Combinations - Full remaining height -->
+                        <div class="bg-white rounded-lg p-2 overflow-y-auto flex-1 shadow-inner border border-green-200">
                             <template x-if="includedCombinations.length === 0">
-                                <p class="text-gray-400 text-sm text-center py-4">No combinations added yet</p>
+                                <p class="text-gray-400 text-xs text-center py-4 italic">📝 No combinations added yet</p>
                             </template>
-                            <div class="space-y-2">
+                            <div class="space-y-1.5">
                                 <template x-for="(combo, idx) in includedCombinations" :key="idx">
-                                    <div class="bg-white border-2 border-green-400 rounded-lg p-3 flex justify-between items-center">
-                                        <span class="text-sm font-medium text-gray-700" x-text="combo"></span>
+                                    <div class="combo-chip bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-300 rounded-lg p-2 flex justify-between items-center shadow-sm hover:border-green-400 animate-scale-in">
+                                        <span class="text-xs font-semibold text-gray-700 break-all flex items-center">
+                                            <span class="inline-block w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></span>
+                                            <span x-text="combo"></span>
+                                        </span>
                                         <button @click="includedCombinations.splice(idx, 1)" 
-                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs font-semibold transition">
-                                            Remove
+                                                title="Remove this combination"
+                                                class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg text-xs transition-all flex-shrink-0 ml-2 shadow-sm hover:shadow-md hover:scale-110 font-bold">
+                                            ×
                                         </button>
                                     </div>
                                 </template>
@@ -480,64 +650,64 @@
                         </div>
                     </div>
                     
-                    <!-- Exclude Panel -->
-                    <div class="p-6 bg-gradient-to-br from-red-50 to-rose-50">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-red-600 flex items-center space-x-2">
-                                <span>❌ EXCLUDE</span>
-                                <span class="bg-red-200 text-red-800 px-3 py-1 rounded-full text-sm font-bold" x-text="excludedCombinations.length"></span>
-                            </h3>
-                            <button @click="clearExclude()" 
-                                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-semibold transition">
-                                Clear
-                            </button>
+                    <!-- Exclude Panel - Increased from col-span-4 to col-span-5 -->
+                    <div class="col-span-5 p-2 bg-gradient-to-br from-red-50 to-red-100 rounded-xl flex flex-col overflow-hidden panel-glow-red shadow-md">
+                        <div class="flex items-center justify-between mb-2 flex-shrink-0">
+                            <span class="text-xs font-bold text-red-700 flex items-center space-x-1.5">
+                                <span class="text-sm">❌</span>
+                                <span>Exclude Combinations</span>
+                                <span class="badge bg-red-500 text-white px-2 py-0.5 rounded-full text-xs shadow-sm" x-text="excludedCombinations.length"></span>
+                            </span>
                         </div>
-                        <p class="text-sm text-red-700 mb-4">Skip these columns/combinations</p>
                         
                         <!-- Builder -->
-                        <div class="bg-white border-2 border-dashed border-red-400 rounded-lg p-4 mb-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <p class="text-sm font-semibold text-red-600">🎨 Build Combination:</p>
-                                <span class="text-xs text-red-600 font-semibold" x-text="excludeBuilder.length + ' selected'"></span>
-                            </div>
-                            <div class="min-h-20 max-h-40 overflow-y-auto bg-red-50 rounded-lg p-3 mb-3">
+                        <div class="bg-white border-2 border-red-300 rounded-lg p-2 mb-2 flex-shrink-0 shadow-sm">
+                            <div class="builder-area min-h-12 max-h-32 overflow-y-auto rounded-lg p-2 mb-2"
+                                 :class="excludeBuilder.length > 0 ? 'has-items bg-red-50' : 'bg-gradient-to-br from-red-50 to-white'">
                                 <template x-if="excludeBuilder.length === 0">
-                                    <p class="text-gray-400 text-sm text-center py-4">Click columns from left to build...</p>
+                                    <p class="text-gray-400 text-xs text-center py-2 italic">👆 Click columns to add...</p>
                                 </template>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-1.5">
                                     <template x-for="(col, idx) in excludeBuilder" :key="idx">
-                                        <div class="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-medium flex items-center space-x-2">
+                                        <div class="bg-gradient-to-r from-red-500 to-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md hover:shadow-lg transition-all hover:scale-105 animate-scale-in">
                                             <span x-text="col"></span>
-                                            <button @click="excludeBuilder.splice(idx, 1)" class="hover:text-yellow-200 font-bold">×</button>
+                                            <button @click="excludeBuilder.splice(idx, 1)" class="hover:text-yellow-200 font-bold text-base leading-none hover:scale-125 transition-transform">×</button>
                                         </div>
                                     </template>
                                 </div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="flex gap-1.5">
                                 <button @click="addExcludeCombination()" 
-                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
-                                    ➕ Add Combination
+                                        title="Add this combination to the list"
+                                        class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white p-1.5 rounded-lg text-xs font-semibold transition-all shadow-md hover:shadow-lg hover:scale-105">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
                                 </button>
                                 <button @click="excludeBuilder = []" 
-                                        class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
-                                    Clear
+                                        title="Clear the builder"
+                                        class="flex-1 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white px-2 py-1 rounded-lg text-xs font-semibold transition-all shadow-md hover:shadow-lg">
+                                    🗑️ Clear
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Saved Combinations -->
-                        <div class="bg-white bg-opacity-70 rounded-lg p-4 max-h-64 overflow-y-auto">
-                            <p class="text-xs font-semibold text-red-700 mb-3">📌 Saved Combinations:</p>
+                        <!-- Saved Combinations - Full remaining height -->
+                        <div class="bg-white rounded-lg p-2 overflow-y-auto flex-1 shadow-inner border border-red-200">
                             <template x-if="excludedCombinations.length === 0">
-                                <p class="text-gray-400 text-sm text-center py-4">No combinations added yet</p>
+                                <p class="text-gray-400 text-xs text-center py-4 italic">📝 No combinations added yet</p>
                             </template>
-                            <div class="space-y-2">
+                            <div class="space-y-1.5">
                                 <template x-for="(combo, idx) in excludedCombinations" :key="idx">
-                                    <div class="bg-white border-2 border-red-400 rounded-lg p-3 flex justify-between items-center">
-                                        <span class="text-sm font-medium text-gray-700" x-text="combo"></span>
+                                    <div class="combo-chip bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-300 rounded-lg p-2 flex justify-between items-center shadow-sm hover:border-red-400 animate-scale-in">
+                                        <span class="text-xs font-semibold text-gray-700 break-all flex items-center">
+                                            <span class="inline-block w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+                                            <span x-text="combo"></span>
+                                        </span>
                                         <button @click="excludedCombinations.splice(idx, 1)" 
-                                                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold transition">
-                                            Remove
+                                                title="Remove this combination"
+                                                class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-xs transition-all flex-shrink-0 ml-2 shadow-sm hover:shadow-md hover:scale-110 font-bold">
+                                            ×
                                         </button>
                                     </div>
                                 </template>
@@ -546,32 +716,12 @@
                     </div>
                 </div>
                 
-                <!-- Help Section -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border-t-4 border-primary px-6 py-4">
-                    <div class="flex items-start space-x-3">
-                        <svg class="w-6 h-6 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <div class="flex-1">
-                            <p class="font-bold text-primary mb-2">💡 How to Use:</p>
-                            <div class="grid md:grid-cols-4 gap-4 text-sm text-gray-700">
-                                <div>
-                                    <strong class="text-gray-900">1. Toggle Builder:</strong> Select INCLUDE or EXCLUDE button in left panel
-                                </div>
-                                <div>
-                                    <strong class="text-gray-900">2. Build Combination:</strong> Click columns from left to add to active builder
-                                </div>
-                                <div>
-                                    <strong class="text-gray-900">3. Save Combination:</strong> Click "Add Combination" in desired panel
-                                </div>
-                                <div>
-                                    <strong class="text-gray-900">4. Analyze:</strong> "Num Columns" auto-adjusts based on INCLUDE list
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
+            </div>
+            <!-- End of Columns Panel -->
+            
+            </div>
+            <!-- End of Full-Width Layout -->
         </div>
     </div>
     
@@ -584,6 +734,7 @@
                 workingDirectory: '',
                 numColumns: 3,
                 maxRows: 0,  // 0 = auto-sampling
+                dataQualityCheck: false,  // Data quality check toggle
                 
                 // Column selection
                 columns: [],
@@ -648,6 +799,7 @@
                             this.numColumns = data.num_columns;
                             this.maxRows = data.max_rows || 0;
                             this.workingDirectory = data.working_directory || '';
+                            this.dataQualityCheck = data.data_quality_check || false;
                             
                             // Parse combinations
                             if (data.expected_combinations) {
@@ -848,6 +1000,7 @@
                         this.fileB = data.file_b;
                         this.numColumns = data.num_columns;
                         this.maxRows = data.max_rows || 0;
+                        this.dataQualityCheck = data.data_quality_check || false;
                         
                         // Parse and populate combinations
                         if (data.expected_combinations) {
@@ -892,6 +1045,7 @@
                     formData.append('expected_combinations', this.includedCombinations.join('\n'));
                     formData.append('excluded_combinations', this.excludedCombinations.join('\n'));
                     formData.append('working_directory', this.workingDirectory || '');
+                    formData.append('data_quality_check', this.dataQualityCheck);
                     
                     try {
                         const response = await fetch('/compare', {

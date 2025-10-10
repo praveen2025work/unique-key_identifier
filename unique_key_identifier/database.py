@@ -74,6 +74,7 @@ def create_tables():
             expected_combinations TEXT,
             excluded_combinations TEXT,
             working_directory TEXT,
+            data_quality_check INTEGER DEFAULT 0,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
@@ -87,6 +88,15 @@ def create_tables():
             file_path TEXT,
             file_size INTEGER,
             created_at TEXT,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS data_quality_results (
+            run_id INTEGER PRIMARY KEY,
+            quality_summary TEXT,
+            quality_data TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
