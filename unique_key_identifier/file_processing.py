@@ -4,7 +4,8 @@ File processing operations - reading, parsing, and validating data files
 import os
 import csv
 import pandas as pd
-from config import SUPPORTED_EXTENSIONS, MEMORY_EFFICIENT_THRESHOLD
+import numpy as np
+from config import SUPPORTED_EXTENSIONS, MEMORY_EFFICIENT_THRESHOLD, LARGE_FILE_THRESHOLD, SAMPLE_SIZE_FOR_LARGE_FILES
 
 def detect_delimiter(file_path, sample_size=5):
     """
@@ -62,8 +63,70 @@ def estimate_processing_time(rows, columns):
         return "1-2 minutes"
     elif rows < 250000:
         return "2-5 minutes (using sampling)"
-    else:
+    elif rows < 1000000:
         return "5-10 minutes (using sampling)"
+    elif rows < 5000000:
+        return "10-15 minutes (using smart sampling)"
+    else:
+        return "15-20 minutes (using smart sampling for large dataset)"
+
+def read_large_file_with_sampling(file_path, sample_size=SAMPLE_SIZE_FOR_LARGE_FILES):
+    """
+    Read very large files (millions of rows) using intelligent sampling
+    Returns a representative sample of the data
+    """
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError(f"Unsupported file type: {file_ext}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}")
+    
+    # Detect delimiter
+    delimiter = detect_delimiter(file_path)
+    
+    # Get total row count
+    row_count, _ = get_file_stats(file_path)
+    
+    if row_count is None or row_count <= sample_size:
+        # File is small enough to read entirely
+        try:
+            df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', on_bad_lines='skip')
+            return df, delimiter
+        except UnicodeDecodeError:
+            df = pd.read_csv(file_path, sep=delimiter, encoding='latin-1', on_bad_lines='skip')
+            return df, delimiter
+    
+    # For very large files, use stratified sampling
+    # Read every Nth row to get a representative sample
+    skip_interval = max(1, row_count // sample_size)
+    
+    try:
+        # Use skiprows to read only every Nth row
+        df = pd.read_csv(
+            file_path, 
+            sep=delimiter, 
+            encoding='utf-8', 
+            on_bad_lines='skip',
+            skiprows=lambda i: i > 0 and i % skip_interval != 0
+        )
+        
+        # Ensure we don't exceed sample size
+        if len(df) > sample_size:
+            df = df.head(sample_size)
+        
+        return df, delimiter
+    except UnicodeDecodeError:
+        df = pd.read_csv(
+            file_path, 
+            sep=delimiter, 
+            encoding='latin-1', 
+            on_bad_lines='skip',
+            skiprows=lambda i: i > 0 and i % skip_interval != 0
+        )
+        if len(df) > sample_size:
+            df = df.head(sample_size)
+        return df, delimiter
+    except Exception as e:
+        raise ValueError(f"Error reading large file: {str(e)}")
 
 def read_data_file(file_path, nrows=None, sample_for_large=False):
     """
@@ -79,11 +142,14 @@ def read_data_file(file_path, nrows=None, sample_for_large=False):
     # Detect delimiter
     delimiter = detect_delimiter(file_path)
     
-    # Check if we should use sampling for large files
+    # Check if we should use sampling for very large files
     if sample_for_large and nrows is None:
         row_count, _ = get_file_stats(file_path)
-        if row_count and row_count > MEMORY_EFFICIENT_THRESHOLD:
-            # Use stratified sampling for large files
+        if row_count and row_count > LARGE_FILE_THRESHOLD:
+            # Use intelligent sampling for very large files
+            return read_large_file_with_sampling(file_path)
+        elif row_count and row_count > MEMORY_EFFICIENT_THRESHOLD:
+            # Use stratified sampling for medium-large files
             skip_rows = max(1, row_count // MEMORY_EFFICIENT_THRESHOLD)
             try:
                 df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', 

@@ -17,7 +17,8 @@ import csv
 # Import from modular files for better project design
 from config import (
     SCRIPT_DIR, SUPPORTED_EXTENSIONS, MAX_ROWS_WARNING, 
-    MAX_ROWS_HARD_LIMIT, MAX_COMBINATIONS, MEMORY_EFFICIENT_THRESHOLD
+    MAX_ROWS_HARD_LIMIT, MAX_COMBINATIONS, MEMORY_EFFICIENT_THRESHOLD,
+    LARGE_FILE_THRESHOLD, SAMPLE_SIZE_FOR_LARGE_FILES
 )
 from database import conn, update_job_status, update_stage_status
 from file_processing import detect_delimiter, get_file_stats, estimate_processing_time, read_data_file
@@ -55,9 +56,18 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             read_mode = f"user-limited to {rows_to_read:,} rows"
         else:
             # Auto mode - use intelligent sampling for large files
-            use_sampling = max_rows_available > MEMORY_EFFICIENT_THRESHOLD
-            rows_to_read = None  # Let read_data_file decide
-            read_mode = "auto-sampling" if use_sampling else "full"
+            if max_rows_available > LARGE_FILE_THRESHOLD:
+                use_sampling = True
+                rows_to_read = None
+                read_mode = f"intelligent-sampling ({SAMPLE_SIZE_FOR_LARGE_FILES:,} sample from {max_rows_available:,} rows)"
+            elif max_rows_available > MEMORY_EFFICIENT_THRESHOLD:
+                use_sampling = True
+                rows_to_read = None
+                read_mode = "auto-sampling"
+            else:
+                use_sampling = False
+                rows_to_read = None
+                read_mode = "full"
         
         # Stage 1: Reading Files
         update_job_status(run_id, status='running', stage='reading_files', progress=10)
@@ -302,6 +312,11 @@ async def preview_columns(file_a: str, file_b: str, working_directory: str = Que
                 "file_a_rows": row_count_a,
                 "file_b_rows": row_count_b
             }, status_code=400)
+        elif max_rows > LARGE_FILE_THRESHOLD:
+            warnings.append(f"🚀 Very large files detected ({max_rows:,} rows). Analysis will use intelligent sampling with {SAMPLE_SIZE_FOR_LARGE_FILES:,} representative rows.")
+            warnings.append(f"💡 This ensures fast processing while maintaining accuracy. Analysis may take 10-20 minutes.")
+            warnings.append("📊 Tip: Results will be based on a statistically representative sample of your data.")
+            performance_level = "very_large"
         elif max_rows > MAX_ROWS_WARNING:
             warnings.append(f"⚠️ Large files detected ({max_rows:,} rows). Analysis may take 2-5 minutes.")
             warnings.append("💡 Tip: Use INCLUDE combinations to specify exact columns instead of auto-discovery for faster processing.")
