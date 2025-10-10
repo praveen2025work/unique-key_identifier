@@ -60,7 +60,8 @@
             margin: -15px -15px 15px -15px;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 20px;
             flex-wrap: wrap;
         }
 
@@ -82,6 +83,47 @@
             padding: 4px 10px;
             border-radius: 3px;
             font-size: 0.85em;
+        }
+
+        .run-selector {
+            min-width: 250px;
+        }
+
+        .run-selector label {
+            display: block;
+            font-size: 0.85em;
+            margin-bottom: 6px;
+            opacity: 0.9;
+        }
+
+        .run-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9em;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
+        }
+
+        .run-selector select:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .run-selector select:focus {
+            outline: none;
+            background: rgba(255,255,255,0.35);
+            border-color: rgba(255,255,255,0.6);
+        }
+
+        .run-selector select option {
+            background: #337ab7;
+            color: white;
+            padding: 8px;
         }
 
         .btn {
@@ -458,17 +500,28 @@
 
         <div class="card">
             <div class="run-header">
-                <h2>Run #{{ run_id }} - {{ timestamp }}</h2>
-                <div class="run-meta">
-                    <div class="run-meta-item">
-                        <strong>File A:</strong> {{ file_a }} ({{ file_a_rows }} rows)
+                <div style="flex: 1;">
+                    <h2>Run #{{ run_id }} - {{ timestamp }}</h2>
+                    <div class="run-meta">
+                        <div class="run-meta-item">
+                            <strong>File A:</strong> {{ file_a }} ({{ file_a_rows }} rows)
+                        </div>
+                        <div class="run-meta-item">
+                            <strong>File B:</strong> {{ file_b }} ({{ file_b_rows }} rows)
+                        </div>
+                        <div class="run-meta-item">
+                            <strong>Columns:</strong> {{ columns|length }} total
+                        </div>
                     </div>
-                    <div class="run-meta-item">
-                        <strong>File B:</strong> {{ file_b }} ({{ file_b_rows }} rows)
-                    </div>
-                    <div class="run-meta-item">
-                        <strong>Columns:</strong> {{ columns|length }} total
-                    </div>
+                </div>
+                <div class="run-selector">
+                    <label>Switch Run:</label>
+                    <select id="run_select" onchange="handleRunSwitch(this.value)">
+                        <option value="">Select a run...</option>
+                        {% for run in runs %}
+                            <option value="{{ run.id }}" {% if run.id == run_id %}selected{% endif %}>{{ run.label }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
 
@@ -1000,6 +1053,13 @@
             }
             
             document.body.removeChild(textarea);
+        }
+
+        function handleRunSwitch(runId) {
+            if (runId) {
+                showLoading();
+                window.location.href = '/run/' + runId;
+            }
         }
 
         async function cloneRun(runId) {

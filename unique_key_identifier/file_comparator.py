@@ -211,46 +211,92 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         update_stage_status(run_id, 'storing_results', 'completed', f'Saved {len(results_a) + len(results_b)} results to database')
         
-        # Stage 6: Generating Result Files (NEW)
+        # Stage 6: Generating Result Files (Enterprise-grade with limits)
         update_job_status(run_id, stage='generating_files', progress=90)
-        update_stage_status(run_id, 'generating_files', 'in_progress', 'Generating downloadable result files')
         
         try:
-            # Generate analysis summary files
-            generate_analysis_csv(run_id, working_directory)
-            generate_analysis_excel(run_id, working_directory)
+            # Import configurations
+            from config import SKIP_FILE_GENERATION_THRESHOLD, MAX_COMBINATIONS_TO_GENERATE
             
-            # Generate files for top 10 combinations from each side
-            # This prevents generating hundreds of files for large analyses
-            top_combinations_a = [r['columns'] for r in results_a[:10] if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
-            top_combinations_b = [r['columns'] for r in results_b[:10] if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
-            
-            # Get unique set of columns across both sides
-            all_top_combinations = list(set(top_combinations_a + top_combinations_b))
-            
-            files_generated = 2  # CSV and Excel already done
-            
-            for columns in all_top_combinations[:15]:  # Limit to top 15 unique combinations
-                # Generate unique/duplicate files for each side
-                for side, results in [('A', results_a), ('B', results_b)]:
-                    result = next((r for r in results if r['columns'] == columns), None)
-                    if result:
-                        if result['unique_rows'] > 0:
-                            generate_unique_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
-                            files_generated += 1
-                        if result['duplicate_count'] > 0:
-                            generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
-                            files_generated += 1
+            # Check if files are too large for file generation
+            max_source_rows = max(actual_rows_a, actual_rows_b)
+            if max_source_rows > SKIP_FILE_GENERATION_THRESHOLD:
+                print(f"⚠️  Files too large ({max_source_rows:,} rows) - Skipping detailed file generation")
+                print(f"   Generating summary files only (threshold: {SKIP_FILE_GENERATION_THRESHOLD:,} rows)")
+                update_stage_status(run_id, 'generating_files', 'in_progress', 
+                                  f'Large files ({max_source_rows:,} rows) - generating summaries only')
                 
-                # Generate comparison file for this combination
-                generate_comparison_file(run_id, columns, file_a_path, file_b_path, working_directory)
-                files_generated += 1
-            
-            update_stage_status(run_id, 'generating_files', 'completed', f'Generated {files_generated} result files for offline access')
+                # Generate only summary files for large datasets
+                generate_analysis_csv(run_id, working_directory)
+                generate_analysis_excel(run_id, working_directory)
+                
+                update_stage_status(run_id, 'generating_files', 'completed', 
+                                  f'Generated summary files (detailed files skipped for large dataset)')
+            else:
+                # Normal file generation for smaller datasets
+                update_stage_status(run_id, 'generating_files', 'in_progress', 
+                                  f'Generating result files ({max_source_rows:,} rows)')
+                
+                # Generate analysis summary files (always generated)
+                generate_analysis_csv(run_id, working_directory)
+                generate_analysis_excel(run_id, working_directory)
+                
+                # Generate files for top combinations (limited for performance)
+                top_combinations_a = [r['columns'] for r in results_a[:MAX_COMBINATIONS_TO_GENERATE] 
+                                    if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
+                top_combinations_b = [r['columns'] for r in results_b[:MAX_COMBINATIONS_TO_GENERATE] 
+                                    if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
+                
+                # Get unique set of columns across both sides
+                all_top_combinations = list(set(top_combinations_a + top_combinations_b))
+                
+                files_generated = 2  # CSV and Excel already done
+                files_skipped = 0
+                
+                print(f"📁 Generating files for {len(all_top_combinations[:MAX_COMBINATIONS_TO_GENERATE])} top combinations...")
+                
+                for idx, columns in enumerate(all_top_combinations[:MAX_COMBINATIONS_TO_GENERATE], 1):
+                    print(f"   Processing combination {idx}/{min(len(all_top_combinations), MAX_COMBINATIONS_TO_GENERATE)}: {columns}")
+                    
+                    # Generate unique/duplicate files for each side
+                    for side, results in [('A', results_a), ('B', results_b)]:
+                        result = next((r for r in results if r['columns'] == columns), None)
+                        if result:
+                            # Only generate if there are records (and functions will check size limits)
+                            if result['unique_rows'] > 0:
+                                file_path = generate_unique_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
+                                if file_path:
+                                    files_generated += 1
+                                else:
+                                    files_skipped += 1
+                            
+                            if result['duplicate_count'] > 0:
+                                file_path = generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path, working_directory)
+                                if file_path:
+                                    files_generated += 1
+                                else:
+                                    files_skipped += 1
+                    
+                    # Generate comparison file for this combination
+                    file_path = generate_comparison_file(run_id, columns, file_a_path, file_b_path, working_directory)
+                    if file_path:
+                        files_generated += 1
+                    else:
+                        files_skipped += 1
+                
+                completion_msg = f'Generated {files_generated} files'
+                if files_skipped > 0:
+                    completion_msg += f' ({files_skipped} skipped due to size/timeout)'
+                
+                update_stage_status(run_id, 'generating_files', 'completed', completion_msg)
+                print(f"✅ {completion_msg}")
+                
         except Exception as file_gen_error:
             # Don't fail the whole job if file generation fails
-            print(f"Warning: Some result files could not be generated: {str(file_gen_error)}")
-            update_stage_status(run_id, 'generating_files', 'completed', 'Generated basic result files (some skipped)')
+            import traceback
+            print(f"⚠️  Warning: Error during file generation: {str(file_gen_error)}")
+            traceback.print_exc()
+            update_stage_status(run_id, 'generating_files', 'completed', 'Summary files generated (some detailed files skipped)')
         
         update_job_status(run_id, status='completed', stage='completed', progress=100)
         

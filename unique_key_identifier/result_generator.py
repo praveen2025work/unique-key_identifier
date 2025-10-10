@@ -1,18 +1,79 @@
 """
 Result File Generator - Creates and manages cached result files
 All analysis results are pre-generated and saved for offline access and better performance
+
+Enterprise-grade features:
+- Timeout handling for large file operations
+- Memory-efficient processing with row limits
+- Proper pandas DataFrame handling (no copy warnings)
+- File size validation
+- Comprehensive error handling and logging
 """
 import os
 import io
 import csv
 import pandas as pd
+import signal
 from datetime import datetime
-from config import SCRIPT_DIR
+from contextlib import contextmanager
+from config import (
+    SCRIPT_DIR, 
+    MAX_FILE_GENERATION_ROWS, 
+    SKIP_FILE_GENERATION_THRESHOLD,
+    MAX_FILE_SIZE_MB,
+    FILE_GENERATION_TIMEOUT,
+    MAX_COMBINATIONS_TO_GENERATE
+)
 from database import conn
-from file_processing import read_data_file
+from file_processing import read_data_file, get_file_stats
 
 # Results cache directory
 RESULTS_DIR = os.path.join(SCRIPT_DIR, "results_cache")
+
+# Timeout exception
+class TimeoutError(Exception):
+    pass
+
+@contextmanager
+def time_limit(seconds):
+    """
+    Cross-platform context manager to add timeout to operations
+    Uses signal on Unix/Linux/Mac, threading on Windows
+    """
+    import platform
+    import threading
+    
+    if platform.system() == 'Windows':
+        # Windows doesn't support SIGALRM, use threading instead
+        timer = None
+        timed_out = [False]
+        
+        def timeout_handler():
+            timed_out[0] = True
+        
+        timer = threading.Timer(seconds, timeout_handler)
+        timer.daemon = True
+        timer.start()
+        
+        try:
+            yield
+            if timed_out[0]:
+                raise TimeoutError(f"Operation timed out after {seconds} seconds")
+        finally:
+            if timer:
+                timer.cancel()
+    else:
+        # Unix/Linux/Mac - use signal
+        def signal_handler(signum, frame):
+            raise TimeoutError(f"Operation timed out after {seconds} seconds")
+        
+        old_handler = signal.signal(signal.SIGALRM, signal_handler)
+        signal.alarm(seconds)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
 def ensure_results_dir():
     """Ensure results cache directory exists"""
@@ -178,158 +239,249 @@ def generate_analysis_excel(run_id, working_directory=None):
     return save_result_file(run_id, 'analysis_excel', content, extension='xlsx', working_directory=working_directory)
 
 def generate_unique_records(run_id, side, columns, file_a_path, file_b_path, working_directory=None):
-    """Generate unique records file for a specific combination"""
+    """
+    Generate unique records file for a specific combination
+    Enterprise-grade: With timeout, row limits, and proper error handling
+    """
     file_name = file_a_path if side == 'A' else file_b_path
     
     try:
-        # Load the file
-        df, delimiter = read_data_file(file_name)
+        # Check file size first - skip if too large
+        row_count, file_size_mb = get_file_stats(file_name)
+        if row_count > SKIP_FILE_GENERATION_THRESHOLD:
+            print(f"⚠️  Skipping unique records generation for {side}/{columns}: File has {row_count:,} rows (threshold: {SKIP_FILE_GENERATION_THRESHOLD:,})")
+            return None
         
-        # Parse columns
-        column_list = [col.strip() for col in columns.split(',')]
-        
-        # Find unique records
-        grouped = df.groupby(column_list, sort=False, observed=True).size()
-        unique_combinations = grouped[grouped == 1].index
-        
-        # Filter dataframe
-        if len(column_list) == 1:
-            unique_df = df[df[column_list[0]].isin(unique_combinations)]
-        else:
-            mask = df.set_index(column_list).index.isin(unique_combinations)
-            unique_df = df[mask]
-        
-        unique_df = unique_df.reset_index(drop=True)
-        
-        # Create CSV
-        output = io.StringIO()
-        unique_df.to_csv(output, index=False)
-        
-        content = output.getvalue()
-        return save_result_file(run_id, 'unique_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
+        # Use timeout to prevent hanging
+        with time_limit(FILE_GENERATION_TIMEOUT):
+            # Load the file with row limit for large files
+            max_rows = min(row_count, MAX_FILE_GENERATION_ROWS) if row_count > MAX_FILE_GENERATION_ROWS else None
+            df, delimiter = read_data_file(file_name, nrows=max_rows)
+            
+            # Parse columns
+            column_list = [col.strip() for col in columns.split(',')]
+            
+            # Find unique records
+            grouped = df.groupby(column_list, sort=False, observed=True).size()
+            unique_combinations = grouped[grouped == 1].index
+            
+            # Filter dataframe - Use .copy() to avoid SettingWithCopyWarning
+            if len(column_list) == 1:
+                unique_df = df[df[column_list[0]].isin(unique_combinations)].copy()
+            else:
+                mask = df.set_index(column_list).index.isin(unique_combinations)
+                unique_df = df[mask].copy()
+            
+            # Check if we have any unique records
+            if unique_df.empty:
+                print(f"ℹ️  No unique records found for {side}/{columns}")
+                return None
+            
+            unique_df = unique_df.reset_index(drop=True)
+            
+            # Create CSV and check size
+            output = io.StringIO()
+            unique_df.to_csv(output, index=False)
+            content = output.getvalue()
+            
+            # Validate size
+            size_mb = len(content.encode('utf-8')) / (1024 * 1024)
+            if size_mb > MAX_FILE_SIZE_MB:
+                print(f"⚠️  Unique records file too large ({size_mb:.1f}MB > {MAX_FILE_SIZE_MB}MB) for {side}/{columns}")
+                return None
+            
+            print(f"✅ Generated unique records for {side}/{columns} ({len(unique_df):,} rows, {size_mb:.1f}MB)")
+            return save_result_file(run_id, 'unique_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
+            
+    except TimeoutError as e:
+        print(f"⏱️  Timeout generating unique records for {side}/{columns}: {str(e)}")
+        return None
     except Exception as e:
-        print(f"Error generating unique records for {side}/{columns}: {str(e)}")
+        import traceback
+        print(f"❌ Error generating unique records for {side}/{columns}: {str(e)}")
+        traceback.print_exc()
         return None
 
 def generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path, working_directory=None):
-    """Generate duplicate records file for a specific combination"""
+    """
+    Generate duplicate records file for a specific combination
+    Enterprise-grade: With timeout, row limits, and proper error handling
+    """
     file_name = file_a_path if side == 'A' else file_b_path
     
     try:
-        # Load the file
-        df, delimiter = read_data_file(file_name)
+        # Check file size first - skip if too large
+        row_count, file_size_mb = get_file_stats(file_name)
+        if row_count > SKIP_FILE_GENERATION_THRESHOLD:
+            print(f"⚠️  Skipping duplicate records generation for {side}/{columns}: File has {row_count:,} rows (threshold: {SKIP_FILE_GENERATION_THRESHOLD:,})")
+            return None
         
-        # Parse columns
-        column_list = [col.strip() for col in columns.split(',')]
-        
-        # Find duplicate records
-        grouped = df.groupby(column_list, sort=False, observed=True).size()
-        duplicate_combinations = grouped[grouped > 1].index
-        
-        # Filter dataframe
-        if len(column_list) == 1:
-            duplicate_df = df[df[column_list[0]].isin(duplicate_combinations)]
-        else:
-            mask = df.set_index(column_list).index.isin(duplicate_combinations)
-            duplicate_df = df[mask]
-        
-        # Add occurrence count
-        if len(column_list) == 1:
-            duplicate_df['occurrence_count'] = duplicate_df[column_list[0]].map(grouped)
-        else:
-            duplicate_df['occurrence_count'] = duplicate_df.set_index(column_list).index.map(grouped).values
-        
-        # Sort
-        duplicate_df = duplicate_df.sort_values(['occurrence_count'] + column_list, ascending=[False] + [True]*len(column_list))
-        duplicate_df = duplicate_df.reset_index(drop=True)
-        
-        # Create CSV
-        output = io.StringIO()
-        duplicate_df.to_csv(output, index=False)
-        
-        content = output.getvalue()
-        return save_result_file(run_id, 'duplicate_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
+        # Use timeout to prevent hanging
+        with time_limit(FILE_GENERATION_TIMEOUT):
+            # Load the file with row limit for large files
+            max_rows = min(row_count, MAX_FILE_GENERATION_ROWS) if row_count > MAX_FILE_GENERATION_ROWS else None
+            df, delimiter = read_data_file(file_name, nrows=max_rows)
+            
+            # Parse columns
+            column_list = [col.strip() for col in columns.split(',')]
+            
+            # Find duplicate records
+            grouped = df.groupby(column_list, sort=False, observed=True).size()
+            duplicate_combinations = grouped[grouped > 1].index
+            
+            # Filter dataframe - FIX: Use .copy() to avoid SettingWithCopyWarning
+            if len(column_list) == 1:
+                duplicate_df = df[df[column_list[0]].isin(duplicate_combinations)].copy()
+            else:
+                mask = df.set_index(column_list).index.isin(duplicate_combinations)
+                duplicate_df = df[mask].copy()
+            
+            # Check if we have any duplicates
+            if duplicate_df.empty:
+                print(f"ℹ️  No duplicates found for {side}/{columns}")
+                return None
+            
+            # Add occurrence count - FIX: Now safe because duplicate_df is an explicit copy
+            if len(column_list) == 1:
+                duplicate_df.loc[:, 'occurrence_count'] = duplicate_df[column_list[0]].map(grouped)
+            else:
+                duplicate_df.loc[:, 'occurrence_count'] = duplicate_df.set_index(column_list).index.map(grouped).values
+            
+            # Sort
+            duplicate_df = duplicate_df.sort_values(['occurrence_count'] + column_list, ascending=[False] + [True]*len(column_list))
+            duplicate_df = duplicate_df.reset_index(drop=True)
+            
+            # Check file size before saving
+            output = io.StringIO()
+            duplicate_df.to_csv(output, index=False)
+            content = output.getvalue()
+            
+            # Validate size
+            size_mb = len(content.encode('utf-8')) / (1024 * 1024)
+            if size_mb > MAX_FILE_SIZE_MB:
+                print(f"⚠️  Duplicate records file too large ({size_mb:.1f}MB > {MAX_FILE_SIZE_MB}MB) for {side}/{columns}")
+                return None
+            
+            print(f"✅ Generated duplicate records for {side}/{columns} ({len(duplicate_df):,} rows, {size_mb:.1f}MB)")
+            return save_result_file(run_id, 'duplicate_records', content, side=side, columns=columns, extension='csv', working_directory=working_directory)
+            
+    except TimeoutError as e:
+        print(f"⏱️  Timeout generating duplicate records for {side}/{columns}: {str(e)}")
+        return None
     except Exception as e:
-        print(f"Error generating duplicate records for {side}/{columns}: {str(e)}")
+        import traceback
+        print(f"❌ Error generating duplicate records for {side}/{columns}: {str(e)}")
+        traceback.print_exc()
         return None
 
 def generate_comparison_file(run_id, columns, file_a_path, file_b_path, working_directory=None):
-    """Generate comparison Excel file (matched, only A, only B)"""
+    """
+    Generate comparison Excel file (matched, only A, only B)
+    Enterprise-grade: With timeout, row limits, and proper error handling
+    """
     try:
-        # Load both files
-        df_a, _ = read_data_file(file_a_path)
-        df_b, _ = read_data_file(file_b_path)
+        # Check file sizes first
+        row_count_a, size_a = get_file_stats(file_a_path)
+        row_count_b, size_b = get_file_stats(file_b_path)
+        max_rows = max(row_count_a, row_count_b)
         
-        # Parse columns
-        column_list = [col.strip() for col in columns.split(',')]
+        # Skip if files are too large
+        if max_rows > SKIP_FILE_GENERATION_THRESHOLD:
+            print(f"⚠️  Skipping comparison file for {columns}: Files have {max_rows:,} rows (threshold: {SKIP_FILE_GENERATION_THRESHOLD:,})")
+            return None
         
-        # Create comparison keys
-        df_a['_comparison_key'] = df_a[column_list].apply(lambda x: tuple(x), axis=1)
-        df_b['_comparison_key'] = df_b[column_list].apply(lambda x: tuple(x), axis=1)
-        
-        # Get unique keys
-        keys_a = set(df_a['_comparison_key'])
-        keys_b = set(df_b['_comparison_key'])
-        
-        # Calculate intersections
-        matched_keys = keys_a & keys_b
-        only_a_keys = keys_a - keys_b
-        only_b_keys = keys_b - keys_a
-        
-        # Filter dataframes
-        df_matched_a = df_a[df_a['_comparison_key'].isin(matched_keys)].copy()
-        df_matched_b = df_b[df_b['_comparison_key'].isin(matched_keys)].copy()
-        df_only_a = df_a[df_a['_comparison_key'].isin(only_a_keys)].copy()
-        df_only_b = df_b[df_b['_comparison_key'].isin(only_b_keys)].copy()
-        
-        # Remove comparison key
-        for df in [df_matched_a, df_matched_b, df_only_a, df_only_b]:
-            df.drop('_comparison_key', axis=1, inplace=True)
-        
-        # Sort
-        for df in [df_matched_a, df_matched_b, df_only_a, df_only_b]:
-            if not df.empty:
-                df.sort_values(column_list, inplace=True)
-                df.reset_index(drop=True, inplace=True)
-        
-        # Create Excel file
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            # Summary sheet
-            summary_df = pd.DataFrame({
-                'Metric': [
-                    'Total Records in Side A',
-                    'Total Records in Side B',
-                    'Matched Records (in both)',
-                    'Only in Side A',
-                    'Only in Side B',
-                    'Match Rate (%)'
-                ],
-                'Count': [
-                    len(df_a),
-                    len(df_b),
-                    len(df_matched_a),
-                    len(df_only_a),
-                    len(df_only_b),
-                    round((len(df_matched_a) / max(len(df_a), 1)) * 100, 2)
-                ]
-            })
-            summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        # Use timeout to prevent hanging
+        with time_limit(FILE_GENERATION_TIMEOUT):
+            # Load both files with row limits if necessary
+            max_rows_limit = min(max_rows, MAX_FILE_GENERATION_ROWS) if max_rows > MAX_FILE_GENERATION_ROWS else None
+            df_a, _ = read_data_file(file_a_path, nrows=max_rows_limit)
+            df_b, _ = read_data_file(file_b_path, nrows=max_rows_limit)
             
-            # Write data sheets
-            if not df_matched_a.empty:
-                df_matched_a.to_excel(writer, sheet_name='Matched_SideA', index=False)
-            if not df_matched_b.empty:
-                df_matched_b.to_excel(writer, sheet_name='Matched_SideB', index=False)
-            if not df_only_a.empty:
-                df_only_a.to_excel(writer, sheet_name='Only_In_SideA', index=False)
-            if not df_only_b.empty:
-                df_only_b.to_excel(writer, sheet_name='Only_In_SideB', index=False)
-        
-        content = output.getvalue()
-        return save_result_file(run_id, 'comparison', content, columns=columns, extension='xlsx', working_directory=working_directory)
+            # Parse columns
+            column_list = [col.strip() for col in columns.split(',')]
+            
+            # Create comparison keys
+            df_a['_comparison_key'] = df_a[column_list].apply(lambda x: tuple(x), axis=1)
+            df_b['_comparison_key'] = df_b[column_list].apply(lambda x: tuple(x), axis=1)
+            
+            # Get unique keys
+            keys_a = set(df_a['_comparison_key'])
+            keys_b = set(df_b['_comparison_key'])
+            
+            # Calculate intersections
+            matched_keys = keys_a & keys_b
+            only_a_keys = keys_a - keys_b
+            only_b_keys = keys_b - keys_a
+            
+            # Filter dataframes - Use .copy() to avoid warnings
+            df_matched_a = df_a[df_a['_comparison_key'].isin(matched_keys)].copy()
+            df_matched_b = df_b[df_b['_comparison_key'].isin(matched_keys)].copy()
+            df_only_a = df_a[df_a['_comparison_key'].isin(only_a_keys)].copy()
+            df_only_b = df_b[df_b['_comparison_key'].isin(only_b_keys)].copy()
+            
+            # Remove comparison key
+            for df in [df_matched_a, df_matched_b, df_only_a, df_only_b]:
+                if '_comparison_key' in df.columns:
+                    df.drop('_comparison_key', axis=1, inplace=True)
+            
+            # Sort
+            for df in [df_matched_a, df_matched_b, df_only_a, df_only_b]:
+                if not df.empty:
+                    df.sort_values(column_list, inplace=True)
+                    df.reset_index(drop=True, inplace=True)
+            
+            # Create Excel file
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # Summary sheet
+                summary_df = pd.DataFrame({
+                    'Metric': [
+                        'Total Records in Side A',
+                        'Total Records in Side B',
+                        'Matched Records (in both)',
+                        'Only in Side A',
+                        'Only in Side B',
+                        'Match Rate (%)'
+                    ],
+                    'Count': [
+                        len(df_a),
+                        len(df_b),
+                        len(df_matched_a),
+                        len(df_only_a),
+                        len(df_only_b),
+                        round((len(df_matched_a) / max(len(df_a), 1)) * 100, 2)
+                    ]
+                })
+                summary_df.to_excel(writer, sheet_name='Summary', index=False)
+                
+                # Write data sheets (limit rows to prevent huge files)
+                if not df_matched_a.empty:
+                    df_matched_a.head(MAX_FILE_GENERATION_ROWS).to_excel(writer, sheet_name='Matched_SideA', index=False)
+                if not df_matched_b.empty:
+                    df_matched_b.head(MAX_FILE_GENERATION_ROWS).to_excel(writer, sheet_name='Matched_SideB', index=False)
+                if not df_only_a.empty:
+                    df_only_a.head(MAX_FILE_GENERATION_ROWS).to_excel(writer, sheet_name='Only_In_SideA', index=False)
+                if not df_only_b.empty:
+                    df_only_b.head(MAX_FILE_GENERATION_ROWS).to_excel(writer, sheet_name='Only_In_SideB', index=False)
+            
+            content = output.getvalue()
+            
+            # Validate size
+            size_mb = len(content) / (1024 * 1024)
+            if size_mb > MAX_FILE_SIZE_MB:
+                print(f"⚠️  Comparison file too large ({size_mb:.1f}MB > {MAX_FILE_SIZE_MB}MB) for {columns}")
+                return None
+            
+            print(f"✅ Generated comparison file for {columns} ({size_mb:.1f}MB)")
+            return save_result_file(run_id, 'comparison', content, columns=columns, extension='xlsx', working_directory=working_directory)
+            
+    except TimeoutError as e:
+        print(f"⏱️  Timeout generating comparison file for {columns}: {str(e)}")
+        return None
     except Exception as e:
-        print(f"Error generating comparison file for {columns}: {str(e)}")
+        import traceback
+        print(f"❌ Error generating comparison file for {columns}: {str(e)}")
+        traceback.print_exc()
         return None
 
 def get_result_file_path(run_id, file_type, side=None, columns=None):
