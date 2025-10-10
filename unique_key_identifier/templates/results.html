@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #337ab7 0%, #2c5f8d 100%);
             min-height: 100vh;
             padding: 0;
             margin: 0;
@@ -21,76 +21,99 @@
 
         .container {
             width: 100%;
-            padding: 20px;
+            padding: 8px;
+            max-width: 100%;
+            margin: 0 auto;
         }
 
         header {
             text-align: center;
             color: white;
-            margin-bottom: 30px;
+            margin-bottom: 8px;
+            padding: 8px 0;
         }
 
         h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+            font-size: 1.4em;
+            margin-bottom: 3px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+            font-size: 0.85em;
+            opacity: 0.9;
         }
 
         .card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            padding: 30px;
-            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 10px;
         }
 
         .run-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #337ab7;
             color: white;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
-            margin: -30px -30px 30px -30px;
+            padding: 12px 15px;
+            border-radius: 4px 4px 0 0;
+            margin: -15px -15px 15px -15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .run-header h2 {
+            font-size: 1.2em;
+            margin: 0;
         }
 
         .run-meta {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
             gap: 15px;
-            margin-top: 15px;
+            margin-top: 8px;
+            font-size: 0.9em;
+            flex-wrap: wrap;
         }
 
         .run-meta-item {
-            background: rgba(255,255,255,0.1);
-            padding: 10px 15px;
-            border-radius: 6px;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 10px;
+            border-radius: 3px;
+            font-size: 0.85em;
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #337ab7;
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            white-space: nowrap;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: #286090;
         }
 
         .btn-secondary {
             background: #6c757d;
         }
 
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
         .btn-sm {
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 3px 8px;
+            font-size: 11px;
         }
 
         .action-bar {
@@ -98,112 +121,115 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 30px;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
         }
 
         .group-nav {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             flex-wrap: wrap;
-            margin: 20px 0;
+            margin: 12px 0;
         }
 
         .group-btn {
-            padding: 10px 20px;
+            padding: 6px 12px;
             background: white;
-            border: 2px solid #667eea;
-            color: #667eea;
-            border-radius: 8px;
-            font-weight: 600;
+            border: 1px solid #337ab7;
+            color: #337ab7;
+            border-radius: 3px;
+            font-weight: 500;
+            font-size: 12px;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
-            transition: all 0.3s;
+            transition: all 0.2s;
         }
 
         .group-btn:hover {
-            background: #667eea;
+            background: #337ab7;
             color: white;
-            transform: translateY(-2px);
         }
 
         .group-btn.active {
-            background: #667eea;
+            background: #337ab7;
             color: white;
         }
 
         .group-badge {
             display: inline-block;
-            background: #10b981;
+            background: #5cb85c;
             color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            margin-left: 6px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-left: 4px;
         }
 
         .comparison-tables {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 30px;
+            gap: 12px;
+            margin-top: 12px;
         }
 
         .table-panel {
             background: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
         }
 
         .table-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 3px solid #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #337ab7;
         }
 
         .table-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: #667eea;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #337ab7;
         }
 
         .table-badge {
-            background: #667eea;
+            background: #337ab7;
             color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
         }
 
         .results-table {
             width: 100%;
             border-collapse: collapse;
             background: white;
-            border-radius: 8px;
+            border-radius: 4px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 12px;
         }
 
         .results-table th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #337ab7;
             color: white;
-            padding: 12px 8px;
+            padding: 8px 6px;
             text-align: left;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .results-table td {
-            padding: 12px 8px;
+            padding: 6px 6px;
             border-bottom: 1px solid #e0e0e0;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .results-table tr:hover {
@@ -219,34 +245,35 @@
         }
 
         .status-badge {
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
             text-transform: uppercase;
+            display: inline-block;
         }
 
         .status-badge.unique {
-            background: #10b981;
+            background: #5cb85c;
             color: white;
         }
 
         .status-badge.duplicate {
-            background: #f59e0b;
+            background: #f0ad4e;
             color: white;
         }
 
         .score-bar {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .score-bar-fill {
             flex: 1;
-            height: 6px;
+            height: 5px;
             background: #e0e0e0;
-            border-radius: 3px;
+            border-radius: 2px;
             overflow: hidden;
         }
 
@@ -256,21 +283,22 @@
         }
 
         .score-bar-value.high {
-            background: #10b981;
+            background: #5cb85c;
         }
 
         .score-bar-value.medium {
-            background: #f59e0b;
+            background: #f0ad4e;
         }
 
         .score-bar-value.low {
-            background: #ef4444;
+            background: #d9534f;
         }
 
         .score-text {
             font-weight: 600;
-            min-width: 50px;
+            min-width: 40px;
             text-align: right;
+            font-size: 11px;
         }
 
         .pagination {
@@ -290,6 +318,35 @@
             color: #999;
         }
 
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #337ab7;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         @media (max-width: 1200px) {
             .comparison-tables {
                 grid-template-columns: 1fr;
@@ -299,53 +356,32 @@
         .columns-display {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 5px;
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            max-height: 200px;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 150px;
             overflow-y: auto;
+            border: 1px solid #e0e0e0;
         }
 
         .column-tag {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #337ab7;
             color: white;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
             font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
-        .group-summary {
-            background: #f0f4ff;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #667eea;
+        .column-tag:hover {
+            background: #286090;
+            transform: scale(1.05);
         }
 
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
-        }
-
-        .summary-item {
-            text-align: center;
-        }
-
-        .summary-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #667eea;
-        }
-
-        .summary-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 4px;
-        }
+        /* Removed old group-summary styles - now using inline compact design */
 
         /* Loading Spinner */
         .loading-overlay {
@@ -403,6 +439,9 @@
     </style>
 </head>
 <body>
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Copied to clipboard!</div>
+    
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
@@ -446,56 +485,54 @@
             </div>
 
             {% if columns %}
-            <div style="margin-bottom: 20px;">
-                <strong>Available Columns ({{ columns|length }}):</strong>
-                <div class="columns-display">
+            <div style="margin-bottom: 12px; border: 1px solid #e0e0e0; border-radius: 4px; background: #f8f9fa;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; cursor: pointer; background: #fff; border-radius: 4px 4px 0 0;" onclick="toggleColumns()">
+                    <strong style="font-size: 13px;">
+                        <span id="columnsToggleIcon">▼</span> Columns ({{ columns|length }})
+                    </strong>
+                    <button onclick="event.stopPropagation(); copyAllColumns()" class="btn btn-sm" style="background: #10b981; padding: 4px 10px; font-size: 11px;" title="Copy all column names as comma-separated">
+                        📋 Copy All
+                    </button>
+                </div>
+                <div id="columnsSection" class="columns-display" style="padding: 10px; border-top: 1px solid #e0e0e0;">
                     {% for col in columns %}
-                        <span class="column-tag">{{ col }}</span>
+                        <span class="column-tag" onclick="copyToClipboard('{{ col }}', this)" title="Click to copy">{{ col }}</span>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
 
-            <!-- Group Navigation -->
-            <div class="group-summary">
-                <h3 style="margin-bottom: 15px;">📊 Results Grouped by Combination Size</h3>
-                <div class="summary-grid">
+            <!-- Group Navigation - Compact -->
+            <div style="background: #f0f7fc; padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; border-left: 3px solid #337ab7;">
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px;">
+                    <strong style="color: #337ab7; white-space: nowrap;">📊 Groups:</strong>
                     {% for stat in group_stats %}
-                    <div class="summary-item">
-                        <div class="summary-value">{{ stat.size }}-Column</div>
-                        <div class="summary-label">
-                            A: {{ stat.count_a }} total ({{ stat.unique_keys_a }} unique)<br>
-                            B: {{ stat.count_b }} total ({{ stat.unique_keys_b }} unique)
-                        </div>
-                    </div>
+                    <a href="/run/{{ run_id }}?group={{ stat.size }}&page=1&per_page=50" 
+                       class="group-btn {% if current_group == stat.size %}active{% endif %}"
+                       style="padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"
+                       title="Side A: {{ stat.count_a }} ({{ stat.unique_keys_a }} unique) | Side B: {{ stat.count_b }} ({{ stat.unique_keys_b }} unique)">
+                        {{ stat.size }}-Col
+                        <span class="group-badge" style="font-size: 9px; padding: 1px 4px;">{{ stat.count_a + stat.count_b }}</span>
+                    </a>
                     {% endfor %}
+                    <span style="color: #ccc; margin: 0 4px;">|</span>
+                    <a href="/run/{{ run_id }}" class="group-btn {% if not current_group %}active{% endif %}"
+                       style="padding: 4px 10px; font-size: 11px;">
+                        All
+                    </a>
                 </div>
-            </div>
-
-            <div class="group-nav">
-                <strong style="align-self: center; margin-right: 10px;">Jump to Group:</strong>
-                {% for stat in group_stats %}
-                <a href="/run/{{ run_id }}?group={{ stat.size }}&page=1&per_page=50" 
-                   class="group-btn {% if current_group == stat.size %}active{% endif %}">
-                    {{ stat.size }}-Column Combinations
-                    <span class="group-badge">{{ stat.count_a + stat.count_b }}</span>
-                </a>
-                {% endfor %}
-                <a href="/run/{{ run_id }}" class="group-btn {% if not current_group %}active{% endif %}">
-                    View All (Summary)
-                </a>
             </div>
 
             {% if current_group %}
             <!-- Detailed view of specific group -->
-            <h3 style="margin: 30px 0 20px 0; color: #333;">{{ current_group }}-Column Combinations - Detailed View</h3>
-            
-            {% if pagination %}
-            <div style="text-align: center; margin-bottom: 15px; color: #666;">
-                Showing {{ pagination.per_page }} results per page | 
-                Side A: {{ pagination.total_in_group_a }} total | Side B: {{ pagination.total_in_group_b }} total
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 8px 12px; background: #f8f9fa; border-radius: 4px; border-left: 3px solid #337ab7;">
+                <h3 style="margin: 0; color: #333; font-size: 1.1em;">{{ current_group }}-Column Combinations</h3>
+                {% if pagination %}
+                <span style="color: #666; font-size: 11px;">
+                    {{ pagination.per_page }}/page | A: {{ pagination.total_in_group_a }} | B: {{ pagination.total_in_group_b }}
+                </span>
+                {% endif %}
             </div>
-            {% endif %}
 
             <div class="comparison-tables">
                 <!-- Side A Table -->
@@ -509,11 +546,12 @@
                     <table class="results-table">
                         <thead>
                             <tr>
-                                <th style="width: 25%;">Columns</th>
-                                <th style="width: 12%;">Unique</th>
-                                <th style="width: 12%;">Duplicates</th>
-                                <th style="width: 35%;">Uniqueness</th>
-                                <th style="width: 16%;">Status</th>
+                                <th style="width: 20%;">Columns</th>
+                                <th style="width: 10%;">Unique</th>
+                                <th style="width: 10%;">Duplicates</th>
+                                <th style="width: 25%;">Uniqueness</th>
+                                <th style="width: 12%;">Status</th>
+                                <th style="width: 23%;">Export Records</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -542,6 +580,38 @@
                                         {% if result.is_unique_key %}✓ Unique{% else %}⚠ Duplicates{% endif %}
                                     </span>
                                 </td>
+                                <td>
+                                    <div style="display: flex; gap: 2px; flex-wrap: wrap;">
+                                        {% if result.unique_rows > 0 %}
+                                        <a href="/download/{{ run_id }}/unique-records?side=A&columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #5cb85c;"
+                                           title="Unique: {{ result.unique_rows }}">
+                                            U:{{ result.unique_rows }}
+                                        </a>
+                                        {% endif %}
+                                        {% if result.duplicate_count > 0 %}
+                                        <a href="/download/{{ run_id }}/duplicate-records?side=A&columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #f0ad4e;"
+                                           title="Duplicates: {{ result.duplicate_count }}">
+                                            D:{{ result.duplicate_count }}
+                                        </a>
+                                        {% endif %}
+                                        <a href="/comparison/{{ run_id }}/view?columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #337ab7;"
+                                           title="View comparison">
+                                            👁️
+                                        </a>
+                                        <a href="/download/{{ run_id }}/comparison?columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #777;"
+                                           title="Download Excel">
+                                            📥
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -562,11 +632,12 @@
                     <table class="results-table">
                         <thead>
                             <tr>
-                                <th style="width: 25%;">Columns</th>
-                                <th style="width: 12%;">Unique</th>
-                                <th style="width: 12%;">Duplicates</th>
-                                <th style="width: 35%;">Uniqueness</th>
-                                <th style="width: 16%;">Status</th>
+                                <th style="width: 20%;">Columns</th>
+                                <th style="width: 10%;">Unique</th>
+                                <th style="width: 10%;">Duplicates</th>
+                                <th style="width: 25%;">Uniqueness</th>
+                                <th style="width: 12%;">Status</th>
+                                <th style="width: 23%;">Export Records</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -594,6 +665,38 @@
                                     <span class="status-badge {% if result.is_unique_key %}unique{% else %}duplicate{% endif %}">
                                         {% if result.is_unique_key %}✓ Unique{% else %}⚠ Duplicates{% endif %}
                                     </span>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 2px; flex-wrap: wrap;">
+                                        {% if result.unique_rows > 0 %}
+                                        <a href="/download/{{ run_id }}/unique-records?side=B&columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #5cb85c;"
+                                           title="Unique: {{ result.unique_rows }}">
+                                            U:{{ result.unique_rows }}
+                                        </a>
+                                        {% endif %}
+                                        {% if result.duplicate_count > 0 %}
+                                        <a href="/download/{{ run_id }}/duplicate-records?side=B&columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #f0ad4e;"
+                                           title="Duplicates: {{ result.duplicate_count }}">
+                                            D:{{ result.duplicate_count }}
+                                        </a>
+                                        {% endif %}
+                                        <a href="/comparison/{{ run_id }}/view?columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #337ab7;"
+                                           title="View comparison">
+                                            👁️
+                                        </a>
+                                        <a href="/download/{{ run_id }}/comparison?columns={{ result.columns | urlencode }}" 
+                                           class="btn btn-sm" 
+                                           style="padding: 2px 6px; font-size: 10px; background: #777;"
+                                           title="Download Excel">
+                                            📥
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -643,20 +746,24 @@
 
             {% else %}
             <!-- Summary view of all groups (showing top 10 from each) -->
-            <h3 style="margin: 30px 0 20px 0; color: #333;">Summary View - Top Results per Group</h3>
-            <p style="color: #666; margin-bottom: 20px;">Click a group button above to see all results in that category</p>
+            <div style="padding: 8px 12px; background: #f8f9fa; border-radius: 4px; margin-bottom: 15px; border-left: 3px solid #5cb85c;">
+                <strong style="color: #333; font-size: 13px;">📋 Summary View</strong>
+                <span style="color: #666; font-size: 11px; margin-left: 10px;">Top 10 from each group - Click group above to see all</span>
+            </div>
 
             {% for stat in group_stats %}
-            <div style="margin-bottom: 40px;">
-                <h4 style="color: #667eea; margin-bottom: 15px;">
-                    {{ stat.size }}-Column Combinations 
-                    <span style="color: #999; font-size: 14px; font-weight: normal;">
-                        (Side A: {{ stat.count_a }}, Side B: {{ stat.count_b }})
-                    </span>
-                    <a href="/run/{{ run_id }}?group={{ stat.size }}" class="btn btn-sm" style="margin-left: 15px;">
+            <div style="margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #f0f4ff; border-radius: 4px; margin-bottom: 10px; border-left: 3px solid #667eea;">
+                    <h4 style="color: #667eea; margin: 0; font-size: 1em;">
+                        {{ stat.size }}-Column 
+                        <span style="color: #999; font-size: 11px; font-weight: normal;">
+                            (A: {{ stat.count_a }}, B: {{ stat.count_b }})
+                        </span>
+                    </h4>
+                    <a href="/run/{{ run_id }}?group={{ stat.size }}" class="btn btn-sm" style="padding: 3px 10px; font-size: 11px;">
                         View All →
                     </a>
-                </h4>
+                </div>
 
                 <div class="comparison-tables">
                     <div class="table-panel">
@@ -667,11 +774,12 @@
                         <table class="results-table">
                             <thead>
                                 <tr>
-                                    <th>Columns</th>
-                                    <th>Unique</th>
-                                    <th>Duplicates</th>
-                                    <th>Score</th>
-                                    <th>Status</th>
+                                    <th style="width: 22%;">Columns</th>
+                                    <th style="width: 12%;">Unique</th>
+                                    <th style="width: 12%;">Duplicates</th>
+                                    <th style="width: 12%;">Score</th>
+                                    <th style="width: 12%;">Status</th>
+                                    <th style="width: 30%;">Export</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -686,14 +794,37 @@
                                             {% if result.is_unique_key %}✓{% else %}⚠{% endif %}
                                         </span>
                                     </td>
+                                    <td>
+                                        <div style="display: flex; gap: 2px; flex-wrap: wrap;">
+                                            {% if result.unique_rows > 0 %}
+                                            <a href="/download/{{ run_id }}/unique-records?side=A&columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #5cb85c;">
+                                                U
+                                            </a>
+                                            {% endif %}
+                                            {% if result.duplicate_count > 0 %}
+                                            <a href="/download/{{ run_id }}/duplicate-records?side=A&columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #f0ad4e;">
+                                                D
+                                            </a>
+                                            {% endif %}
+                                            <a href="/comparison/{{ run_id }}/view?columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #337ab7;">
+                                                👁️
+                                            </a>
+                                        </div>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                         {% if stat.count_a > 10 %}
-                        <div style="text-align: center; margin-top: 10px; color: #666; font-size: 13px;">
+                        <div style="text-align: center; margin-top: 8px; color: #666; font-size: 11px;">
                             ... and {{ stat.count_a - 10 }} more 
-                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #667eea;">View All</a>
+                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #337ab7;">View All</a>
                         </div>
                         {% endif %}
                         {% endif %}
@@ -707,11 +838,12 @@
                         <table class="results-table">
                             <thead>
                                 <tr>
-                                    <th>Columns</th>
-                                    <th>Unique</th>
-                                    <th>Duplicates</th>
-                                    <th>Score</th>
-                                    <th>Status</th>
+                                    <th style="width: 22%;">Columns</th>
+                                    <th style="width: 12%;">Unique</th>
+                                    <th style="width: 12%;">Duplicates</th>
+                                    <th style="width: 12%;">Score</th>
+                                    <th style="width: 12%;">Status</th>
+                                    <th style="width: 30%;">Export</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -726,14 +858,37 @@
                                             {% if result.is_unique_key %}✓{% else %}⚠{% endif %}
                                         </span>
                                     </td>
+                                    <td>
+                                        <div style="display: flex; gap: 2px; flex-wrap: wrap;">
+                                            {% if result.unique_rows > 0 %}
+                                            <a href="/download/{{ run_id }}/unique-records?side=B&columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #5cb85c;">
+                                                U
+                                            </a>
+                                            {% endif %}
+                                            {% if result.duplicate_count > 0 %}
+                                            <a href="/download/{{ run_id }}/duplicate-records?side=B&columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #f0ad4e;">
+                                                D
+                                            </a>
+                                            {% endif %}
+                                            <a href="/comparison/{{ run_id }}/view?columns={{ result.columns | urlencode }}" 
+                                               class="btn btn-sm" 
+                                               style="padding: 2px 5px; font-size: 9px; background: #337ab7;">
+                                                👁️
+                                            </a>
+                                        </div>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                         {% if stat.count_b > 10 %}
-                        <div style="text-align: center; margin-top: 10px; color: #666; font-size: 13px;">
+                        <div style="text-align: center; margin-top: 8px; color: #666; font-size: 11px;">
                             ... and {{ stat.count_b - 10 }} more 
-                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #667eea;">View All</a>
+                            <a href="/run/{{ run_id }}?group={{ stat.size }}" style="color: #337ab7;">View All</a>
                         </div>
                         {% endif %}
                         {% endif %}
@@ -774,6 +929,78 @@
                 link.addEventListener('click', showLoading);
             });
         });
+
+        function copyToClipboard(text, element) {
+            // Create temporary textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('Copied: ' + text);
+                
+                // Visual feedback
+                const originalBg = element.style.background;
+                element.style.background = '#d9edf7';
+                setTimeout(() => {
+                    element.style.background = originalBg;
+                }, 300);
+            } catch (err) {
+                showToast('Failed to copy');
+            }
+            
+            document.body.removeChild(textarea);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function toggleColumns() {
+            const section = document.getElementById('columnsSection');
+            const icon = document.getElementById('columnsToggleIcon');
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'flex';
+                icon.textContent = '▼';
+            } else {
+                section.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+
+        function copyAllColumns() {
+            const columns = [
+                {% for col in columns %}'{{ col }}'{% if not loop.last %},{% endif %}{% endfor %}
+            ];
+            const allColumnsText = columns.join(',');
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = allColumnsText;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast('✅ Copied all ' + columns.length + ' columns!');
+            } catch (err) {
+                showToast('❌ Failed to copy');
+            }
+            
+            document.body.removeChild(textarea);
+        }
 
         async function cloneRun(runId) {
             if (!confirm(`Clone Run #${runId}?\n\nThis will copy all settings to the home page where you can modify and re-analyze.`)) {

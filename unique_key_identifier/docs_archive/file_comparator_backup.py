@@ -1,11 +1,9 @@
-"""
-File Comparator - Main Application
-Refactored with modular design for better maintainability
-"""
 from fastapi import FastAPI, Form, HTTPException, Request, BackgroundTasks, Query
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import pandas as pd
+import sqlite3
+from itertools import combinations
 import os
 from datetime import datetime
 import uvicorn
@@ -14,30 +12,234 @@ import time
 import io
 import csv
 
-# Import from modular files for better project design
-from config import (
-    SCRIPT_DIR, SUPPORTED_EXTENSIONS, MAX_ROWS_WARNING, 
-    MAX_ROWS_HARD_LIMIT, MAX_COMBINATIONS, MEMORY_EFFICIENT_THRESHOLD
-)
-from database import conn, update_job_status, update_stage_status
-from file_processing import detect_delimiter, get_file_stats, estimate_processing_time, read_data_file
-from analysis import smart_discover_combinations, analyze_file_combinations
-from result_generator import (
-    generate_analysis_csv, generate_analysis_excel,
-    generate_unique_records, generate_duplicate_records, generate_comparison_file,
-    get_result_file_path
-)
-
 app = FastAPI()
-templates = Jinja2Templates(directory=os.path.join(SCRIPT_DIR, "templates"))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+templates = Jinja2Templates(directory=os.path.join(script_dir, "templates"))
 
-# NOTE: Functions moved to modular files:
-# - detect_delimiter, get_file_stats, estimate_processing_time, read_data_file -> file_processing.py
-# - create_tables, update_job_status, update_stage_status -> database.py
-# - smart_discover_combinations, analyze_file_combinations -> analysis.py
+# SQLite connection
+db_path = os.path.join(script_dir, "file_comparison.db")
+conn = sqlite3.connect(db_path, check_same_thread=False)
+
+# Supported file formats
+SUPPORTED_EXTENSIONS = ['.csv', '.dat', '.txt']
+
+# Performance limits
+MAX_ROWS_WARNING = 100000  # Warn above 100k rows
+MAX_ROWS_HARD_LIMIT = 500000  # Hard limit at 500k rows
+MAX_COMBINATIONS = 50  # Maximum combinations to analyze
+MEMORY_EFFICIENT_THRESHOLD = 50000  # Use sampling above 50k rows
+
+def detect_delimiter(file_path, sample_size=5):
+    """
+    Auto-detect delimiter in file by analyzing first few lines
+    Supports: comma, tab, pipe, semicolon, space
+    """
+    common_delimiters = [',', '\t', '|', ';', ' ']
+    
+    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        # Read sample lines
+        sample_lines = [f.readline() for _ in range(sample_size)]
+        sample = ''.join(sample_lines)
+    
+    # Use CSV Sniffer to detect delimiter
+    try:
+        sniffer = csv.Sniffer()
+        delimiter = sniffer.sniff(sample, delimiters=''.join(common_delimiters)).delimiter
+        return delimiter
+    except:
+        # Fallback: count occurrences of each delimiter
+        delimiter_counts = {delim: sum(line.count(delim) for line in sample_lines) 
+                           for delim in common_delimiters}
+        
+        # Return delimiter with highest consistent count
+        max_delim = max(delimiter_counts, key=delimiter_counts.get)
+        if delimiter_counts[max_delim] > 0:
+            return max_delim
+        
+        # Default to comma if nothing found
+        return ','
+
+def get_file_stats(file_path):
+    """
+    Get basic file statistics without loading entire file
+    Returns: (row_count, file_size_mb)
+    """
+    try:
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        
+        # Count rows efficiently
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+            row_count = sum(1 for _ in f) - 1  # Subtract header row
+        
+        return row_count, file_size_mb
+    except Exception as e:
+        return None, None
+
+def estimate_processing_time(rows, columns):
+    """Estimate processing time based on data size"""
+    if rows < 10000:
+        return "Less than 30 seconds"
+    elif rows < 50000:
+        return "30-60 seconds"
+    elif rows < 100000:
+        return "1-2 minutes"
+    elif rows < 250000:
+        return "2-5 minutes (using sampling)"
+    else:
+        return "5-10 minutes (using sampling)"
+
+def read_data_file(file_path, nrows=None, sample_for_large=False):
+    """
+    Read data file with automatic delimiter detection
+    Supports: .csv, .dat, .txt files
+    For large files, can use sampling for efficiency
+    """
+    file_ext = os.path.splitext(file_path)[1].lower()
+    
+    if file_ext not in SUPPORTED_EXTENSIONS:
+        raise ValueError(f"Unsupported file type: {file_ext}. Supported formats: {', '.join(SUPPORTED_EXTENSIONS)}")
+    
+    # Detect delimiter
+    delimiter = detect_delimiter(file_path)
+    
+    # Check if we should use sampling for large files
+    if sample_for_large and nrows is None:
+        row_count, _ = get_file_stats(file_path)
+        if row_count and row_count > MEMORY_EFFICIENT_THRESHOLD:
+            # Use stratified sampling for large files
+            skip_rows = max(1, row_count // MEMORY_EFFICIENT_THRESHOLD)
+            try:
+                df = pd.read_csv(file_path, sep=delimiter, encoding='utf-8', 
+                               on_bad_lines='skip', skiprows=lambda i: i % skip_rows != 0 and i > 0)
+                return df, delimiter
+            except:
+                pass  # Fall back to normal reading
+    
+    # Read file with detected delimiter
+    try:
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='utf-8', on_bad_lines='skip')
+        return df, delimiter
+    except UnicodeDecodeError:
+        # Try with different encoding
+        df = pd.read_csv(file_path, sep=delimiter, nrows=nrows, encoding='latin-1', on_bad_lines='skip')
+        return df, delimiter
+    except Exception as e:
+        raise ValueError(f"Error reading file: {str(e)}")
+
+def create_tables():
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS runs (
+            run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            file_a TEXT,
+            file_b TEXT,
+            num_columns INTEGER,
+            file_a_rows INTEGER,
+            file_b_rows INTEGER,
+            status TEXT DEFAULT 'pending',
+            current_stage TEXT DEFAULT 'initializing',
+            progress_percent INTEGER DEFAULT 0,
+            started_at TEXT,
+            completed_at TEXT,
+            error_message TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS job_stages (
+            stage_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            stage_name TEXT,
+            stage_order INTEGER,
+            status TEXT DEFAULT 'pending',
+            started_at TEXT,
+            completed_at TEXT,
+            details TEXT,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS analysis_results (
+            run_id INTEGER,
+            side TEXT,
+            columns TEXT,
+            total_rows INTEGER,
+            unique_rows INTEGER,
+            duplicate_rows INTEGER,
+            duplicate_count INTEGER,
+            uniqueness_score REAL,
+            is_unique_key INTEGER,
+            UNIQUE(run_id, side, columns),
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS duplicate_samples (
+            run_id INTEGER,
+            side TEXT,
+            columns TEXT,
+            duplicate_value TEXT,
+            occurrence_count INTEGER,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    conn.commit()
+
+# Initialize database
+create_tables()
 
 # Job processing lock
 job_lock = threading.Lock()
+
+def update_job_status(run_id, status=None, stage=None, progress=None, error=None):
+    """Update job status in database"""
+    cursor = conn.cursor()
+    updates = []
+    values = []
+    
+    if status:
+        updates.append("status = ?")
+        values.append(status)
+    if stage:
+        updates.append("current_stage = ?")
+        values.append(stage)
+    if progress is not None:
+        updates.append("progress_percent = ?")
+        values.append(progress)
+    if error:
+        updates.append("error_message = ?")
+        values.append(error)
+    if status == 'completed':
+        updates.append("completed_at = ?")
+        values.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
+    if updates:
+        values.append(run_id)
+        cursor.execute(f"UPDATE runs SET {', '.join(updates)} WHERE run_id = ?", values)
+        conn.commit()
+
+def update_stage_status(run_id, stage_name, status, details=None):
+    """Update individual stage status"""
+    cursor = conn.cursor()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    if status == 'in_progress':
+        cursor.execute('''
+            UPDATE job_stages SET status = ?, started_at = ?, details = ?
+            WHERE run_id = ? AND stage_name = ?
+        ''', (status, timestamp, details, run_id, stage_name))
+    elif status == 'completed':
+        cursor.execute('''
+            UPDATE job_stages SET status = ?, completed_at = ?, details = ?
+            WHERE run_id = ? AND stage_name = ?
+        ''', (status, timestamp, details, run_id, stage_name))
+    elif status == 'error':
+        cursor.execute('''
+            UPDATE job_stages SET status = ?, details = ?
+            WHERE run_id = ? AND stage_name = ?
+        ''', (status, details, run_id, stage_name))
+    
+    conn.commit()
 
 def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, specified_combinations=None, excluded_combinations=None):
     """Background job to process file analysis"""
@@ -170,49 +372,7 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         conn.commit()
         
-        update_stage_status(run_id, 'storing_results', 'completed', f'Saved {len(results_a) + len(results_b)} results to database')
-        
-        # Stage 6: Generating Result Files (NEW)
-        update_job_status(run_id, stage='generating_files', progress=90)
-        update_stage_status(run_id, 'generating_files', 'in_progress', 'Generating downloadable result files')
-        
-        try:
-            # Generate analysis summary files
-            generate_analysis_csv(run_id)
-            generate_analysis_excel(run_id)
-            
-            # Generate files for top 10 combinations from each side
-            # This prevents generating hundreds of files for large analyses
-            top_combinations_a = [r['columns'] for r in results_a[:10] if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
-            top_combinations_b = [r['columns'] for r in results_b[:10] if r['unique_rows'] > 0 or r['duplicate_count'] > 0]
-            
-            # Get unique set of columns across both sides
-            all_top_combinations = list(set(top_combinations_a + top_combinations_b))
-            
-            files_generated = 2  # CSV and Excel already done
-            
-            for columns in all_top_combinations[:15]:  # Limit to top 15 unique combinations
-                # Generate unique/duplicate files for each side
-                for side, results in [('A', results_a), ('B', results_b)]:
-                    result = next((r for r in results if r['columns'] == columns), None)
-                    if result:
-                        if result['unique_rows'] > 0:
-                            generate_unique_records(run_id, side, columns, file_a_path, file_b_path)
-                            files_generated += 1
-                        if result['duplicate_count'] > 0:
-                            generate_duplicate_records(run_id, side, columns, file_a_path, file_b_path)
-                            files_generated += 1
-                
-                # Generate comparison file for this combination
-                generate_comparison_file(run_id, columns, file_a_path, file_b_path)
-                files_generated += 1
-            
-            update_stage_status(run_id, 'generating_files', 'completed', f'Generated {files_generated} result files for offline access')
-        except Exception as file_gen_error:
-            # Don't fail the whole job if file generation fails
-            print(f"Warning: Some result files could not be generated: {str(file_gen_error)}")
-            update_stage_status(run_id, 'generating_files', 'completed', 'Generated basic result files (some skipped)')
-        
+        update_stage_status(run_id, 'storing_results', 'completed', f'Saved {len(results_a) + len(results_b)} results')
         update_job_status(run_id, status='completed', stage='completed', progress=100)
         
     except Exception as e:
@@ -228,7 +388,183 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         ''', (error_msg, run_id))
         conn.commit()
 
-# NOTE: smart_discover_combinations and analyze_file_combinations moved to analysis.py
+def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None):
+    """Intelligently discover the best column combinations to analyze"""
+    columns = df.columns.tolist()
+    total_rows = len(df)
+    
+    # Filter out excluded columns
+    excluded_cols = set()
+    excluded_combos = set()
+    if excluded_combinations:
+        for exc in excluded_combinations:
+            if len(exc) == 1:
+                # Single column exclusion
+                excluded_cols.add(exc[0])
+            else:
+                # Combination exclusion
+                excluded_combos.add(tuple(sorted(exc)))
+    
+    # Remove excluded single columns from consideration
+    columns = [col for col in columns if col not in excluded_cols]
+    
+    if not columns:
+        return []  # All columns excluded
+    
+    # Strategy 1: Single columns with high cardinality (likely unique)
+    single_col_candidates = []
+    for col in columns:
+        nunique = df[col].nunique()
+        cardinality_ratio = nunique / total_rows
+        if cardinality_ratio >= 0.8:  # At least 80% unique
+            single_col_candidates.append((col, cardinality_ratio))
+    
+    # Sort by cardinality
+    single_col_candidates.sort(key=lambda x: -x[1])
+    
+    # Strategy 2: ID-like columns (contains 'id', 'code', 'number')
+    id_columns = [col for col in columns if any(keyword in col.lower() 
+                  for keyword in ['id', 'code', 'number', 'key', 'identifier'])]
+    
+    # Strategy 3: If user wants specific column count, prioritize combinations with ID columns
+    selected_combos = []
+    
+    # Add top single ID columns
+    for col in id_columns[:5]:
+        if col in columns:
+            selected_combos.append((col,))
+    
+    # Add top single high-cardinality columns
+    for col, ratio in single_col_candidates[:5]:
+        if (col,) not in selected_combos:
+            selected_combos.append((col,))
+    
+    # For 2+ columns, combine ID columns with other significant columns
+    if num_columns >= 2:
+        for id_col in id_columns[:3]:
+            for other_col in columns:
+                if other_col != id_col and len(selected_combos) < max_combinations:
+                    combo = tuple(sorted([id_col, other_col]))
+                    if combo not in selected_combos and len(combo) == num_columns:
+                        selected_combos.append(combo)
+        
+        # Add high-cardinality combinations
+        for i, (col1, _) in enumerate(single_col_candidates[:5]):
+            for col2, _ in single_col_candidates[i+1:5]:
+                combo = tuple(sorted([col1, col2]))
+                if combo not in selected_combos and len(combo) == num_columns and len(selected_combos) < max_combinations:
+                    selected_combos.append(combo)
+    
+    # If still under max, add more combinations systematically
+    if len(selected_combos) < max_combinations:
+        all_combos = list(combinations(columns, num_columns))
+        for combo in all_combos:
+            if combo not in selected_combos:
+                selected_combos.append(combo)
+                if len(selected_combos) >= max_combinations:
+                    break
+    
+    # Filter out explicitly excluded combinations
+    if excluded_combos:
+        filtered_combos = []
+        for combo in selected_combos:
+            sorted_combo = tuple(sorted(combo))
+            # Check if this combination is excluded
+            is_excluded = sorted_combo in excluded_combos
+            # Also check if any column in the combo is in an excluded combination
+            if not is_excluded:
+                for exc_combo in excluded_combos:
+                    if len(exc_combo) == len(combo) and all(c in combo for c in exc_combo):
+                        is_excluded = True
+                        break
+            if not is_excluded:
+                filtered_combos.append(combo)
+        selected_combos = filtered_combos
+    
+    return selected_combos[:max_combinations]
+
+def analyze_file_combinations(df, num_columns, specified_combinations=None, excluded_combinations=None):
+    """Analyze all column combinations for a single file - MEMORY OPTIMIZED"""
+    results = []
+    columns = df.columns.tolist()
+    total_rows = len(df)
+    
+    # Memory optimization: Convert to categorical if beneficial
+    for col in columns:
+        if df[col].dtype == 'object':
+            cardinality_ratio = df[col].nunique() / len(df)
+            if cardinality_ratio < 0.5:
+                df[col] = df[col].astype('category')
+    
+    # Determine which combinations to analyze
+    if specified_combinations:
+        # Use user-specified combinations (limit to prevent memory issues)
+        combos_to_analyze = specified_combinations[:MAX_COMBINATIONS]
+        if len(specified_combinations) > MAX_COMBINATIONS:
+            print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
+    else:
+        # Smart auto-discovery: limit to top combinations
+        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations)
+    
+    for combo in combos_to_analyze:
+        combo_str = ','.join(combo)
+        combo_list = list(combo)
+        
+        # OPTIMIZATION 1: Use value_counts instead of groupby for better performance
+        # This is faster for counting occurrences
+        if len(combo_list) == 1:
+            # Single column - use value_counts (fastest)
+            counts = df[combo_list[0]].value_counts()
+            unique_rows = len(counts)
+            duplicate_mask = counts > 1
+            duplicate_count = counts[duplicate_mask].sum() if duplicate_mask.any() else 0
+            duplicate_rows = duplicate_count - duplicate_mask.sum() if duplicate_mask.any() else 0
+            
+            # Top duplicates
+            top_duplicates = []
+            if duplicate_mask.any():
+                top_dup_counts = counts[duplicate_mask].nlargest(5)
+                top_duplicates = [
+                    {combo_list[0]: idx, 'count': int(val)} 
+                    for idx, val in top_dup_counts.items()
+                ]
+        else:
+            # OPTIMIZATION 2: Use groupby with sort=False for multi-column (faster)
+            grouped = df.groupby(combo_list, sort=False, observed=True).size()
+            
+            unique_rows = len(grouped)
+            duplicate_mask = grouped > 1
+            duplicate_count = grouped[duplicate_mask].sum() if duplicate_mask.any() else 0
+            duplicate_rows = duplicate_count - duplicate_mask.sum() if duplicate_mask.any() else 0
+            
+            # Top duplicates
+            top_duplicates = []
+            if duplicate_mask.any():
+                top_dup = grouped[duplicate_mask].nlargest(5)
+                top_duplicates = [
+                    {**dict(zip(combo_list, idx if isinstance(idx, tuple) else (idx,))), 'count': int(val)}
+                    for idx, val in top_dup.items()
+                ]
+        
+        # Calculate uniqueness score (0-100%)
+        uniqueness_score = (unique_rows / total_rows) * 100 if total_rows > 0 else 0
+        is_unique_key = 1 if unique_rows == total_rows else 0
+        
+        results.append({
+            'columns': combo_str,
+            'total_rows': total_rows,
+            'unique_rows': unique_rows,
+            'duplicate_rows': duplicate_rows,
+            'duplicate_count': int(duplicate_count),
+            'uniqueness_score': round(uniqueness_score, 2),
+            'is_unique_key': is_unique_key,
+            'top_duplicates': top_duplicates
+        })
+    
+    # Sort by uniqueness score (descending) then by duplicate count (ascending)
+    results.sort(key=lambda x: (-x['uniqueness_score'], x['duplicate_count']))
+    
+    return results
 
 @app.get("/", response_class=HTMLResponse)
 async def get_form(request: Request):
@@ -378,8 +714,7 @@ async def compare_files(
             ('validating_data', 2, 'pending'),
             ('analyzing_file_a', 3, 'pending'),
             ('analyzing_file_b', 4, 'pending'),
-            ('storing_results', 5, 'pending'),
-            ('generating_files', 6, 'pending')
+            ('storing_results', 5, 'pending')
         ]
         
         for stage_name, order, status in stages:
@@ -572,28 +907,16 @@ async def workflow_status(request: Request, run_id: int):
 
 @app.get("/download/{run_id}/csv")
 async def download_results_csv(run_id: int):
-    """Download analysis results as CSV - serves pre-generated file if available"""
-    # Check for pre-generated file first
-    cached_file = get_result_file_path(run_id, 'analysis_csv')
-    if cached_file and os.path.exists(cached_file):
+    """Download analysis results as CSV"""
     cursor = conn.cursor()
-        cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
-        run_info = cursor.fetchone()
-        if run_info:
-            filename = f"analysis_run_{run_id}_{run_info[0]}_{run_info[1]}.csv"
-            return FileResponse(
-                path=cached_file,
-                media_type="text/csv",
-                filename=filename
-            )
     
-    # Fallback: Generate on-demand if not cached
-    cursor = conn.cursor()
+    # Get run info
     cursor.execute('SELECT file_a, file_b, num_columns FROM runs WHERE run_id = ?', (run_id,))
     run_info = cursor.fetchone()
     if not run_info:
         raise HTTPException(status_code=404, detail="Run not found")
     
+    # Get analysis results
     cursor.execute('''
         SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
         FROM analysis_results
@@ -602,17 +925,22 @@ async def download_results_csv(run_id: int):
     ''', (run_id,))
     results = cursor.fetchall()
     
+    # Create CSV in memory
     output = io.StringIO()
     writer = csv.writer(output)
+    
+    # Write header
     writer.writerow(['Side', 'Columns', 'Total Rows', 'Unique Rows', 'Duplicate Rows', 
                      'Duplicate Count', 'Uniqueness Score (%)', 'Is Unique Key'])
     
+    # Write data
     for row in results:
         writer.writerow([
             row[0], row[1], row[2], row[3], row[4], row[5], row[6],
             'Yes' if row[7] == 1 else 'No'
         ])
     
+    # Prepare response
     output.seek(0)
     filename = f"analysis_run_{run_id}_{run_info[0]}_{run_info[1]}.csv"
     
@@ -624,23 +952,10 @@ async def download_results_csv(run_id: int):
 
 @app.get("/download/{run_id}/excel")
 async def download_results_excel(run_id: int):
-    """Download analysis results as Excel - serves pre-generated file if available"""
-    # Check for pre-generated file first
-    cached_file = get_result_file_path(run_id, 'analysis_excel')
-    if cached_file and os.path.exists(cached_file):
+    """Download analysis results as Excel"""
     cursor = conn.cursor()
-        cursor.execute('SELECT file_a, file_b FROM runs WHERE run_id = ?', (run_id,))
-        run_info = cursor.fetchone()
-        if run_info:
-            filename = f"analysis_run_{run_id}_{run_info[0]}_{run_info[1]}.xlsx"
-            return FileResponse(
-                path=cached_file,
-                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                filename=filename
-            )
     
-    # Fallback: Generate on-demand if not cached
-    cursor = conn.cursor()
+    # Get run info
     cursor.execute('SELECT file_a, file_b, num_columns, timestamp FROM runs WHERE run_id = ?', (run_id,))
     run_info = cursor.fetchone()
     if not run_info:
@@ -697,19 +1012,7 @@ async def download_results_excel(run_id: int):
 
 @app.get("/download/{run_id}/unique-records")
 async def download_unique_records(run_id: int, side: str = Query(...), columns: str = Query(...)):
-    """Download unique records for a specific column combination - serves pre-generated file if available"""
-    # Check for pre-generated file first
-    cached_file = get_result_file_path(run_id, 'unique_records', side=side, columns=columns)
-    if cached_file and os.path.exists(cached_file):
-        columns_safe = columns.replace(',', '_').replace(' ', '')
-        filename = f"unique_records_run_{run_id}_side_{side}_{columns_safe}.csv"
-        return FileResponse(
-            path=cached_file,
-            media_type="text/csv",
-            filename=filename
-        )
-    
-    # Fallback: Generate on-demand if not cached
+    """Download unique records for a specific column combination"""
     cursor = conn.cursor()
     
     # Get run info
@@ -778,19 +1081,7 @@ async def download_unique_records(run_id: int, side: str = Query(...), columns: 
 
 @app.get("/download/{run_id}/duplicate-records")
 async def download_duplicate_records(run_id: int, side: str = Query(...), columns: str = Query(...)):
-    """Download duplicate records for a specific column combination - serves pre-generated file if available"""
-    # Check for pre-generated file first
-    cached_file = get_result_file_path(run_id, 'duplicate_records', side=side, columns=columns)
-    if cached_file and os.path.exists(cached_file):
-        columns_safe = columns.replace(',', '_').replace(' ', '')
-        filename = f"duplicate_records_run_{run_id}_side_{side}_{columns_safe}.csv"
-        return FileResponse(
-            path=cached_file,
-            media_type="text/csv",
-            filename=filename
-        )
-    
-    # Fallback: Generate on-demand if not cached
+    """Download duplicate records for a specific column combination"""
     cursor = conn.cursor()
     
     # Get run info
@@ -957,19 +1248,7 @@ async def view_comparison(request: Request, run_id: int, columns: str = Query(..
 
 @app.get("/download/{run_id}/comparison")
 async def download_comparison_files(run_id: int, columns: str = Query(...)):
-    """Download comparison files - serves pre-generated file if available"""
-    # Check for pre-generated file first
-    cached_file = get_result_file_path(run_id, 'comparison', columns=columns)
-    if cached_file and os.path.exists(cached_file):
-        columns_safe = columns.replace(',', '_').replace(' ', '')
-        filename = f"comparison_run_{run_id}_{columns_safe}.xlsx"
-        return FileResponse(
-            path=cached_file,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename=filename
-        )
-    
-    # Fallback: Generate on-demand if not cached
+    """Generate comparison files: matched records, only in A, only in B"""
     cursor = conn.cursor()
     
     # Get run info
