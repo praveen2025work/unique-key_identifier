@@ -1,350 +1,203 @@
-# Unique Key Identifier - Advanced Analysis Tool
+# Unique Key Identifier - File Comparison & Analysis Tool
 
-A modern web-based application for analyzing data files (CSV, DAT, TXT) to identify potential unique key combinations through comprehensive duplicate detection and uniqueness scoring. Compares files side-by-side with detailed metrics, visualizations, and data export capabilities.
+A web-based application for analyzing data files to identify unique key combinations, detect duplicates, and compare files side-by-side with detailed metrics.
 
-## 🎯 Key Features
+## Features
 
-### Multiple File Format Support
-- **Smart File Reading**: Supports CSV (.csv), DAT (.dat), and TXT (.txt) files
-- **Auto-Delimiter Detection**: Automatically detects comma, tab, pipe (|), semicolon, or space delimiters
-- **Encoding Support**: Handles UTF-8 and Latin-1 encodings automatically
+- **Multi-format Support**: CSV, DAT, TXT files with auto-delimiter detection
+- **Duplicate Detection**: Identify duplicate records and uniqueness scores
+- **File Comparison**: Side-by-side comparison with match analysis
+- **Data Export**: Export unique/duplicate records and comparison results
+- **Enterprise Features**: Audit logging, notifications, scheduled comparisons
+- **Data Quality Checks**: Pattern analysis and data validation
+- **Modern UI**: Responsive design with interactive features
 
-### Separate File Analysis
-- **Independent Analysis**: Analyzes Side A and Side B separately to identify unique keys for each file
-- **Duplicate Detection**: Identifies exactly how many duplicate values exist for each column combination
-- **Uniqueness Scoring**: Calculates a 0-100% score showing how unique each combination is
+## Quick Start
 
-### Advanced Metrics
-- **Total Rows**: Number of rows in each file
-- **Unique Values**: Count of distinct values for each column combination
-- **Duplicate Count**: Total number of duplicate occurrences
-- **Uniqueness Score**: Percentage indicating suitability as a unique key
-- **Validation Status**: Clear indicators showing which combinations can serve as unique keys
+### Prerequisites
+- Python 3.7 or higher
+- pip (Python package installer)
 
-### Performance Control
-- **Row Limit Control**: Choose exact number of rows to analyze
-  - Perfect for testing large files quickly
-  - Example: Analyze 50k rows from 416k file → 2-3 minutes instead of 10+
-  - 0 = Auto-mode with intelligent sampling
-- **Automatic Sampling**: For files > 50k rows (when row limit = 0)
-- **Hard Limits**: Prevents system overload (max 500k rows)
+### Installation & Setup
 
-### Data Export Features
-
-**Export Unique/Duplicate Records:**
-- Export rows with unique column combinations (CSV format)
-- Export rows with duplicates including occurrence count (CSV format)
-- Available for every column combination analyzed
-- Files auto-named with run ID: `unique_records_run_{id}_side_{A|B}_{columns}.csv`
-
-**Compare A↔B (Side-by-Side Comparison):**
-- **View in Browser**: Interactive web UI with tabs for Matched, Only A, Only B records
-- **Download Excel**: Complete comparison with 5 sheets
-  - Summary sheet with match rate and counts
-  - Matched records (from both perspectives)
-  - Only in Side A (exclusive records)
-  - Only in Side B (exclusive records)
-- Perfect for data reconciliation, version comparison, migration validation
-
-### Productivity Features
-- **Clone Run**: Copy settings from previous runs instantly
-  - Available from home page dropdown, results page, and workflow page
-  - Clones: file names, columns, row limits, all combinations
-  - Saves 2 minutes per iteration when reusing complex setups
-
-### Modern UI
-- **Bootstrap-inspired Design**: Professional blue theme (#337ab7)
-- **Side-by-Side Comparison**: View both file analyses simultaneously
-- **Color-Coded Results**: 
-  - 🟢 Green: Unique records and matched data
-  - 🟡 Orange: Duplicate records
-  - 🔵 Blue: Side A specific data
-  - 🟠 Orange: Side B specific data
-- **Clipboard Copy**: Click any column name or cell value to copy
-- **Progress Bars**: Visual representation of uniqueness scores
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Toast Notifications**: Visual feedback for actions
-
-### Persistent Storage
-- **SQLite Database**: All analysis results stored for future reference
-- **Historical Runs**: Access previous analyses via dropdown
-- **Detailed Metadata**: Timestamps, file names, row counts, and parameters
-
-## 📊 Use Cases
-
-1. **Data Quality Assessment**: Identify which column combinations can serve as primary keys
-2. **Duplicate Detection**: Find and quantify duplicate records in your data
-3. **Validation Planning**: Determine the best combinations for data validation
-4. **File Comparison**: Compare data quality between two versions of the same dataset
-5. **Data Reconciliation**: Find matched, missing, or extra records between systems
-6. **Migration Validation**: Ensure all data migrated successfully between systems
-
-## 🚀 Quick Start
-
-### Automated Setup (Recommended)
-
-**macOS/Linux:**
+**1. Clone or download the repository**
 ```bash
-cd unique_key_identifier
-./run.sh
+cd /path/to/uniquekeyidentifier/unique_key_identifier
 ```
 
-**Windows:**
-```cmd
-cd unique_key_identifier
+**2. Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+**3. Start the application**
+
+**Option A - Using run script (Recommended):**
+```bash
+# macOS/Linux
+./run.sh
+
+# Windows
 run.bat
 ```
 
-The script will automatically:
-- ✓ Check Python installation
-- ✓ Install all dependencies
-- ✓ Check port availability
-- ✓ Start the application
-
-### Manual Setup
-
-1. Navigate to the project directory:
+**Option B - Direct Python:**
    ```bash
-   cd unique_key_identifier
-   ```
+python file_comparator.py
+```
 
-2. Install dependencies:
-   ```bash
-   pip3 install -r requirements.txt
-   ```
+**4. Open your browser**
+```
+http://localhost:8000
+```
 
-3. Run the application:
-   ```bash
-   python3 file_comparator.py
-   ```
+The application will:
+- Create SQLite database on first run
+- Initialize audit logging
+- Start the web server on port 8000
 
-Then open your browser to: **http://localhost:8000**
+## Usage
 
-## 📖 How to Use
+### Basic File Analysis
 
-### Step 1: Prepare Your Files
-Place your data files in the `unique_key_identifier` directory. Both files must have:
-- The same column structure
-- Supported formats: **CSV (.csv)**, **DAT (.dat)**, **TXT (.txt)**
-- Headers in the first row
-- **Auto-detects delimiters:** comma, tab, pipe (|), semicolon, space
+1. Place your CSV/DAT/TXT files in the `unique_key_identifier` directory
+2. Open http://localhost:8000
+3. Enter file names (e.g., `trading_system_a.csv`, `trading_system_b.csv`)
+4. Specify number of columns to combine (or use INCLUDE builder)
+5. Click "Analyze Files"
+6. Review results showing uniqueness scores and duplicate counts
 
-### Step 2: Run Analysis
-1. Enter the names of File A and File B (e.g., `trading_system_a.csv`, `trading_system_b.csv`)
-2. Specify the number of columns to combine (e.g., `2` for pairs, `3` for triplets) OR use INCLUDE builder
-3. **(Optional)** Set Row Limit for faster processing on large files (e.g., `50000` for 50k rows)
-   - `0` or empty = Auto-mode (recommended)
-   - Specific number = Analyze only first N rows
-4. Click "Analyze Files"
+### Data Quality Check
 
-### Step 3: Review Results
-The application will display:
+1. Navigate to http://localhost:8000/data-quality
+2. Enter file name and directory
+3. Run quality analysis to detect patterns, issues, and get recommendations
 
-**For Each File (Side A and Side B):**
-- All possible column combinations sorted by uniqueness
-- Uniqueness score (100% = perfect unique key)
-- Count of unique vs duplicate values
-- Visual progress bar showing uniqueness percentage
+### File Comparison
 
-**Export Options:**
-- **📥 Unique** - Export records with unique column combinations
-- **📥 Dup** - Export duplicate records with occurrence count
-- **👁️ View** - View comparison in browser (interactive UI)
-- **📥 Excel** - Download complete comparison (Excel with 5 sheets)
+1. After analysis, click "View" button for any column combination
+2. See matched records, records only in A, records only in B
+3. Export results as Excel file with detailed breakdown
 
-### Step 4: Compare Files
-Click the **👁️ View** button to see:
-- Match rate percentage
-- Matched records (in both files)
-- Records only in Side A
-- Records only in Side B
-- Interactive tabs with data tables
-- Click any cell to copy value to clipboard
+### Enterprise Features
 
-## 🔍 Understanding the Results
+**Audit Logging:**
+- All user actions and system events are logged
+- View audit logs at http://localhost:8000/audit/logs
 
-### Uniqueness Score
-- **100%**: Perfect unique key - every combination of values appears exactly once
-- **70-99%**: High uniqueness - mostly unique but some duplicates exist
-- **Below 70%**: Low uniqueness - many duplicate values present
+**Notifications:**
+- Configure email/Slack notifications in `config.py`
+- Get notified when scheduled comparisons complete
 
-### Comparison Results
-- **Matched**: Records that exist in BOTH files (intersection)
-- **Only in Side A**: Records exclusive to File A (may be deletions or unique data)
-- **Only in Side B**: Records exclusive to File B (may be additions or unique data)
-- **Match Rate**: Percentage of Side A records found in Side B
+**Scheduled Comparisons:**
+- View scheduler at http://localhost:8000/scheduler
+- Create recurring comparison jobs with cron syntax
+- Monitor job status and history
 
-### When to Use Different Column Counts
+## Configuration
 
-**1 Column**: 
-- Quick single-field validation
-- Best for IDs, unique identifiers
+Edit `config.py` to customize:
 
-**2 Columns**: 
-- Quick validation with two fields (e.g., desk + book)
-- Best for smaller datasets
+```python
+# Database
+DATABASE_PATH = "file_comparison.db"
 
-**3 Columns**:
-- More specific combinations (e.g., desk + book + sedol)
-- Better for larger datasets with more complexity
+# Email Notifications
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USERNAME = "your-email@gmail.com"
+SMTP_PASSWORD = "your-app-password"
+NOTIFICATION_EMAIL = "recipient@example.com"
 
-**4+ Columns**:
-- Very specific combinations
-- Use INCLUDE builder for precise combinations
+# Slack Notifications
+SLACK_WEBHOOK_URL = "your-webhook-url"
+```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 unique_key_identifier/
-├── file_comparator.py        # FastAPI application with analysis logic
-├── templates/
-│   ├── index_modern.html     # Modern responsive web interface
-│   ├── results.html          # Results display page
-│   ├── workflow.html         # Processing workflow page
-│   └── comparison_view.html  # Comparison viewer
-├── trading_system_a.csv      # Sample trading data file A
-├── trading_system_b.csv      # Sample trading data file B
-├── generate_trading_data.py  # Data generator script
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
-└── file_comparison.db        # SQLite database (created on first run)
+├── file_comparator.py          # Main FastAPI application
+├── analysis.py                 # Analysis logic
+├── database.py                 # Database operations
+├── data_quality.py             # Data quality checks
+├── audit_logger.py             # Audit logging
+├── notifications.py            # Email/Slack notifications
+├── scheduler.py                # Job scheduling
+├── config.py                   # Configuration
+├── requirements.txt            # Python dependencies
+├── run.sh / run.bat            # Startup scripts
+├── templates/                  # HTML templates
+│   ├── index_modern.html       # Main interface
+│   ├── results.html            # Results page
+│   ├── comparison_view.html    # Comparison viewer
+│   ├── data_quality.html       # Data quality UI
+│   └── workflow.html           # Workflow page
+└── README.md                   # This file
 ```
 
-## 🗄️ Database Schema
+## Dependencies
 
-### runs
-Stores metadata about each analysis run
-- `run_id`: Unique identifier
-- `timestamp`: When the analysis was performed
-- `file_a`, `file_b`: File names
-- `num_columns`: Number of columns analyzed
-- `file_a_rows`, `file_b_rows`: Row counts
+Core packages (installed via requirements.txt):
+- fastapi - Web framework
+- uvicorn - ASGI server
+- pandas - Data processing
+- sqlalchemy - Database ORM
+- jinja2 - Template engine
+- APScheduler - Job scheduling
+- openpyxl, xlsxwriter - Excel export
 
-### analysis_results
-Stores detailed metrics for each column combination
-- `side`: A or B
-- `columns`: Column combination (comma-separated)
-- `total_rows`: Total rows in file
-- `unique_rows`: Count of unique combinations
-- `duplicate_rows`: Count of duplicate rows
-- `duplicate_count`: Total duplicate occurrences
-- `uniqueness_score`: Percentage score (0-100)
-- `is_unique_key`: Boolean indicator
+## Troubleshooting
 
-### duplicate_samples
-Stores examples of duplicate values
-- `duplicate_value`: The duplicated combination
-- `occurrence_count`: How many times it appears
+**Port 8000 already in use:**
+```bash
+# macOS/Linux
+lsof -ti:8000 | xargs kill -9
+./run.sh
 
-## 🎨 Sample Data
+# Windows
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+run.bat
+```
 
-The included sample files demonstrate the analysis:
+**Import errors:**
+```bash
+pip install -r requirements.txt --upgrade
+```
 
-**trading_system_a.csv**: Trading data with 124 columns and various combinations
-**trading_system_b.csv**: Trading data with similar structure for comparison
+**Database locked:**
+```bash
+# Stop server (Ctrl+C) and restart
+./run.sh
+```
 
-Try analyzing with:
-- **1 column**: See which single columns like "trade_id" have duplicates
-- **2 columns**: See which pairs like (desk, book) have duplicates
-- **3 columns**: Analyze (desk, book, sedol) combinations
+**Files not found:**
+- Ensure files are in the `unique_key_identifier` directory
+- Check file names (case-sensitive)
+- Verify file format (CSV, DAT, or TXT)
 
-## 🛠️ Technical Stack
+## Performance Tips
 
-- **Backend**: FastAPI (Python)
-- **Database**: SQLite
-- **Frontend**: HTML5, CSS3 with Bootstrap-inspired design
-- **Data Processing**: pandas, itertools
-- **Server**: Uvicorn (ASGI server)
+- Use Row Limit for large files (e.g., 50000 rows)
+- Use INCLUDE combinations instead of auto-discovery
+- Files over 500k rows will be automatically sampled
 
-## 📋 Requirements
+## Data Privacy
 
-- Python 3.7+
-- FastAPI
-- Uvicorn
-- Pandas
-- Jinja2
-- python-multipart
-- xlsxwriter
-- openpyxl
-
-## ⚡ Performance
-
-- Handles large CSV files efficiently
-- In-memory analysis with pandas
-- Persistent storage in SQLite
-- Results cached in database for instant retrieval
-- Optimized set operations for fast comparisons
-
-## 🔒 Data Privacy
-
-- All data processing happens locally
+- All processing happens locally on your machine
 - No external API calls
 - Data stored only in local SQLite database
-- No data leaves your machine
-- Export files stream directly to browser (no server storage)
+- Export files stream directly to browser
 
-## 🐛 Troubleshooting
+## Support & Documentation
 
-**Issue**: Port 8000 already in use
-```bash
-# Solution: Kill existing process and restart
-lsof -ti:8000 | xargs kill -9
-python3 file_comparator.py
-```
+For detailed feature documentation, see inline help in the web interface.
 
-**Issue**: Files not found
-- Ensure CSV files are in the `unique_key_identifier` directory
-- Check file names are spelled correctly (case-sensitive)
-
-**Issue**: "Files have different columns" error
-- Both files must have identical column names in the same order
-- Check for extra spaces or typos in column headers
-
-**Issue**: Export buttons return "Not Found"
-- Server needs to be restarted after updates
-- Press Ctrl+C and run `./run.sh` again
-
-**Issue**: Slow performance with large files
-- Use Row Limit feature (e.g., 50000 for 50k rows)
-- Use INCLUDE combinations instead of auto-discovery
-- Ensure files are under 500k rows
-
-## 🎨 UI Features
-
-### Color Scheme
-- **Primary**: #337ab7 (Bootstrap blue)
-- **Success**: #5cb85c (Green) for matches and unique records
-- **Info**: #5bc0de (Light blue) for Side A specific data
-- **Warning**: #f0ad4e (Orange) for Side B specific data
-- **Secondary**: #6c757d (Gray) for navigation
-
-### Interactive Features
-- **Click to Copy**: Click any column name to copy to clipboard
-- **Cell Copy**: Click table cells in comparison view to copy values
-- **Toast Notifications**: Visual feedback when copying
-- **Tab Navigation**: Switch between matched/only-A/only-B views
-- **Hover Effects**: Visual feedback on all interactive elements
-
-## 📈 What's New in Latest Version
-
-**Version 2.2:**
-- ✅ Export unique records to CSV
-- ✅ Export duplicate records with occurrence count
-- ✅ Compare A↔B with web viewer
-- ✅ Download comparison as Excel (5 sheets)
-- ✅ Clipboard copy for columns and cells
-- ✅ Bootstrap-inspired color theme (#337ab7)
-- ✅ Toast notifications
-- ✅ Optimized performance (no UI freeze)
-
-## 📝 License
+## License
 
 This project is provided as-is for educational and commercial use.
 
-## 🤝 Contributing
-
-Feel free to extend and modify this application for your specific needs!
-
 ---
 
-**Built with ❤️ using FastAPI and modern web technologies**
+**Built with FastAPI and modern web technologies**
