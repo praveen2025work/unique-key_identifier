@@ -31,7 +31,17 @@ from result_generator import (
 )
 from data_quality import perform_data_quality_check, perform_single_file_quality_check
 
-app = FastAPI()
+# Enterprise features
+from audit_logger import audit_logger
+from scheduler import job_scheduler
+from notifications import notification_manager
+from run_comparison import run_comparator
+
+app = FastAPI(
+    title="Unique Key Identifier - Enterprise Edition",
+    description="Enterprise-grade data comparison and unique key identification tool",
+    version="2.0.0"
+)
 templates = Jinja2Templates(directory=os.path.join(SCRIPT_DIR, "templates"))
 
 # NOTE: Functions moved to modular files:
@@ -1510,6 +1520,275 @@ async def get_run(request: Request, run_id: int, group: int = Query(None), page:
         traceback.print_exc()
         error_msg = str(e) if str(e) else repr(e)
         raise HTTPException(status_code=500, detail=f"An error occurred: {error_msg}")
+
+# ========================================
+# ENTERPRISE API ENDPOINTS
+# ========================================
+
+@app.get("/api/audit-log")
+async def get_audit_log(
+    run_id: int = Query(None),
+    user_id: str = Query(None),
+    event_type: str = Query(None),
+    limit: int = Query(100, le=1000)
+):
+    """Get audit log with filters"""
+    try:
+        logs = audit_logger.get_audit_trail(
+            run_id=run_id,
+            user_id=user_id,
+            event_type=event_type,
+            limit=limit
+        )
+        return JSONResponse({"audit_log": logs, "count": len(logs)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/compliance-report")
+async def get_compliance_report(
+    start_date: str = Query(...),
+    end_date: str = Query(...)
+):
+    """Generate compliance report for audit purposes"""
+    try:
+        report = audit_logger.generate_compliance_report(start_date, end_date)
+        return JSONResponse(report)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/scheduled-jobs")
+async def create_scheduled_job(
+    job_name: str = Form(...),
+    file_a: str = Form(...),
+    file_b: str = Form(...),
+    num_columns: int = Form(...),
+    schedule_type: str = Form(...),
+    schedule_config: str = Form(...),
+    description: str = Form(None),
+    notification_emails: str = Form(None)
+):
+    """Create a new scheduled job"""
+    try:
+        import json
+        config = json.loads(schedule_config)
+        
+        job_id = job_scheduler.create_scheduled_job(
+            job_name=job_name,
+            file_a=file_a,
+            file_b=file_b,
+            num_columns=num_columns,
+            schedule_type=schedule_type,
+            schedule_config=config,
+            description=description,
+            notification_emails=notification_emails
+        )
+        
+        audit_logger.log_event('config_change', f'Created scheduled job: {job_name}')
+        
+        return JSONResponse({"job_id": job_id, "status": "created"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/scheduled-jobs")
+async def list_scheduled_jobs():
+    """List all scheduled jobs"""
+    try:
+        jobs = job_scheduler.get_all_jobs()
+        return JSONResponse({"jobs": jobs, "count": len(jobs)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/scheduled-jobs/{job_id}/history")
+async def get_job_history(job_id: int, limit: int = Query(50, le=500)):
+    """Get execution history for a job"""
+    try:
+        history = job_scheduler.get_job_history(job_id, limit)
+        return JSONResponse({"history": history, "count": len(history)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/scheduled-jobs/{job_id}/enable")
+async def enable_job(job_id: int):
+    """Enable a scheduled job"""
+    try:
+        job_scheduler.enable_job(job_id)
+        return JSONResponse({"status": "enabled"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/scheduled-jobs/{job_id}/disable")
+async def disable_job(job_id: int):
+    """Disable a scheduled job"""
+    try:
+        job_scheduler.disable_job(job_id)
+        return JSONResponse({"status": "disabled"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.delete("/api/scheduled-jobs/{job_id}")
+async def delete_job(job_id: int):
+    """Delete a scheduled job"""
+    try:
+        job_scheduler.delete_job(job_id)
+        return JSONResponse({"status": "deleted"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/compare-runs/{run_id_1}/{run_id_2}")
+async def compare_runs(run_id_1: int, run_id_2: int):
+    """Compare two analysis runs"""
+    try:
+        comparison = run_comparator.compare_runs(run_id_1, run_id_2)
+        if not comparison:
+            return JSONResponse({"error": "One or both runs not found"}, status_code=404)
+        return JSONResponse(comparison)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/trends/{file_a}/{file_b}")
+async def get_trends(file_a: str, file_b: str, days: int = Query(30, le=365)):
+    """Get historical trends for specific files"""
+    try:
+        trend = run_comparator.get_historical_trend(file_a, file_b, days)
+        return JSONResponse({"trends": trend, "count": len(trend)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/anomalies/{file_a}/{file_b}")
+async def detect_anomalies(file_a: str, file_b: str):
+    """Detect anomalies in run history"""
+    try:
+        anomalies = run_comparator.detect_anomalies(file_a, file_b)
+        return JSONResponse({"anomalies": anomalies, "count": len(anomalies)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/trend-report/{file_a}/{file_b}")
+async def get_trend_report(file_a: str, file_b: str, days: int = Query(30, le=365)):
+    """Generate comprehensive trend report"""
+    try:
+        report = run_comparator.generate_trend_report(file_a, file_b, days)
+        if not report:
+            return JSONResponse({"error": "Insufficient data for report"}, status_code=404)
+        return JSONResponse(report)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/notify/test")
+async def test_notification(
+    email: str = Form(None),
+    webhook_url: str = Form(None)
+):
+    """Test notification configuration"""
+    try:
+        results = {}
+        
+        if email:
+            success, error = notification_manager.send_email(
+                email,
+                "Test Notification - Unique Key Identifier",
+                "This is a test email from your Unique Key Identifier Enterprise Edition.",
+                "<h2>Test Notification</h2><p>Your email notifications are configured correctly!</p>"
+            )
+            results['email'] = {'success': success, 'error': error}
+        
+        if webhook_url:
+            success, error = notification_manager.send_webhook(
+                webhook_url,
+                {'event': 'test', 'message': 'Test webhook notification'}
+            )
+            results['webhook'] = {'success': success, 'error': error}
+        
+        return JSONResponse(results)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/notification-history")
+async def get_notification_history(run_id: int = Query(None), limit: int = Query(100, le=1000)):
+    """Get notification history"""
+    try:
+        history = notification_manager.get_notification_history(run_id, limit)
+        return JSONResponse({"history": history, "count": len(history)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/system/health")
+async def system_health():
+    """Get system health status"""
+    try:
+        import psutil
+        
+        health = {
+            'cpu_percent': psutil.cpu_percent(interval=1),
+            'memory_percent': psutil.virtual_memory().percent,
+            'disk_usage_percent': psutil.disk_usage('/').percent,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'healthy'
+        }
+        
+        # Determine status
+        if health['cpu_percent'] > 90 or health['memory_percent'] > 90:
+            health['status'] = 'critical'
+        elif health['cpu_percent'] > 70 or health['memory_percent'] > 70:
+            health['status'] = 'warning'
+        
+        # Log to database
+        audit_logger.log_system_health(
+            cpu_percent=health['cpu_percent'],
+            memory_percent=health['memory_percent'],
+            disk_usage_percent=health['disk_usage_percent'],
+            status=health['status']
+        )
+        
+        return JSONResponse(health)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "status": "unknown"}, status_code=500)
+
+@app.get("/api/system/metrics")
+async def system_metrics(hours: int = Query(24, le=168)):
+    """Get system metrics history"""
+    try:
+        metrics = audit_logger.get_system_health_history(hours)
+        return JSONResponse({"metrics": metrics, "count": len(metrics)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ========================================
+# APPLICATION LIFECYCLE
+# ========================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize enterprise features on startup"""
+    print("=" * 60)
+    print("🚀 Unique Key Identifier - Enterprise Edition v2.0")
+    print("=" * 60)
+    
+    # Start job scheduler
+    job_scheduler.start_scheduler()
+    
+    # Log startup
+    audit_logger.log_event('system_startup', 'Application started', status='success')
+    
+    print("✅ Enterprise features initialized")
+    print("📊 Audit logging: ENABLED")
+    print("⏰ Job scheduler: RUNNING")
+    print("📧 Notifications: CONFIGURED")
+    print("📈 Analytics: ENABLED")
+    print("=" * 60)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    print("\n🛑 Shutting down...")
+    
+    # Stop job scheduler
+    job_scheduler.stop_scheduler()
+    
+    # Log shutdown
+    audit_logger.log_event('system_shutdown', 'Application stopped', status='success')
+    
+    print("✅ Graceful shutdown complete")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
