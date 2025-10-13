@@ -1,0 +1,11 @@
+id,name,email,location,manager_id
+1,John Doe,john.doe@company.com,New York,101
+2,Jane Smith,jane.smith@company.com,Chicago,102
+3,Bob Johnson,bob.johnson@company.com,San Francisco,101
+4,Alice Williams,alice.williams@company.com,Boston,103
+5,Charlie Brown,charlie.brown@company.com,Austin,104
+6,Diana Davis,diana.davis@company.com,Seattle,101
+7,Eve Wilson,eve.wilson@company.com,Denver,102
+8,Frank Miller,frank.miller@company.com,Miami,103
+9,Grace Taylor,grace.taylor@company.com,Portland,104
+10,Henry Anderson,henry.anderson@company.com,Phoenix,101

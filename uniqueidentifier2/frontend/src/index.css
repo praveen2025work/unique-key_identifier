@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased;
+  }
+}
+
+@layer components {
+  /* Custom Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 rounded;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded transition-colors;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+
+  /* Enhanced Button Styles */
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+  }
+
+  /* Column Button Hover Effect */
+  .column-btn {
+    @apply relative overflow-hidden transition-all duration-150;
+  }
+  
+  .column-btn::before {
+    content: '';
+    @apply absolute top-1/2 left-1/2 w-0 h-0 rounded-full bg-primary/10 -translate-x-1/2 -translate-y-1/2 transition-all duration-300;
+  }
+  
+  .column-btn:hover::before {
+    @apply w-full h-full;
+  }
+  
+  .column-btn:hover {
+    @apply -translate-y-0.5 shadow-md;
+  }
+
+  /* Combination Chip Styles */
+  .combo-chip {
+    @apply transition-all duration-200;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+    backdrop-filter: blur(10px);
+  }
+  
+  .combo-chip:hover {
+    @apply shadow-md translate-x-0.5;
+  }
+
+  /* Panel Glow Effects */
+  .panel-glow-green {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+  }
+  
+  .panel-glow-red {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Loading Pulse */
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
