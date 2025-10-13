@@ -1,0 +1,11 @@
+id,name,email,department,salary
+1,John Doe,john.doe@company.com,Engineering,75000
+2,Jane Smith,jane.smith@company.com,Marketing,65000
+3,Bob Johnson,bob.johnson@company.com,Engineering,80000
+4,Alice Williams,alice.williams@company.com,HR,60000
+5,Charlie Brown,charlie.brown@company.com,Finance,70000
+6,Diana Davis,diana.davis@company.com,Engineering,85000
+7,Eve Wilson,eve.wilson@company.com,Marketing,62000
+8,Frank Miller,frank.miller@company.com,HR,58000
+9,Grace Taylor,grace.taylor@company.com,Finance,72000
+10,Henry Anderson,henry.anderson@company.com,Engineering,78000
