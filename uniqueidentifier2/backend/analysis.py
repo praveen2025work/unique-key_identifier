@@ -1,0 +1,184 @@
+"""
+Data analysis operations - combination discovery and uniqueness analysis
+"""
+from itertools import combinations
+from config import MAX_COMBINATIONS
+
+def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None):
+    """Intelligently discover the best column combinations to analyze"""
+    columns = df.columns.tolist()
+    total_rows = len(df)
+    
+    # Filter out excluded columns
+    excluded_cols = set()
+    excluded_combos = set()
+    if excluded_combinations:
+        for exc in excluded_combinations:
+            if len(exc) == 1:
+                # Single column exclusion
+                excluded_cols.add(exc[0])
+            else:
+                # Combination exclusion
+                excluded_combos.add(tuple(sorted(exc)))
+    
+    # Remove excluded single columns from consideration
+    columns = [col for col in columns if col not in excluded_cols]
+    
+    if not columns:
+        return []  # All columns excluded
+    
+    # Strategy 1: Single columns with high cardinality (likely unique)
+    single_col_candidates = []
+    for col in columns:
+        nunique = df[col].nunique()
+        cardinality_ratio = nunique / total_rows
+        if cardinality_ratio >= 0.8:  # At least 80% unique
+            single_col_candidates.append((col, cardinality_ratio))
+    
+    # Sort by cardinality
+    single_col_candidates.sort(key=lambda x: -x[1])
+    
+    # Strategy 2: ID-like columns (contains 'id', 'code', 'number')
+    id_columns = [col for col in columns if any(keyword in col.lower() 
+                  for keyword in ['id', 'code', 'number', 'key', 'identifier'])]
+    
+    # Strategy 3: If user wants specific column count, prioritize combinations with ID columns
+    selected_combos = []
+    
+    # Add top single ID columns
+    for col in id_columns[:5]:
+        if col in columns:
+            selected_combos.append((col,))
+    
+    # Add top single high-cardinality columns
+    for col, ratio in single_col_candidates[:5]:
+        if (col,) not in selected_combos:
+            selected_combos.append((col,))
+    
+    # For 2+ columns, combine ID columns with other significant columns
+    if num_columns >= 2:
+        for id_col in id_columns[:3]:
+            for other_col in columns:
+                if other_col != id_col and len(selected_combos) < max_combinations:
+                    combo = tuple(sorted([id_col, other_col]))
+                    if combo not in selected_combos and len(combo) == num_columns:
+                        selected_combos.append(combo)
+        
+        # Add high-cardinality combinations
+        for i, (col1, _) in enumerate(single_col_candidates[:5]):
+            for col2, _ in single_col_candidates[i+1:5]:
+                combo = tuple(sorted([col1, col2]))
+                if combo not in selected_combos and len(combo) == num_columns and len(selected_combos) < max_combinations:
+                    selected_combos.append(combo)
+    
+    # If still under max, add more combinations systematically
+    if len(selected_combos) < max_combinations:
+        all_combos = list(combinations(columns, num_columns))
+        for combo in all_combos:
+            if combo not in selected_combos:
+                selected_combos.append(combo)
+                if len(selected_combos) >= max_combinations:
+                    break
+    
+    # Filter out explicitly excluded combinations
+    if excluded_combos:
+        filtered_combos = []
+        for combo in selected_combos:
+            sorted_combo = tuple(sorted(combo))
+            # Check if this combination is excluded
+            is_excluded = sorted_combo in excluded_combos
+            # Also check if any column in the combo is in an excluded combination
+            if not is_excluded:
+                for exc_combo in excluded_combos:
+                    if len(exc_combo) == len(combo) and all(c in combo for c in exc_combo):
+                        is_excluded = True
+                        break
+            if not is_excluded:
+                filtered_combos.append(combo)
+        selected_combos = filtered_combos
+    
+    return selected_combos[:max_combinations]
+
+def analyze_file_combinations(df, num_columns, specified_combinations=None, excluded_combinations=None):
+    """Analyze all column combinations for a single file - MEMORY OPTIMIZED"""
+    results = []
+    columns = df.columns.tolist()
+    total_rows = len(df)
+    
+    # Memory optimization: Convert to categorical if beneficial
+    for col in columns:
+        if df[col].dtype == 'object':
+            cardinality_ratio = df[col].nunique() / len(df)
+            if cardinality_ratio < 0.5:
+                df[col] = df[col].astype('category')
+    
+    # Determine which combinations to analyze
+    if specified_combinations:
+        # Use user-specified combinations (limit to prevent memory issues)
+        combos_to_analyze = specified_combinations[:MAX_COMBINATIONS]
+        if len(specified_combinations) > MAX_COMBINATIONS:
+            print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
+    else:
+        # Smart auto-discovery: limit to top combinations
+        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations)
+    
+    for combo in combos_to_analyze:
+        combo_str = ','.join(combo)
+        combo_list = list(combo)
+        
+        # OPTIMIZATION 1: Use value_counts instead of groupby for better performance
+        # This is faster for counting occurrences
+        if len(combo_list) == 1:
+            # Single column - use value_counts (fastest)
+            counts = df[combo_list[0]].value_counts()
+            unique_rows = len(counts)
+            duplicate_mask = counts > 1
+            duplicate_count = counts[duplicate_mask].sum() if duplicate_mask.any() else 0
+            duplicate_rows = duplicate_count - duplicate_mask.sum() if duplicate_mask.any() else 0
+            
+            # Top duplicates
+            top_duplicates = []
+            if duplicate_mask.any():
+                top_dup_counts = counts[duplicate_mask].nlargest(5)
+                top_duplicates = [
+                    {combo_list[0]: idx, 'count': int(val)} 
+                    for idx, val in top_dup_counts.items()
+                ]
+        else:
+            # OPTIMIZATION 2: Use groupby with sort=False for multi-column (faster)
+            grouped = df.groupby(combo_list, sort=False, observed=True).size()
+            
+            unique_rows = len(grouped)
+            duplicate_mask = grouped > 1
+            duplicate_count = grouped[duplicate_mask].sum() if duplicate_mask.any() else 0
+            duplicate_rows = duplicate_count - duplicate_mask.sum() if duplicate_mask.any() else 0
+            
+            # Top duplicates
+            top_duplicates = []
+            if duplicate_mask.any():
+                top_dup = grouped[duplicate_mask].nlargest(5)
+                top_duplicates = [
+                    {**dict(zip(combo_list, idx if isinstance(idx, tuple) else (idx,))), 'count': int(val)}
+                    for idx, val in top_dup.items()
+                ]
+        
+        # Calculate uniqueness score (0-100%)
+        uniqueness_score = (unique_rows / total_rows) * 100 if total_rows > 0 else 0
+        is_unique_key = 1 if unique_rows == total_rows else 0
+        
+        results.append({
+            'columns': combo_str,
+            'total_rows': total_rows,
+            'unique_rows': unique_rows,
+            'duplicate_rows': duplicate_rows,
+            'duplicate_count': int(duplicate_count),
+            'uniqueness_score': round(uniqueness_score, 2),
+            'is_unique_key': is_unique_key,
+            'top_duplicates': top_duplicates
+        })
+    
+    # Sort by uniqueness score (descending) then by duplicate count (ascending)
+    results.sort(key=lambda x: (-x['uniqueness_score'], x['duplicate_count']))
+    
+    return results
+

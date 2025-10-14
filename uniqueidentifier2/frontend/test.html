@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">
+            🔑 Unique Key Identifier v2.0
+        </h1>
+        <p class="text-gray-600 text-center mb-6">
+            Test page to verify the setup is working
+        </p>
+        <div class="space-y-4">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 class="font-semibold text-green-800">✅ Frontend Status</h3>
+                <p class="text-green-700 text-sm">Test page is loading successfully!</p>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-semibold text-blue-800">🚀 Server Status</h3>
+                <p class="text-blue-700 text-sm" id="backend-status">Testing backend connection...</p>
+            </div>
+            <button 
+                onclick="testBackend()"
+                class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+                🔗 Test Backend Connection
+            </button>
+        </div>
+    </div>
+
+    <script>
+        async function testBackend() {
+            const statusElement = document.getElementById('backend-status');
+            statusElement.textContent = 'Testing...';
+            
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                statusElement.textContent = `✅ Backend is healthy! (${data.status})`;
+                statusElement.className = 'text-green-700 text-sm';
+            } catch (error) {
+                statusElement.textContent = `❌ Backend connection failed: ${error.message}`;
+                statusElement.className = 'text-red-700 text-sm';
+            }
+        }
+
+        // Test backend on page load
+        testBackend();
+    </script>
+</body>
+</html>
