@@ -22,30 +22,81 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
   const [filterText, setFilterText] = useState('');
   const [showUniqueOnly, setShowUniqueOnly] = useState(false);
   const [selectedComboColumns, setSelectedComboColumns] = useState('');
+  
+  // Lazy loading states
+  const [workflowLoaded, setWorkflowLoaded] = useState(false);
+  const [analysisLoaded, setAnalysisLoaded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50); // Smaller page size for extreme datasets
 
   useEffect(() => {
-    loadAllData();
+    loadInitialData();
   }, [runId]);
+  
+  // Load workflow data only when tab is clicked
+  useEffect(() => {
+    if (activeTab === 'workflow' && !workflowLoaded) {
+      loadWorkflowData();
+    }
+  }, [activeTab, workflowLoaded]);
+  
+  // Load analysis data with pagination when tab is clicked
+  useEffect(() => {
+    if (activeTab === 'analysis' && !analysisLoaded) {
+      loadAnalysisData();
+    }
+  }, [activeTab, analysisLoaded, currentPage, pageSize]);
 
-  const loadAllData = async () => {
+  const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [detailsData, statusData] = await Promise.all([
-        apiService.getRunDetails(runId),
-        apiService.getJobStatus(runId).catch(() => null)
-      ]);
-      setDetails(detailsData);
-      setJobStatus(statusData);
+      // Load only summary first (lightweight, fast)
+      const summaryUrl = `${apiService['baseUrl']}/api/run/${runId}/summary`;
+      const response = await fetch(summaryUrl);
+      if (!response.ok) throw new Error('Failed to load summary');
+      const summaryData = await response.json();
       
-      // Set default comparison columns (best match from analysis)
-      if (detailsData.results_a.length > 0) {
-        setSelectedComboColumns(detailsData.results_a[0].columns);
-      }
+      setDetails({
+        ...summaryData,
+        results_a: [],
+        results_b: []
+      });
+      
+      toast.success('Summary loaded - click tabs to view details', { duration: 2000 });
     } catch (error) {
-      toast.error('Failed to load results');
+      toast.error('Failed to load summary');
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadWorkflowData = async () => {
+    try {
+      const statusData = await apiService.getJobStatus(runId);
+      setJobStatus(statusData);
+      setWorkflowLoaded(true);
+    } catch (error) {
+      toast.error('Failed to load workflow data');
+      console.error(error);
+    }
+  };
+  
+  const loadAnalysisData = async () => {
+    try {
+      toast.loading('Loading analysis results...', { id: 'load-analysis' });
+      const detailsData = await apiService.getRunDetailsWithPagination(runId, currentPage, pageSize);
+      setDetails(detailsData);
+      setAnalysisLoaded(true);
+      
+      // Set default comparison columns
+      if (detailsData.results_a.length > 0) {
+        setSelectedComboColumns(detailsData.results_a[0].columns);
+      }
+      toast.success('Analysis results loaded', { id: 'load-analysis' });
+    } catch (error) {
+      toast.error('Failed to load analysis results', { id: 'load-analysis' });
+      console.error(error);
     }
   };
 
@@ -227,7 +278,15 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
         <div className="bg-white rounded-lg shadow-lg p-6">
           
           {/* Analysis Results Tab */}
-          {activeTab === 'analysis' && (
+          {activeTab === 'analysis' && !analysisLoaded && (
+            <div className="flex flex-col items-center justify-center p-12">
+              <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+              <span className="mt-4 text-lg text-gray-600 font-medium">Loading analysis results...</span>
+              <span className="mt-2 text-sm text-gray-500">This may take a moment for large datasets</span>
+            </div>
+          )}
+          
+          {activeTab === 'analysis' && analysisLoaded && (
             <div>
               {/* Files Info */}
               <div className="bg-gray-50 p-4 rounded-lg mb-6">
@@ -384,7 +443,14 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
           )}
 
           {/* Workflow Tab */}
-          {activeTab === 'workflow' && jobStatus && (
+          {activeTab === 'workflow' && !workflowLoaded && (
+            <div className="flex flex-col items-center justify-center p-12">
+              <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+              <span className="mt-4 text-lg text-gray-600 font-medium">Loading workflow data...</span>
+            </div>
+          )}
+          
+          {activeTab === 'workflow' && workflowLoaded && jobStatus && (
             <div>
               <h3 className="text-2xl font-bold text-gray-800 mb-6">Processing Workflow</h3>
               

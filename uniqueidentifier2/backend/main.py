@@ -22,7 +22,8 @@ from config import (
     LARGE_FILE_THRESHOLD, SAMPLE_SIZE_FOR_LARGE_FILES,
     SKIP_FILE_GENERATION_THRESHOLD, MAX_COMBINATIONS_TO_GENERATE,
     VERY_LARGE_FILE_THRESHOLD, INTELLIGENT_SAMPLING_SIZE,
-    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, COMPARISON_BATCH_SIZE
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, COMPARISON_BATCH_SIZE,
+    EXTREME_LARGE_FILE_THRESHOLD, EXTREME_SAMPLING_SIZE
 )
 from database import conn, update_job_status, update_stage_status, create_tables
 from file_processing import detect_delimiter, get_file_stats, estimate_processing_time, read_data_file
@@ -81,7 +82,12 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             rows_to_read = min(max_rows_limit, max_rows_available)
             read_mode = f"user-limited to {rows_to_read:,} rows"
         else:
-            if max_rows_available > LARGE_FILE_THRESHOLD:
+            if max_rows_available >= EXTREME_LARGE_FILE_THRESHOLD:
+                # Extreme files (50M+): Use 2M sample (~3-4%)
+                use_sampling = True
+                rows_to_read = None
+                read_mode = f"extreme-sampling ({EXTREME_SAMPLING_SIZE:,} sample from {max_rows_available:,})"
+            elif max_rows_available > LARGE_FILE_THRESHOLD:
                 use_sampling = True
                 rows_to_read = None
                 read_mode = f"intelligent-sampling ({SAMPLE_SIZE_FOR_LARGE_FILES:,} sample)"
@@ -307,6 +313,14 @@ async def preview_columns(
                 "file_a_rows": row_count_a,
                 "file_b_rows": row_count_b
             }, status_code=400)
+        elif max_rows >= EXTREME_LARGE_FILE_THRESHOLD:
+            sample_size = EXTREME_SAMPLING_SIZE
+            warnings.append(f"🚀 EXTREME dataset detected ({max_rows:,} rows - {max_rows/1000000:.1f}M)!")
+            warnings.append(f"📊 Aggressive sampling: {sample_size:,} rows ({(sample_size/max_rows*100):.2f}%)")
+            warnings.append("⚡ Estimated processing time: 10-15 minutes")
+            warnings.append("💾 IMPORTANT: Results load in pages of 50 for performance")
+            warnings.append("⚠️  Workflow/Quality tabs load on-demand only")
+            performance_level = "extreme"
         elif max_rows >= VERY_LARGE_FILE_THRESHOLD:
             warnings.append(f"🚀 Ultra-large files detected ({max_rows:,} rows).")
             warnings.append(f"📊 Intelligent sampling will be used: {INTELLIGENT_SAMPLING_SIZE:,} rows ({(INTELLIGENT_SAMPLING_SIZE/max_rows*100):.1f}%)")
@@ -733,6 +747,93 @@ async def get_run_details(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error retrieving run details: {str(e)}")
+
+
+@app.get("/api/run/{run_id}/summary")
+async def get_run_summary(run_id: int):
+    """Get lightweight summary only - no result data (fast for large datasets)"""
+    try:
+        cursor = conn.cursor()
+        
+        # Get run info only
+        cursor.execute('''
+            SELECT timestamp, file_a, file_b, num_columns, file_a_rows, file_b_rows, status, environment
+            FROM runs WHERE run_id = ?
+        ''', (run_id,))
+        run_info = cursor.fetchone()
+        
+        if not run_info:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        # Get quick counts without loading data
+        cursor.execute('SELECT COUNT(*) FROM analysis_results WHERE run_id = ? AND side = ?', (run_id, 'A'))
+        count_a = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM analysis_results WHERE run_id = ? AND side = ?', (run_id, 'B'))
+        count_b = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM analysis_results WHERE run_id = ? AND side = ? AND is_unique_key = 1', (run_id, 'A'))
+        unique_a = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT COUNT(*) FROM analysis_results WHERE run_id = ? AND side = ? AND is_unique_key = 1', (run_id, 'B'))
+        unique_b = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT MAX(uniqueness_score) FROM analysis_results WHERE run_id = ? AND side = ?', (run_id, 'A'))
+        best_a = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MAX(uniqueness_score) FROM analysis_results WHERE run_id = ? AND side = ?', (run_id, 'B'))
+        best_b = cursor.fetchone()[0] or 0
+        
+        def safe_int(value, default=0):
+            if value is None: return default
+            try:
+                if isinstance(value, bytes):
+                    return int(value.decode('utf-8', errors='ignore').strip() or default)
+                return int(value)
+            except: return default
+        
+        def safe_str(value, default=''):
+            if value is None: return default
+            try:
+                if isinstance(value, bytes):
+                    return value.decode('utf-8', errors='ignore').strip()
+                return str(value)
+            except: return default
+        
+        def safe_float(value, default=0.0):
+            if value is None: return default
+            try:
+                if isinstance(value, bytes):
+                    return float(value.decode('utf-8', errors='ignore').strip() or default)
+                return float(value)
+            except: return default
+        
+        return JSONResponse({
+            "run_id": int(run_id),
+            "timestamp": safe_str(run_info[0], ""),
+            "file_a": safe_str(run_info[1], ""),
+            "file_b": safe_str(run_info[2], ""),
+            "num_columns": safe_int(run_info[3], 0),
+            "file_a_rows": safe_int(run_info[4], 0),
+            "file_b_rows": safe_int(run_info[5], 0),
+            "status": safe_str(run_info[6], "unknown"),
+            "environment": safe_str(run_info[7], "default"),
+            "summary": {
+                "total_combinations": safe_int(count_a + count_b, 0),
+                "total_combinations_a": safe_int(count_a, 0),
+                "total_combinations_b": safe_int(count_b, 0),
+                "unique_keys_a": safe_int(unique_a, 0),
+                "unique_keys_b": safe_int(unique_b, 0),
+                "best_score_a": safe_float(best_a, 0.0),
+                "best_score_b": safe_float(best_b, 0.0)
+            }
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error retrieving run summary: {str(e)}")
 
 
 @app.get("/api/clone/{run_id}")

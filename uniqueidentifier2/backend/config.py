@@ -14,7 +14,7 @@ SUPPORTED_EXTENSIONS = ['.csv', '.dat', '.txt']
 
 # Performance limits
 MAX_ROWS_WARNING = 100000  # Warn above 100k rows
-MAX_ROWS_HARD_LIMIT = 50000000  # Hard limit at 50 million rows
+MAX_ROWS_HARD_LIMIT = 100000000  # Hard limit at 100 million rows (increased for large datasets)
 MAX_COMBINATIONS = 50  # Maximum combinations to analyze
 MEMORY_EFFICIENT_THRESHOLD = 50000  # Use sampling above 50k rows
 
@@ -25,8 +25,10 @@ SAMPLE_SIZE_FOR_LARGE_FILES = 500000  # Sample size for files above 1M rows
 
 # Ultra-large file handling (7-10M records)
 VERY_LARGE_FILE_THRESHOLD = 5000000  # 5M+ rows - use aggressive optimization
+EXTREME_LARGE_FILE_THRESHOLD = 50000000  # 50M+ rows - use extreme optimization
 ULTRA_LARGE_CHUNK_SIZE = 250000  # Process 250k rows at a time for very large files
 INTELLIGENT_SAMPLING_SIZE = 1000000  # Use 1M sample for 7-10M files
+EXTREME_SAMPLING_SIZE = 2000000  # Use 2M sample for 50M+ files (still <5%)
 PROGRESSIVE_LOADING_BATCH_SIZE = 50  # Load results in batches of 50
 
 # File generation limits (enterprise grade)
