@@ -627,15 +627,16 @@ async def get_run_details(
         
         for r in results:
             result_obj = {
-                'columns': r[1] if r[1] else '',
-                'total_rows': r[2] if r[2] is not None else 0,
-                'unique_rows': r[3] if r[3] is not None else 0,
-                'duplicate_rows': r[4] if r[4] is not None else 0,
-                'duplicate_count': r[5] if r[5] is not None else 0,
+                'columns': str(r[1]) if r[1] else '',
+                'total_rows': int(r[2]) if r[2] is not None else 0,
+                'unique_rows': int(r[3]) if r[3] is not None else 0,
+                'duplicate_rows': int(r[4]) if r[4] is not None else 0,
+                'duplicate_count': int(r[5]) if r[5] is not None else 0,
                 'uniqueness_score': float(r[6]) if r[6] is not None else 0.0,
-                'is_unique_key': r[7] == 1 if r[7] is not None else False
+                'is_unique_key': bool(r[7]) if r[7] is not None else False
             }
-            if r[0] == 'A':
+            side = str(r[0]) if r[0] else 'A'
+            if side == 'A':
                 results_a.append(result_obj)
             else:
                 results_b.append(result_obj)
@@ -654,33 +655,33 @@ async def get_run_details(
                 unique_b = s[2] or 0
         
         return JSONResponse({
-            "run_id": run_id,
-            "timestamp": run_info[0] if run_info[0] else "",
-            "file_a": run_info[1] if run_info[1] else "",
-            "file_b": run_info[2] if run_info[2] else "",
-            "num_columns": run_info[3] if run_info[3] is not None else 0,
-            "file_a_rows": run_info[4] if run_info[4] is not None else 0,
-            "file_b_rows": run_info[5] if run_info[5] is not None else 0,
-            "status": run_info[6] if run_info[6] else "unknown",
-            "environment": run_info[7] if run_info[7] else "default",
+            "run_id": int(run_id),
+            "timestamp": str(run_info[0]) if run_info[0] else "",
+            "file_a": str(run_info[1]) if run_info[1] else "",
+            "file_b": str(run_info[2]) if run_info[2] else "",
+            "num_columns": int(run_info[3]) if run_info[3] is not None else 0,
+            "file_a_rows": int(run_info[4]) if run_info[4] is not None else 0,
+            "file_b_rows": int(run_info[5]) if run_info[5] is not None else 0,
+            "status": str(run_info[6]) if run_info[6] else "unknown",
+            "environment": str(run_info[7]) if run_info[7] else "default",
             "results_a": results_a,
             "results_b": results_b,
             "summary": {
-                "total_combinations": total_a + total_b,
-                "total_combinations_a": total_a,
-                "total_combinations_b": total_b,
-                "unique_keys_a": unique_a,
-                "unique_keys_b": unique_b,
-                "best_score_a": float(best_score_a),
-                "best_score_b": float(best_score_b)
+                "total_combinations": int(total_a + total_b),
+                "total_combinations_a": int(total_a),
+                "total_combinations_b": int(total_b),
+                "unique_keys_a": int(unique_a),
+                "unique_keys_b": int(unique_b),
+                "best_score_a": float(best_score_a) if best_score_a is not None else 0.0,
+                "best_score_b": float(best_score_b) if best_score_b is not None else 0.0
             },
             "pagination": {
-                "page": page,
-                "page_size": page_size,
-                "total_results": total_results,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_prev": page > 1
+                "page": int(page),
+                "page_size": int(page_size),
+                "total_results": int(total_results),
+                "total_pages": int(total_pages),
+                "has_next": bool(page < total_pages),
+                "has_prev": bool(page > 1)
             }
         })
     except HTTPException:
