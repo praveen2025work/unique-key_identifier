@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Large File Comparison - Unique Key Identifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #337ab7;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .nav-links {
+            margin-top: 15px;
+        }
+
+        .nav-links a {
+            color: #337ab7;
+            text-decoration: none;
+            margin-right: 20px;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #337ab7;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #337ab7;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #337ab7;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #337ab7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563a8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(51, 122, 183, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .status-section {
+            margin-top: 30px;
+        }
+
+        .job-card {
+            background: #f8f9fa;
+            border-left: 4px solid #337ab7;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .job-id {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-queued {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-running {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .status-completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-failed {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status-cancelled {
+            background: #6c757d;
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #337ab7, #5a9bd5);
+            transition: width 0.3s;
+        }
+
+        .job-details {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+
+        .job-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .job-actions .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #337ab7;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #212529;
+        }
+
+        .download-links {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #856404;
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-left: 4px solid #155724;
+            color: #155724;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            border-left: 4px solid #721c24;
+            color: #721c24;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Parallel Large File Comparison</h1>
+            <p class="subtitle">Efficiently compare large datasets with chunked processing and parallel execution</p>
+            <div class="nav-links">
+                <a href="/">← Back to Standard Analysis</a>
+                <a href="/data-quality">Data Quality</a>
+                <a href="#" onclick="loadActiveJobs()">🔄 Refresh Jobs</a>
+            </div>
+        </header>
+
+        <div class="alert alert-info">
+            <strong>🚀 Enhanced Performance:</strong> This parallel comparison engine can handle files of any size by:
+            <ul style="margin-top: 10px; margin-left: 20px;">
+                <li>Breaking files into manageable chunks</li>
+                <li>Processing chunks in parallel across multiple CPU cores</li>
+                <li>Running in background without blocking the UI</li>
+                <li>Storing results in organized working directories</li>
+            </ul>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Panel: Submit Job -->
+            <div class="panel">
+                <h2>📝 Submit Comparison Job</h2>
+                
+                <form id="comparisonForm" onsubmit="submitComparison(event)">
+                    <div class="form-group">
+                        <label for="file_a">File A:</label>
+                        <input type="text" id="file_a" name="file_a" placeholder="trading_system_a.csv" required>
+                        <div class="help-text">Enter filename (must be in the application directory)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="file_b">File B:</label>
+                        <input type="text" id="file_b" name="file_b" placeholder="trading_system_b.csv" required>
+                        <div class="help-text">Enter filename (must be in the application directory)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="key_columns">Key Columns (comma-separated):</label>
+                        <input type="text" id="key_columns" name="key_columns" placeholder="trade_id, desk, book" required>
+                        <div class="help-text">e.g., "trade_id" or "desk, book, sedol"</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="chunk_size_mb">Chunk Size (MB):</label>
+                        <input type="number" id="chunk_size_mb" name="chunk_size_mb" value="50" min="10" max="500">
+                        <div class="help-text">Larger chunks = fewer chunks, more memory per chunk</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max_workers">Max Workers (parallel processes):</label>
+                        <input type="number" id="max_workers" name="max_workers" placeholder="Auto-detect" min="1" max="16">
+                        <div class="help-text">Leave empty to auto-detect based on CPU cores</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        🚀 Start Parallel Comparison
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right Panel: Active Jobs -->
+            <div class="panel">
+                <h2>📊 Active Jobs</h2>
+                <div id="activeJobsContainer">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>No active jobs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Jobs Section -->
+        <div class="panel">
+            <h2>📋 All Jobs History</h2>
+            <div id="allJobsContainer">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📂</div>
+                    <p>No jobs yet. Submit your first comparison above!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 3 seconds
+        let autoRefreshInterval;
+
+        // Load active jobs on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadActiveJobs();
+            loadAllJobs();
+            
+            // Start auto-refresh
+            autoRefreshInterval = setInterval(() => {
+                loadActiveJobs();
+                loadAllJobs();
+            }, 3000);
+        });
+
+        async function submitComparison(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                const response = await fetch('/api/parallel-comparison/submit', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ Job submitted successfully!\n\nJob ID: ${result.job_id}\nRun ID: ${result.run_id}`);
+                    event.target.reset();
+                    loadActiveJobs();
+                    loadAllJobs();
+                } else {
+                    alert(`❌ Error: ${result.detail || 'Failed to submit job'}`);
+                }
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '🚀 Start Parallel Comparison';
+            }
+        }
+
+        async function loadActiveJobs() {
+            try {
+                const response = await fetch('/api/jobs/active');
+                const data = await response.json();
+                
+                const container = document.getElementById('activeJobsContainer');
+                
+                if (data.count === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No active jobs</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = Object.values(data.jobs)
+                        .map(job => renderJobCard(job, true))
+                        .join('');
+                }
+            } catch (error) {
+                console.error('Error loading active jobs:', error);
+            }
+        }
+
+        async function loadAllJobs() {
+            try {
+                const response = await fetch('/api/jobs/all');
+                const data = await response.json();
+                
+                const container = document.getElementById('allJobsContainer');
+                
+                if (data.count === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📂</div>
+                            <p>No jobs yet</p>
+                        </div>
+                    `;
+                } else {
+                    // Sort by created_at desc
+                    const sortedJobs = Object.values(data.jobs).sort((a, b) => 
+                        new Date(b.created_at) - new Date(a.created_at)
+                    );
+                    
+                    container.innerHTML = sortedJobs
+                        .map(job => renderJobCard(job, false))
+                        .join('');
+                }
+            } catch (error) {
+                console.error('Error loading all jobs:', error);
+            }
+        }
+
+        function renderJobCard(job, showActions) {
+            const statusClass = `status-${job.status}`;
+            const progressPercent = job.progress || 0;
+            
+            let actionsHTML = '';
+            if (showActions && job.status === 'queued') {
+                actionsHTML = `
+                    <div class="job-actions">
+                        <button class="btn btn-danger" onclick="cancelJob('${job.job_id}')">
+                            Cancel
+                        </button>
+                    </div>
+                `;
+            } else if (job.status === 'completed') {
+                const runId = job.job_id.split('_')[2];
+                actionsHTML = `
+                    <div class="job-actions">
+                        <button class="btn btn-primary" onclick="window.open('/api/runs/${runId}/comparison-viewer', '_blank')">
+                            👁️ View Comparison
+                        </button>
+                        <button class="btn btn-primary" onclick="viewResults('${job.job_id}')">
+                            📊 View Summary
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadExcel('${job.job_id}')">
+                            📥 Download Excel
+                        </button>
+                        <button class="btn btn-secondary" onclick="downloadHTML('${job.job_id}')">
+                            📄 Download HTML
+                        </button>
+                    </div>
+                `;
+            } else if (job.status === 'failed') {
+                actionsHTML = `
+                    <div class="alert alert-danger" style="margin-top: 10px;">
+                        <strong>Error:</strong> ${job.error || job.message}
+                    </div>
+                `;
+            }
+            
+            const createdAt = new Date(job.created_at).toLocaleString();
+            const completedAt = job.completed_at ? new Date(job.completed_at).toLocaleString() : 'N/A';
+            
+            return `
+                <div class="job-card">
+                    <div class="job-header">
+                        <div class="job-id">Job: ${job.job_id}</div>
+                        <span class="status-badge ${statusClass}">${job.status.toUpperCase()}</span>
+                    </div>
+                    
+                    ${job.status === 'running' ? `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                        </div>
+                        <div style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">
+                            ${progressPercent}% - ${job.message}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="job-details">
+                        <div><strong>Type:</strong> ${job.job_type}</div>
+                        <div><strong>Created:</strong> ${createdAt}</div>
+                        ${job.completed_at ? `<div><strong>Completed:</strong> ${completedAt}</div>` : ''}
+                        <div><strong>Message:</strong> ${job.message}</div>
+                    </div>
+                    
+                    ${actionsHTML}
+                </div>
+            `;
+        }
+
+        async function cancelJob(jobId) {
+            if (!confirm('Are you sure you want to cancel this job?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/cancel`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    alert('✅ Job cancelled successfully');
+                    loadActiveJobs();
+                    loadAllJobs();
+                } else {
+                    const data = await response.json();
+                    alert(`❌ Error: ${data.message || 'Failed to cancel job'}`);
+                }
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function viewResults(jobId) {
+            try {
+                const response = await fetch(`/api/parallel-comparison/result/${jobId}`);
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'completed') {
+                    // Show results in a modal or navigate to results page
+                    displayResults(data.result);
+                } else {
+                    alert('Results not available yet or job not completed');
+                }
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        function displayResults(result) {
+            // Create modal to display results
+            const summary = result.comparison.summary;
+            
+            const resultsHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; max-width: 900px; margin: 20px auto;">
+                    <h2 style="color: #337ab7; margin-bottom: 20px;">📊 Comparison Results</h2>
+                    
+                    <div class="metric-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Side A - Unique Keys</div>
+                            <div class="metric-value">${summary.total_unique_keys_a.toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Side B - Unique Keys</div>
+                            <div class="metric-value">${summary.total_unique_keys_b.toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Matched Keys</div>
+                            <div class="metric-value">${summary.matched_keys.toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Only in A</div>
+                            <div class="metric-value">${summary.only_in_a_keys.toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Only in B</div>
+                            <div class="metric-value">${summary.only_in_b_keys.toLocaleString()}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Match Rate</div>
+                            <div class="metric-value">${summary.match_rate_by_keys}%</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px;">
+                        <h3 style="color: #337ab7; margin-bottom: 15px;">📁 Available Downloads</h3>
+                        <div class="download-links">
+                            <button class="btn btn-primary" onclick="window.close()">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Open in new window
+            const win = window.open('', '_blank', 'width=1000,height=800');
+            win.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Comparison Results</title>
+                    <style>${document.querySelector('style').innerHTML}</style>
+                </head>
+                <body>
+                    <div class="container">${resultsHTML}</div>
+                </body>
+                </html>
+            `);
+        }
+
+        async function downloadExcel(jobId) {
+            try {
+                // Extract run_id from job_id (format: parallel_comparison_RUNID_...)
+                const runId = jobId.split('_')[2];
+                window.location.href = `/api/runs/${runId}/download/excel`;
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+
+        async function downloadHTML(jobId) {
+            try {
+                const runId = jobId.split('_')[2];
+                window.open(`/api/runs/${runId}/download/html`, '_blank');
+            } catch (error) {
+                alert(`❌ Error: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparison Viewer - Run {{ run_id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #337ab7;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .nav-links {
+            margin-top: 15px;
+        }
+
+        .nav-links a {
+            color: #337ab7;
+            text-decoration: none;
+            margin-right: 20px;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .summary-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #337ab7;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #212529;
+        }
+
+        .tabs {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab-button:hover {
+            background: #e9ecef;
+        }
+
+        .tab-button.active {
+            color: #337ab7;
+            background: white;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #337ab7;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead {
+            background: #337ab7;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #337ab7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #dee2e6;
+            background: white;
+            color: #337ab7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: #337ab7;
+            color: white;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination .page-info {
+            font-size: 14px;
+            color: #6c757d;
+            margin: 0 15px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            color: #0c5460;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        .badge-primary {
+            background: #337ab7;
+            color: white;
+        }
+
+        .per-page-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .per-page-selector select {
+            padding: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .download-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #337ab7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563a8;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Comparison Viewer - Run {{ run_id }}</h1>
+            <p class="subtitle">Progressive loading view of matched, Side A only, and Side B only records</p>
+            <div class="nav-links">
+                <a href="/parallel-comparison">← Back to Parallel Comparison</a>
+                <a href="/">Home</a>
+            </div>
+        </header>
+
+        <div class="alert alert-info">
+            <strong>💡 Progressive Loading:</strong> Data loads page by page to prevent browser crashes. Use pagination to navigate through large datasets.
+        </div>
+
+        <!-- Summary Panel -->
+        <div class="summary-panel">
+            <h2 style="color: #337ab7; margin-bottom: 15px;">📈 Comparison Summary</h2>
+            <div class="metrics-grid">
+                {% if summary %}
+                <div class="metric-card">
+                    <div class="metric-label">Total Keys Side A</div>
+                    <div class="metric-value">{{ "{:,}".format(summary.get('total_unique_keys_a', 0)) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Total Keys Side B</div>
+                    <div class="metric-value">{{ "{:,}".format(summary.get('total_unique_keys_b', 0)) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Matched Keys</div>
+                    <div class="metric-value">{{ "{:,}".format(summary.get('matched_keys', 0)) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Only in Side A</div>
+                    <div class="metric-value">{{ "{:,}".format(summary.get('only_in_a_keys', 0)) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Only in Side B</div>
+                    <div class="metric-value">{{ "{:,}".format(summary.get('only_in_b_keys', 0)) }}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Match Rate</div>
+                    <div class="metric-value">{{ "%.2f"|format(summary.get('match_rate_by_keys', 0)) }}%</div>
+                </div>
+                {% else %}
+                <div class="metric-card">
+                    <div class="metric-label">Loading summary...</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Download Section -->
+            <div class="download-section">
+                <h3 style="color: #337ab7; margin-bottom: 10px;">📥 Download Complete Results</h3>
+                <div class="download-links">
+                    <a href="/api/runs/{{ run_id }}/download/excel" class="btn btn-primary">📊 Download Excel</a>
+                    <a href="/api/runs/{{ run_id }}/download/html" class="btn btn-secondary" target="_blank">📄 Download HTML Report</a>
+                    <a href="/api/runs/{{ run_id }}/download/json" class="btn btn-secondary">📋 Download JSON</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs for different views -->
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab('matched_a')">
+                    ✅ Matched (Side A) <span class="badge badge-primary" id="count-matched_a">-</span>
+                </button>
+                <button class="tab-button" onclick="switchTab('matched_b')">
+                    ✅ Matched (Side B) <span class="badge badge-primary" id="count-matched_b">-</span>
+                </button>
+                <button class="tab-button" onclick="switchTab('only_a')">
+                    🔵 Only in Side A <span class="badge badge-primary" id="count-only_a">-</span>
+                </button>
+                <button class="tab-button" onclick="switchTab('only_b')">
+                    🟠 Only in Side B <span class="badge badge-primary" id="count-only_b">-</span>
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div id="tab-matched_a" class="tab-content active">
+                <div class="per-page-selector">
+                    <label>Records per page:</label>
+                    <select id="perPage-matched_a" onchange="changePerPage('matched_a')">
+                        <option value="100" selected>100</option>
+                        <option value="250">250</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <div id="content-matched_a" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading matched records from Side A...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-matched_b" class="tab-content">
+                <div class="per-page-selector">
+                    <label>Records per page:</label>
+                    <select id="perPage-matched_b" onchange="changePerPage('matched_b')">
+                        <option value="100" selected>100</option>
+                        <option value="250">250</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <div id="content-matched_b" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading matched records from Side B...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-only_a" class="tab-content">
+                <div class="per-page-selector">
+                    <label>Records per page:</label>
+                    <select id="perPage-only_a" onchange="changePerPage('only_a')">
+                        <option value="100" selected>100</option>
+                        <option value="250">250</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <div id="content-only_a" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading records only in Side A...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-only_b" class="tab-content">
+                <div class="per-page-selector">
+                    <label>Records per page:</label>
+                    <select id="perPage-only_b" onchange="changePerPage('only_b')">
+                        <option value="100" selected>100</option>
+                        <option value="250">250</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <div id="content-only_b" class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading records only in Side B...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RUN_ID = '{{ run_id }}';
+        const state = {
+            matched_a: { page: 1, perPage: 100, loaded: false },
+            matched_b: { page: 1, perPage: 100, loaded: false },
+            only_a: { page: 1, perPage: 100, loaded: false },
+            only_b: { page: 1, perPage: 100, loaded: false }
+        };
+
+        // Load data for a category
+        async function loadData(category, page = 1) {
+            const container = document.getElementById(`content-${category}`);
+            const perPage = state[category].perPage;
+            
+            container.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading page ${page}...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/runs/${RUN_ID}/records?category=${category}&page=${page}&per_page=${perPage}`);
+                const data = await response.json();
+
+                // Update count badge
+                document.getElementById(`count-${category}`).textContent = data.total_records.toLocaleString();
+
+                if (data.total_records === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>No records in this category</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Build table
+                let html = '<table><thead><tr>';
+                data.columns.forEach(col => {
+                    html += `<th>${col}</th>`;
+                });
+                html += '</tr></thead><tbody>';
+
+                data.records.forEach(record => {
+                    html += '<tr>';
+                    data.columns.forEach(col => {
+                        const value = record[col] !== null ? record[col] : '';
+                        html += `<td>${value}</td>`;
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+
+                // Add pagination
+                html += `
+                    <div class="pagination">
+                        <button onclick="loadData('${category}', 1)" ${page === 1 ? 'disabled' : ''}>
+                            ⏮️ First
+                        </button>
+                        <button onclick="loadData('${category}', ${page - 1})" ${page === 1 ? 'disabled' : ''}>
+                            ⬅️ Previous
+                        </button>
+                        <span class="page-info">
+                            Page ${page} of ${data.total_pages} (${data.total_records.toLocaleString()} total records)
+                        </span>
+                        <button onclick="loadData('${category}', ${page + 1})" ${page >= data.total_pages ? 'disabled' : ''}>
+                            Next ➡️
+                        </button>
+                        <button onclick="loadData('${category}', ${data.total_pages})" ${page >= data.total_pages ? 'disabled' : ''}>
+                            Last ⏭️
+                        </button>
+                    </div>
+                `;
+
+                container.innerHTML = html;
+                state[category].page = page;
+                state[category].loaded = true;
+
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Error loading data: ${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadData('${category}', ${page})" style="margin-top: 15px;">
+                            🔄 Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // Switch tabs
+        function switchTab(category) {
+            // Update buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.closest('.tab-button').classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${category}`).classList.add('active');
+
+            // Load data if not loaded yet
+            if (!state[category].loaded) {
+                loadData(category, 1);
+            }
+        }
+
+        // Change per page
+        function changePerPage(category) {
+            const select = document.getElementById(`perPage-${category}`);
+            state[category].perPage = parseInt(select.value);
+            state[category].page = 1;
+            loadData(category, 1);
+        }
+
+        // Initialize - load first tab
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData('matched_a', 1);
+        });
+    </script>
+</body>
+</html>
+

@@ -37,6 +37,11 @@ from scheduler import job_scheduler
 from notifications import notification_manager
 from run_comparison import run_comparator
 
+# Enhanced features - parallel processing and async jobs
+from parallel_processor import process_large_files_parallel, ChunkedFileProcessor, ParallelComparator
+from job_queue import job_queue, working_dir_manager, JobStatus
+from export_manager import ExportManager
+
 app = FastAPI(
     title="Unique Key Identifier - Enterprise Edition",
     description="Enterprise-grade data comparison and unique key identification tool",
@@ -337,6 +342,11 @@ async def get_form(request: Request):
 async def data_quality_page(request: Request):
     """Standalone data quality check page"""
     return templates.TemplateResponse("data_quality.html", {"request": request})
+
+@app.get("/parallel-comparison", response_class=HTMLResponse)
+async def parallel_comparison_page(request: Request):
+    """Parallel large file comparison page"""
+    return templates.TemplateResponse("parallel_comparison.html", {"request": request})
 
 @app.get("/api/preview-columns")
 async def preview_columns(file_a: str, file_b: str, working_directory: str = Query(None)):
@@ -1752,6 +1762,408 @@ async def system_metrics(hours: int = Query(24, le=168)):
         return JSONResponse({"metrics": metrics, "count": len(metrics)})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+# ========================================
+# PARALLEL PROCESSING & ENHANCED COMPARISON
+# ========================================
+
+@app.post("/api/parallel-comparison/submit")
+async def submit_parallel_comparison(
+    file_a: str = Form(...),
+    file_b: str = Form(...),
+    key_columns: str = Form(...),
+    chunk_size_mb: int = Form(50),
+    max_workers: int = Form(None)
+):
+    """
+    Submit a parallel comparison job for large files
+    Returns job ID for tracking
+    """
+    try:
+        # Parse key columns
+        key_cols = [col.strip() for col in key_columns.split(',')]
+        
+        # Create file paths
+        file_a_path = os.path.join(SCRIPT_DIR, file_a)
+        file_b_path = os.path.join(SCRIPT_DIR, file_b)
+        
+        # Validate files exist
+        if not os.path.exists(file_a_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {file_a}")
+        if not os.path.exists(file_b_path):
+            raise HTTPException(status_code=404, detail=f"File not found: {file_b}")
+        
+        # Create working directory
+        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        working_dir = working_dir_manager.create_run_directory(run_id, metadata={
+            'file_a': file_a,
+            'file_b': file_b,
+            'key_columns': key_cols,
+            'chunk_size_mb': chunk_size_mb,
+            'max_workers': max_workers
+        })
+        
+        # Define job callback
+        def parallel_comparison_job(job_id, params):
+            from file_processing import detect_delimiter
+            
+            # Detect delimiters
+            delimiter_a = detect_delimiter(params['file_a_path'])
+            delimiter_b = detect_delimiter(params['file_b_path'])
+            
+            # Progress callback
+            def progress_callback(current, total, message):
+                job_queue.update_job_progress(
+                    job_id, 
+                    int((current / max(total, 1)) * 100),
+                    message
+                )
+            
+            # Run parallel comparison
+            results = process_large_files_parallel(
+                file_a_path=params['file_a_path'],
+                file_b_path=params['file_b_path'],
+                key_columns=params['key_columns'],
+                working_dir=params['working_dir'],
+                delimiter_a=delimiter_a,
+                delimiter_b=delimiter_b,
+                chunk_size_mb=params['chunk_size_mb'],
+                max_workers=params['max_workers'],
+                progress_callback=progress_callback
+            )
+            
+            # Export results
+            export_mgr = ExportManager(params['working_dir'])
+            
+            # Export to CSV
+            csv_files = export_mgr.export_comparison_to_csv(results)
+            
+            # Export to Excel
+            excel_file = export_mgr.export_comparison_to_excel(results)
+            
+            # Export HTML report
+            html_file = export_mgr.create_comparison_report_html(results)
+            
+            results['exports'] = {
+                'csv_files': csv_files,
+                'excel_file': excel_file,
+                'html_report': html_file
+            }
+            
+            return results
+        
+        # Submit job
+        job_id = job_queue.submit_job(
+            job_type='parallel_comparison',
+            params={
+                'file_a_path': file_a_path,
+                'file_b_path': file_b_path,
+                'key_columns': key_cols,
+                'working_dir': working_dir,
+                'chunk_size_mb': chunk_size_mb,
+                'max_workers': max_workers
+            },
+            callback=parallel_comparison_job
+        )
+        
+        audit_logger.log_event('parallel_comparison_submitted', 
+                              f'Files: {file_a} vs {file_b}', 
+                              user='system',
+                              metadata={'job_id': job_id, 'run_id': run_id})
+        
+        return JSONResponse({
+            'status': 'submitted',
+            'job_id': job_id,
+            'run_id': run_id,
+            'working_dir': working_dir,
+            'message': 'Parallel comparison job submitted successfully'
+        })
+        
+    except Exception as e:
+        audit_logger.log_event('parallel_comparison_error', str(e), 
+                              status='error', user='system')
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/parallel-comparison/status/{job_id}")
+async def get_parallel_comparison_status(job_id: str):
+    """Get status of a parallel comparison job"""
+    try:
+        job_status = job_queue.get_job_status(job_id)
+        
+        if not job_status:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        return JSONResponse(job_status)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/parallel-comparison/result/{job_id}")
+async def get_parallel_comparison_result(job_id: str):
+    """Get results of a completed parallel comparison job"""
+    try:
+        job_status = job_queue.get_job_status(job_id)
+        
+        if not job_status:
+            raise HTTPException(status_code=404, detail="Job not found")
+        
+        if job_status['status'] != 'completed':
+            return JSONResponse({
+                'status': job_status['status'],
+                'message': 'Job not yet completed'
+            })
+        
+        # Get job result
+        job = job_queue.jobs.get(job_id)
+        if not job or not job.result:
+            raise HTTPException(status_code=404, detail="Job result not found")
+        
+        return JSONResponse({
+            'status': 'completed',
+            'result': job.result
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/jobs/active")
+async def get_active_jobs():
+    """Get all currently active jobs"""
+    try:
+        active_jobs = job_queue.get_active_jobs()
+        return JSONResponse({'jobs': active_jobs, 'count': len(active_jobs)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/jobs/all")
+async def get_all_jobs():
+    """Get all jobs"""
+    try:
+        all_jobs = job_queue.get_all_jobs()
+        return JSONResponse({'jobs': all_jobs, 'count': len(all_jobs)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str):
+    """Cancel a queued job"""
+    try:
+        success = job_queue.cancel_job(job_id)
+        
+        if success:
+            audit_logger.log_event('job_cancelled', f'Job {job_id} cancelled', 
+                                  user='system')
+            return JSONResponse({'status': 'cancelled', 'job_id': job_id})
+        else:
+            return JSONResponse({
+                'status': 'error',
+                'message': 'Job cannot be cancelled (not queued or not found)'
+            }, status_code=400)
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/runs/list")
+async def list_runs(limit: int = Query(50, ge=1, le=200)):
+    """List all runs with their working directories"""
+    try:
+        runs = working_dir_manager.list_runs(limit=limit)
+        return JSONResponse({'runs': runs, 'count': len(runs)})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/runs/{run_id}/download/{file_type}")
+async def download_run_file(run_id: str, file_type: str):
+    """
+    Download exported files from a run
+    file_type: 'excel', 'html', 'summary_csv', etc.
+    """
+    try:
+        # Get run directory
+        run_dir = working_dir_manager.get_run_directory(run_id)
+        
+        if not run_dir:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        exports_dir = os.path.join(run_dir, 'exports')
+        
+        # Determine file to download
+        if file_type == 'excel':
+            # Find the most recent Excel file
+            excel_files = [f for f in os.listdir(exports_dir) if f.endswith('.xlsx')]
+            if not excel_files:
+                raise HTTPException(status_code=404, detail="Excel file not found")
+            file_path = os.path.join(exports_dir, sorted(excel_files)[-1])
+            media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            
+        elif file_type == 'html':
+            html_files = [f for f in os.listdir(exports_dir) if f.endswith('.html')]
+            if not html_files:
+                raise HTTPException(status_code=404, detail="HTML file not found")
+            file_path = os.path.join(exports_dir, sorted(html_files)[-1])
+            media_type = 'text/html'
+            
+        elif file_type == 'json':
+            file_path = os.path.join(run_dir, 'comparison_results.json')
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail="JSON results not found")
+            media_type = 'application/json'
+            
+        else:
+            # Try to find CSV file
+            file_path = os.path.join(exports_dir, f'{file_type}.csv')
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail=f"File not found: {file_type}")
+            media_type = 'text/csv'
+        
+        return FileResponse(
+            file_path,
+            media_type=media_type,
+            filename=os.path.basename(file_path)
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/runs/{run_id}/records")
+async def get_comparison_records(
+    run_id: str,
+    category: str = Query(..., regex="^(matched_a|matched_b|only_a|only_b|duplicates_a|duplicates_b)$"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(100, ge=10, le=1000)
+):
+    """
+    Get paginated comparison records for progressive UI loading
+    category: matched_a, matched_b, only_a, only_b, duplicates_a, duplicates_b
+    page: Page number (1-indexed)
+    per_page: Records per page (10-1000)
+    """
+    try:
+        # Get run directory
+        run_dir = working_dir_manager.get_run_directory(run_id)
+        
+        if not run_dir:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        # Map category to file
+        file_mapping = {
+            'matched_a': 'matched_records_side_a.csv',
+            'matched_b': 'matched_records_side_b.csv',
+            'only_a': 'only_in_a_records.csv',
+            'only_b': 'only_in_b_records.csv',
+            'duplicates_a': 'duplicates_side_a.csv',
+            'duplicates_b': 'duplicates_side_b.csv'
+        }
+        
+        filename = file_mapping.get(category)
+        if not filename:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        
+        file_path = os.path.join(run_dir, filename)
+        
+        if not os.path.exists(file_path):
+            # Return empty result if file doesn't exist
+            return JSONResponse({
+                'category': category,
+                'page': page,
+                'per_page': per_page,
+                'total_records': 0,
+                'total_pages': 0,
+                'records': [],
+                'columns': []
+            })
+        
+        # Read CSV with pagination
+        # First, count total rows
+        with open(file_path, 'r') as f:
+            total_records = sum(1 for _ in f) - 1  # Subtract header
+        
+        total_pages = (total_records + per_page - 1) // per_page
+        
+        # Read only the requested page
+        skip_rows = (page - 1) * per_page
+        df = pd.read_csv(file_path, skiprows=range(1, skip_rows + 1) if skip_rows > 0 else None, nrows=per_page)
+        
+        # Convert to JSON-friendly format
+        records = df.to_dict('records')
+        columns = df.columns.tolist()
+        
+        # Clean NaN values
+        for record in records:
+            for key, value in record.items():
+                if pd.isna(value):
+                    record[key] = None
+        
+        return JSONResponse({
+            'category': category,
+            'page': page,
+            'per_page': per_page,
+            'total_records': total_records,
+            'total_pages': total_pages,
+            'records': records,
+            'columns': columns
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/runs/{run_id}/comparison-viewer", response_class=HTMLResponse)
+async def comparison_viewer(request: Request, run_id: str):
+    """
+    Progressive loading comparison viewer - doesn't crash on large datasets
+    """
+    try:
+        # Get run directory and metadata
+        run_dir = working_dir_manager.get_run_directory(run_id)
+        
+        if not run_dir:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        # Read metadata
+        metadata_file = os.path.join(run_dir, 'metadata.json')
+        if os.path.exists(metadata_file):
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+        else:
+            metadata = {'run_id': run_id}
+        
+        # Read summary
+        summary_file = os.path.join(run_dir, 'comparison_summary.csv')
+        if os.path.exists(summary_file):
+            summary_df = pd.read_csv(summary_file)
+            summary = summary_df.to_dict('records')[0] if len(summary_df) > 0 else {}
+        else:
+            summary = {}
+        
+        return templates.TemplateResponse("comparison_viewer.html", {
+            "request": request,
+            "run_id": run_id,
+            "metadata": metadata,
+            "summary": summary
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ========================================
 # APPLICATION LIFECYCLE

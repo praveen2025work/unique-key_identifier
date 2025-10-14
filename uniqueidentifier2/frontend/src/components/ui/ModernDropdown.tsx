@@ -198,14 +198,15 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
       );
     }
 
-    if (!multiple && selectedOptions && typeof selectedOptions === 'object') {
+    if (!multiple && selectedOptions && typeof selectedOptions === 'object' && !Array.isArray(selectedOptions)) {
+      const option = selectedOptions as DropdownOption;
       return (
         <div className="flex items-center gap-2">
-          {selectedOptions.icon && <span className="w-4 h-4">{selectedOptions.icon}</span>}
-          <span className="truncate">{selectedOptions.label}</span>
-          {selectedOptions.badge && (
+          {option.icon && <span className="w-4 h-4">{option.icon}</span>}
+          <span className="truncate">{option.label}</span>
+          {option.badge && (
             <span className="ml-auto px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
-              {selectedOptions.badge}
+              {option.badge}
             </span>
           )}
         </div>

@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { CogIcon, MagnifyingGlassIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import { FormData, Run } from '../types';
+import type { FormData as FormDataType, Run } from '../types';
 import ModernDropdown from './ui/ModernDropdown';
 
 interface ConfigurationPanelProps {
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: FormDataType) => void;
   onLoadColumns: (fileA: string, fileB: string, workingDirectory: string) => void;
   loading: boolean;
   runs: Run[];
@@ -25,7 +25,7 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
   includedCombinations,
   columnsLoaded,
 }) => {
-  const { register, handleSubmit, watch, setValue } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue } = useForm<FormDataType>({
     defaultValues: {
       fileA: '',
       fileB: '',

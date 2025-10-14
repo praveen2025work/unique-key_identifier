@@ -88,10 +88,28 @@ class ApiService {
     return response.json();
   }
 
-  async getRunDetails(runId: number): Promise<RunDetails> {
-    const response = await fetch(`${this.baseUrl}/api/run/${runId}`);
+  async getRunDetails(runId: number, queryParams?: string): Promise<RunDetails> {
+    const url = queryParams 
+      ? `${this.baseUrl}/api/run/${runId}?${queryParams}`
+      : `${this.baseUrl}/api/run/${runId}`;
+    const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch run details');
     return response.json();
+  }
+
+  async getRunDetailsWithPagination(
+    runId: number,
+    page: number = 1,
+    pageSize: number = 100,
+    side?: 'A' | 'B'
+  ): Promise<RunDetails> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+    if (side) params.append('side', side);
+    
+    return this.getRunDetails(runId, params.toString());
   }
 
   async cloneRun(runId: number): Promise<CompareRequest> {

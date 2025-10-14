@@ -5,7 +5,7 @@ import LoadingOverlay from './LoadingOverlay';
 import { useToast } from '../hooks/useToast';
 import { useColumnBuilder } from '../hooks/useColumnBuilder';
 import { useApi } from '../contexts/ApiContext';
-import { FormData, FileInfo, Run, ProgressStep } from '../types';
+import type { FormData as FormDataType, FileInfo, Run, ProgressStep } from '../types';
 import Toast from './Toast';
 import toast from 'react-hot-toast';
 
@@ -141,7 +141,7 @@ const MainAnalysis: React.FC<MainAnalysisProps> = ({ environment, onAnalysisStar
     }
   };
 
-  const submitAnalysis = async (formData: FormData) => {
+  const submitAnalysis = async (formData: FormDataType) => {
     if (!columnsLoaded) {
       toast.error('Please load columns first before analyzing');
       return;

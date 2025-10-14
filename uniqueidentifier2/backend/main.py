@@ -20,10 +20,13 @@ from config import (
     SCRIPT_DIR, SUPPORTED_EXTENSIONS, MAX_ROWS_WARNING,
     MAX_ROWS_HARD_LIMIT, MAX_COMBINATIONS, MEMORY_EFFICIENT_THRESHOLD,
     LARGE_FILE_THRESHOLD, SAMPLE_SIZE_FOR_LARGE_FILES,
-    SKIP_FILE_GENERATION_THRESHOLD, MAX_COMBINATIONS_TO_GENERATE
+    SKIP_FILE_GENERATION_THRESHOLD, MAX_COMBINATIONS_TO_GENERATE,
+    VERY_LARGE_FILE_THRESHOLD, INTELLIGENT_SAMPLING_SIZE,
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, COMPARISON_BATCH_SIZE
 )
 from database import conn, update_job_status, update_stage_status, create_tables
 from file_processing import detect_delimiter, get_file_stats, estimate_processing_time, read_data_file
+from large_file_processor import LargeFileProcessor, get_processing_strategy, optimize_dataframe_memory
 from analysis import analyze_file_combinations
 from data_quality import perform_data_quality_check, perform_single_file_quality_check
 from result_generator import (
@@ -304,6 +307,12 @@ async def preview_columns(
                 "file_a_rows": row_count_a,
                 "file_b_rows": row_count_b
             }, status_code=400)
+        elif max_rows >= VERY_LARGE_FILE_THRESHOLD:
+            warnings.append(f"🚀 Ultra-large files detected ({max_rows:,} rows).")
+            warnings.append(f"📊 Intelligent sampling will be used: {INTELLIGENT_SAMPLING_SIZE:,} rows ({(INTELLIGENT_SAMPLING_SIZE/max_rows*100):.1f}%)")
+            warnings.append("⚡ Estimated processing time: 5-10 minutes")
+            warnings.append("💾 Memory optimized: Results will load in pages of 100")
+            performance_level = "ultra_large"
         elif max_rows > LARGE_FILE_THRESHOLD:
             warnings.append(f"Very large files detected ({max_rows:,} rows). Analysis will use intelligent sampling.")
             performance_level = "very_large"
@@ -539,8 +548,13 @@ async def get_runs(environment: Optional[str] = Query(None), limit: int = Query(
 
 
 @app.get("/api/run/{run_id}")
-async def get_run_details(run_id: int):
-    """Get detailed results for a specific run"""
+async def get_run_details(
+    run_id: int,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    side: Optional[str] = Query(None)  # Filter by side: 'A', 'B', or None for both
+):
+    """Get detailed results for a specific run with pagination support"""
     try:
         cursor = conn.cursor()
         
@@ -554,14 +568,59 @@ async def get_run_details(run_id: int):
         if not run_info:
             raise HTTPException(status_code=404, detail="Run not found")
         
-        # Get results for both sides
+        # Get total counts
+        if side:
+            cursor.execute('''
+                SELECT COUNT(*) FROM analysis_results WHERE run_id = ? AND side = ?
+            ''', (run_id, side.upper()))
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) FROM analysis_results WHERE run_id = ?
+            ''', (run_id,))
+        total_results = cursor.fetchone()[0]
+        
+        # Calculate pagination
+        offset = (page - 1) * page_size
+        total_pages = (total_results + page_size - 1) // page_size
+        
+        # Get paginated results
+        if side:
+            cursor.execute('''
+                SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
+                FROM analysis_results
+                WHERE run_id = ? AND side = ?
+                ORDER BY uniqueness_score DESC
+                LIMIT ? OFFSET ?
+            ''', (run_id, side.upper(), page_size, offset))
+        else:
+            cursor.execute('''
+                SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
+                FROM analysis_results
+                WHERE run_id = ?
+                ORDER BY side, uniqueness_score DESC
+                LIMIT ? OFFSET ?
+            ''', (run_id, page_size, offset))
+        results = cursor.fetchall()
+        
+        # Get summaries (not paginated)
         cursor.execute('''
-            SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
+            SELECT side, COUNT(*) as total, SUM(is_unique_key) as unique_count
             FROM analysis_results
             WHERE run_id = ?
-            ORDER BY side, uniqueness_score DESC
+            GROUP BY side
         ''', (run_id,))
-        results = cursor.fetchall()
+        summary_data = cursor.fetchall()
+        
+        # Get best scores
+        cursor.execute('''
+            SELECT MAX(uniqueness_score) FROM analysis_results WHERE run_id = ? AND side = 'A'
+        ''', (run_id,))
+        best_score_a = cursor.fetchone()[0] or 0
+        
+        cursor.execute('''
+            SELECT MAX(uniqueness_score) FROM analysis_results WHERE run_id = ? AND side = 'B'
+        ''', (run_id,))
+        best_score_b = cursor.fetchone()[0] or 0
         
         results_a = []
         results_b = []
@@ -581,6 +640,19 @@ async def get_run_details(run_id: int):
             else:
                 results_b.append(result_obj)
         
+        # Parse summary data
+        total_a = 0
+        total_b = 0
+        unique_a = 0
+        unique_b = 0
+        for s in summary_data:
+            if s[0] == 'A':
+                total_a = s[1]
+                unique_a = s[2] or 0
+            else:
+                total_b = s[1]
+                unique_b = s[2] or 0
+        
         return JSONResponse({
             "run_id": run_id,
             "timestamp": run_info[0] if run_info[0] else "",
@@ -594,11 +666,21 @@ async def get_run_details(run_id: int):
             "results_a": results_a,
             "results_b": results_b,
             "summary": {
-                "total_combinations": len(results_a),
-                "unique_keys_a": len([r for r in results_a if r['is_unique_key']]),
-                "unique_keys_b": len([r for r in results_b if r['is_unique_key']]),
-                "best_score_a": results_a[0]['uniqueness_score'] if results_a else 0,
-                "best_score_b": results_b[0]['uniqueness_score'] if results_b else 0
+                "total_combinations": total_a + total_b,
+                "total_combinations_a": total_a,
+                "total_combinations_b": total_b,
+                "unique_keys_a": unique_a,
+                "unique_keys_b": unique_b,
+                "best_score_a": float(best_score_a),
+                "best_score_b": float(best_score_b)
+            },
+            "pagination": {
+                "page": page,
+                "page_size": page_size,
+                "total_results": total_results,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
             }
         })
     except HTTPException:

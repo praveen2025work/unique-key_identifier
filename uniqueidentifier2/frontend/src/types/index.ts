@@ -48,6 +48,17 @@ export interface AnalysisResult {
   duplicate_count: number;
   uniqueness_score: number;
   is_unique_key: boolean;
+  count_a?: number;
+  count_b?: number;
+}
+
+export interface PaginationInfo {
+  page: number;
+  page_size: number;
+  total_results: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface RunDetails {
@@ -64,11 +75,14 @@ export interface RunDetails {
   results_b: AnalysisResult[];
   summary: {
     total_combinations: number;
+    total_combinations_a?: number;
+    total_combinations_b?: number;
     unique_keys_a: number;
     unique_keys_b: number;
     best_score_a: number;
     best_score_b: number;
   };
+  pagination?: PaginationInfo;
 }
 
 export interface PreviewResponse {
@@ -169,4 +183,55 @@ export interface Discrepancy {
   column?: string;
   severity: 'high' | 'medium' | 'low';
   message: string;
+}
+
+// Form and UI Types
+export interface FormData {
+  fileA: string;
+  fileB: string;
+  workingDirectory: string;
+  numColumns: number;
+  maxRows: number;
+  dataQualityCheck: boolean;
+}
+
+export interface Run {
+  id: string;
+  label: string;
+  status: string;
+  timestamp: string;
+  file_a?: string;
+  file_b?: string;
+}
+
+export interface FileInfo {
+  rowsA: number;
+  rowsB: number;
+  columns: string[];
+  fileASize?: string;
+  fileBSize?: string;
+  warnings?: string[];
+  estimatedTime?: string;
+}
+
+export interface ProgressStep {
+  name: string;
+  status: 'pending' | 'active' | 'completed' | 'error';
+}
+
+export interface Toast {
+  show: boolean;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+}
+
+export type BuilderMode = 'include' | 'exclude';
+
+export interface ColumnBuilderState {
+  includeBuilder: string[];
+  excludeBuilder: string[];
+  includedCombinations: string[];
+  excludedCombinations: string[];
+  activeBuilder: BuilderMode;
 }
