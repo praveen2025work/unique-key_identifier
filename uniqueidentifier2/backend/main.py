@@ -625,17 +625,60 @@ async def get_run_details(
         results_a = []
         results_b = []
         
+        def safe_int(value, default=0):
+            """Safely convert value to int, handling bytes and corrupted data"""
+            if value is None:
+                return default
+            try:
+                # Handle bytes objects
+                if isinstance(value, bytes):
+                    # Try to decode and parse
+                    try:
+                        decoded = value.decode('utf-8', errors='ignore').strip()
+                        return int(decoded) if decoded else default
+                    except:
+                        return default
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_float(value, default=0.0):
+            """Safely convert value to float, handling bytes and corrupted data"""
+            if value is None:
+                return default
+            try:
+                if isinstance(value, bytes):
+                    try:
+                        decoded = value.decode('utf-8', errors='ignore').strip()
+                        return float(decoded) if decoded else default
+                    except:
+                        return default
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        
+        def safe_str(value, default=''):
+            """Safely convert value to string, handling bytes"""
+            if value is None:
+                return default
+            try:
+                if isinstance(value, bytes):
+                    return value.decode('utf-8', errors='ignore').strip()
+                return str(value)
+            except:
+                return default
+        
         for r in results:
             result_obj = {
-                'columns': str(r[1]) if r[1] else '',
-                'total_rows': int(r[2]) if r[2] is not None else 0,
-                'unique_rows': int(r[3]) if r[3] is not None else 0,
-                'duplicate_rows': int(r[4]) if r[4] is not None else 0,
-                'duplicate_count': int(r[5]) if r[5] is not None else 0,
-                'uniqueness_score': float(r[6]) if r[6] is not None else 0.0,
-                'is_unique_key': bool(r[7]) if r[7] is not None else False
+                'columns': safe_str(r[1], ''),
+                'total_rows': safe_int(r[2], 0),
+                'unique_rows': safe_int(r[3], 0),
+                'duplicate_rows': safe_int(r[4], 0),
+                'duplicate_count': safe_int(r[5], 0),
+                'uniqueness_score': safe_float(r[6], 0.0),
+                'is_unique_key': bool(safe_int(r[7], 0))
             }
-            side = str(r[0]) if r[0] else 'A'
+            side = safe_str(r[0], 'A')
             if side == 'A':
                 results_a.append(result_obj)
             else:
@@ -656,24 +699,24 @@ async def get_run_details(
         
         return JSONResponse({
             "run_id": int(run_id),
-            "timestamp": str(run_info[0]) if run_info[0] else "",
-            "file_a": str(run_info[1]) if run_info[1] else "",
-            "file_b": str(run_info[2]) if run_info[2] else "",
-            "num_columns": int(run_info[3]) if run_info[3] is not None else 0,
-            "file_a_rows": int(run_info[4]) if run_info[4] is not None else 0,
-            "file_b_rows": int(run_info[5]) if run_info[5] is not None else 0,
-            "status": str(run_info[6]) if run_info[6] else "unknown",
-            "environment": str(run_info[7]) if run_info[7] else "default",
+            "timestamp": safe_str(run_info[0], ""),
+            "file_a": safe_str(run_info[1], ""),
+            "file_b": safe_str(run_info[2], ""),
+            "num_columns": safe_int(run_info[3], 0),
+            "file_a_rows": safe_int(run_info[4], 0),
+            "file_b_rows": safe_int(run_info[5], 0),
+            "status": safe_str(run_info[6], "unknown"),
+            "environment": safe_str(run_info[7], "default"),
             "results_a": results_a,
             "results_b": results_b,
             "summary": {
-                "total_combinations": int(total_a + total_b),
-                "total_combinations_a": int(total_a),
-                "total_combinations_b": int(total_b),
-                "unique_keys_a": int(unique_a),
-                "unique_keys_b": int(unique_b),
-                "best_score_a": float(best_score_a) if best_score_a is not None else 0.0,
-                "best_score_b": float(best_score_b) if best_score_b is not None else 0.0
+                "total_combinations": safe_int(total_a + total_b, 0),
+                "total_combinations_a": safe_int(total_a, 0),
+                "total_combinations_b": safe_int(total_b, 0),
+                "unique_keys_a": safe_int(unique_a, 0),
+                "unique_keys_b": safe_int(unique_b, 0),
+                "best_score_a": safe_float(best_score_a, 0.0),
+                "best_score_b": safe_float(best_score_b, 0.0)
             },
             "pagination": {
                 "page": int(page),

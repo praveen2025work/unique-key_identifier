@@ -5,8 +5,10 @@ import sqlite3
 from datetime import datetime
 from config import DB_PATH
 
-# SQLite connection
+# SQLite connection with proper text handling
 conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+# Ensure TEXT columns return strings, not bytes
+conn.text_factory = str
 
 def create_tables():
     """Initialize database tables"""
