@@ -541,65 +541,72 @@ async def get_runs(environment: Optional[str] = Query(None), limit: int = Query(
 @app.get("/api/run/{run_id}")
 async def get_run_details(run_id: int):
     """Get detailed results for a specific run"""
-    cursor = conn.cursor()
-    
-    # Get run info
-    cursor.execute('''
-        SELECT timestamp, file_a, file_b, num_columns, file_a_rows, file_b_rows, status, environment
-        FROM runs WHERE run_id = ?
-    ''', (run_id,))
-    run_info = cursor.fetchone()
-    
-    if not run_info:
-        raise HTTPException(status_code=404, detail="Run not found")
-    
-    # Get results for both sides
-    cursor.execute('''
-        SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
-        FROM analysis_results
-        WHERE run_id = ?
-        ORDER BY side, uniqueness_score DESC
-    ''', (run_id,))
-    results = cursor.fetchall()
-    
-    results_a = []
-    results_b = []
-    
-    for r in results:
-        result_obj = {
-            'columns': r[1],
-            'total_rows': r[2],
-            'unique_rows': r[3],
-            'duplicate_rows': r[4],
-            'duplicate_count': r[5],
-            'uniqueness_score': r[6],
-            'is_unique_key': r[7] == 1
-        }
-        if r[0] == 'A':
-            results_a.append(result_obj)
-        else:
-            results_b.append(result_obj)
-    
-    return JSONResponse({
-        "run_id": run_id,
-        "timestamp": run_info[0],
-        "file_a": run_info[1],
-        "file_b": run_info[2],
-        "num_columns": run_info[3],
-        "file_a_rows": run_info[4],
-        "file_b_rows": run_info[5],
-        "status": run_info[6],
-        "environment": run_info[7],
-        "results_a": results_a,
-        "results_b": results_b,
-        "summary": {
-            "total_combinations": len(results_a),
-            "unique_keys_a": len([r for r in results_a if r['is_unique_key']]),
-            "unique_keys_b": len([r for r in results_b if r['is_unique_key']]),
-            "best_score_a": results_a[0]['uniqueness_score'] if results_a else 0,
-            "best_score_b": results_b[0]['uniqueness_score'] if results_b else 0
-        }
-    })
+    try:
+        cursor = conn.cursor()
+        
+        # Get run info
+        cursor.execute('''
+            SELECT timestamp, file_a, file_b, num_columns, file_a_rows, file_b_rows, status, environment
+            FROM runs WHERE run_id = ?
+        ''', (run_id,))
+        run_info = cursor.fetchone()
+        
+        if not run_info:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        # Get results for both sides
+        cursor.execute('''
+            SELECT side, columns, total_rows, unique_rows, duplicate_rows, duplicate_count, uniqueness_score, is_unique_key
+            FROM analysis_results
+            WHERE run_id = ?
+            ORDER BY side, uniqueness_score DESC
+        ''', (run_id,))
+        results = cursor.fetchall()
+        
+        results_a = []
+        results_b = []
+        
+        for r in results:
+            result_obj = {
+                'columns': r[1] if r[1] else '',
+                'total_rows': r[2] if r[2] is not None else 0,
+                'unique_rows': r[3] if r[3] is not None else 0,
+                'duplicate_rows': r[4] if r[4] is not None else 0,
+                'duplicate_count': r[5] if r[5] is not None else 0,
+                'uniqueness_score': float(r[6]) if r[6] is not None else 0.0,
+                'is_unique_key': r[7] == 1 if r[7] is not None else False
+            }
+            if r[0] == 'A':
+                results_a.append(result_obj)
+            else:
+                results_b.append(result_obj)
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "timestamp": run_info[0] if run_info[0] else "",
+            "file_a": run_info[1] if run_info[1] else "",
+            "file_b": run_info[2] if run_info[2] else "",
+            "num_columns": run_info[3] if run_info[3] is not None else 0,
+            "file_a_rows": run_info[4] if run_info[4] is not None else 0,
+            "file_b_rows": run_info[5] if run_info[5] is not None else 0,
+            "status": run_info[6] if run_info[6] else "unknown",
+            "environment": run_info[7] if run_info[7] else "default",
+            "results_a": results_a,
+            "results_b": results_b,
+            "summary": {
+                "total_combinations": len(results_a),
+                "unique_keys_a": len([r for r in results_a if r['is_unique_key']]),
+                "unique_keys_b": len([r for r in results_b if r['is_unique_key']]),
+                "best_score_a": results_a[0]['uniqueness_score'] if results_a else 0,
+                "best_score_b": results_b[0]['uniqueness_score'] if results_b else 0
+            }
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error retrieving run details: {str(e)}")
 
 
 @app.get("/api/clone/{run_id}")
