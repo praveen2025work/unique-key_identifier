@@ -143,6 +143,19 @@ def update_job_status(run_id, status=None, stage=None, progress=None, error=None
         values.append(run_id)
         cursor.execute(f"UPDATE runs SET {', '.join(updates)} WHERE run_id = ?", values)
         conn.commit()
+    
+    # Fix any stuck stages when job completes or errors
+    if status in ('completed', 'error'):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_stage_status = 'error' if status == 'error' else 'completed'
+        details = 'Job failed' if status == 'error' else 'Completed with job'
+        
+        cursor.execute('''
+            UPDATE job_stages 
+            SET status = ?, completed_at = ?, details = ?
+            WHERE run_id = ? AND status = 'in_progress'
+        ''', (new_stage_status, timestamp, details, run_id))
+        conn.commit()
 
 def update_stage_status(run_id, stage_name, status, details=None):
     """Update individual stage status"""
