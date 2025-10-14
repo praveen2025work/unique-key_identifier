@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { CogIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { CogIcon, MagnifyingGlassIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import { FormData, Run } from '../types';
+import ModernDropdown from './ui/ModernDropdown';
 
 interface ConfigurationPanelProps {
   onSubmit: (data: FormData) => void;
@@ -48,9 +49,8 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
     }
   };
 
-  const handleCloneRun = async (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const runId = event.target.value;
-    if (runId) {
+  const handleCloneRun = async (runId: string | number | (string | number)[]) => {
+    if (runId && typeof runId === 'string') {
       const clonedData = await onCloneRun(runId);
       if (clonedData) {
         setValue('fileA', clonedData.file_a);
@@ -60,15 +60,12 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
         setValue('workingDirectory', clonedData.working_directory || '');
         setValue('dataQualityCheck', clonedData.data_quality_check || false);
       }
-      event.target.value = '';
     }
   };
 
-  const handleViewRun = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const runId = event.target.value;
-    if (runId) {
+  const handleViewRun = (runId: string | number | (string | number)[]) => {
+    if (runId && typeof runId === 'string') {
       alert(`Viewing results for run ${runId} - Results viewer coming soon!`);
-      event.target.value = '';
     }
   };
 
@@ -199,29 +196,34 @@ const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
 
           {runs.length > 0 && (
             <>
-              <select
+              <ModernDropdown
+                options={runs.map(run => ({ 
+                  value: run.id, 
+                  label: run.label,
+                  icon: <ChartBarIcon className="w-4 h-4" />
+                }))}
                 onChange={handleViewRun}
-                className="px-4 py-2 text-sm border-2 border-gray-300 rounded-lg focus:border-primary transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-              >
-                <option value="">📊 View Previous Results...</option>
-                {runs.map((run) => (
-                  <option key={run.id} value={run.id}>
-                    {run.label}
-                  </option>
-                ))}
-              </select>
+                placeholder="📊 View Previous Results..."
+                size="sm"
+                searchable={true}
+                clearable={true}
+                className="min-w-[200px]"
+              />
               
-              <select
+              <ModernDropdown
+                options={runs.map(run => ({ 
+                  value: run.id, 
+                  label: run.label,
+                  icon: <DocumentTextIcon className="w-4 h-4" />
+                }))}
                 onChange={handleCloneRun}
-                className="px-4 py-2 text-sm border-2 border-green-400 rounded-lg focus:border-green-500 transition-all bg-green-50 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500/20"
-              >
-                <option value="">🔄 Clone Settings...</option>
-                {runs.map((run) => (
-                  <option key={run.id} value={run.id}>
-                    {run.label}
-                  </option>
-                ))}
-              </select>
+                placeholder="🔄 Clone Settings..."
+                size="sm"
+                variant="success"
+                searchable={true}
+                clearable={true}
+                className="min-w-[200px]"
+              />
             </>
           )}
         </div>

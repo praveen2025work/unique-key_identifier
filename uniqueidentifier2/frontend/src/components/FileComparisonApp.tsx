@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
+import ModernDropdown from './ui/ModernDropdown';
 
 interface FileInfo {
   columns: string[];
@@ -579,14 +580,20 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       placeholder="file_b.csv" />
                   </div>
                   <div className="col-span-3">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">📋 Recent Runs</label>
-                    <select value={selectedRunId || ''} onChange={(e) => setSelectedRunId(e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
-                      <option value="">Select run...</option>
-                      {previousRuns.map(run => (
-                        <option key={run.id} value={run.id}>#{run.id} • {run.status} • {run.timestamp.slice(0, 16)}</option>
-                      ))}
-                    </select>
+                    <ModernDropdown
+                      label="📋 Recent Runs"
+                      value={selectedRunId || ''}
+                      onChange={(value) => setSelectedRunId(value ? parseInt(value as string) : null)}
+                      options={previousRuns.map(run => ({
+                        value: run.id,
+                        label: `#${run.id} • ${run.timestamp.slice(0, 16)}`,
+                        badge: run.status
+                      }))}
+                      placeholder="Select run..."
+                      size="sm"
+                      searchable={true}
+                      clearable={true}
+                    />
                   </div>
                 </div>
 
@@ -594,10 +601,15 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 <div className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Columns</label>
-                    <select value={numColumns} onChange={(e) => setNumColumns(parseInt(e.target.value))}
-                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
-                      {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
+                    <div className="relative">
+                      <select value={numColumns} onChange={(e) => setNumColumns(parseInt(e.target.value))}
+                        className="w-full h-[30px] px-2 pr-6 text-xs border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white appearance-none cursor-pointer transition-all shadow-sm hover:shadow-md font-medium">
+                        {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                      <svg className="w-3 h-3 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                   <div className="col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📝 Max Rows</label>
@@ -836,14 +848,20 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     <h2 className="text-sm font-semibold text-gray-900">Analysis Results • Run #{results.run_id}</h2>
                     <p className="text-xs text-gray-500">{results.timestamp}</p>
                   </div>
-                  <div className="ml-4">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">📋 Switch Run</label>
-                    <select value={results.run_id} onChange={(e) => handleViewResults(parseInt(e.target.value))}
-                      className="h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
-                      {previousRuns.map(run => (
-                        <option key={run.id} value={run.id}>#{run.id} • {run.status} • {run.timestamp.slice(0, 16)}</option>
-                      ))}
-                    </select>
+                  <div className="ml-4 min-w-[250px]">
+                    <ModernDropdown
+                      value={results.run_id}
+                      onChange={(value) => handleViewResults(parseInt(value as string))}
+                      options={previousRuns.map(run => ({
+                        value: run.id,
+                        label: `#${run.id} • ${run.timestamp.slice(0, 16)}`,
+                        badge: run.status,
+                        description: `${run.file_a?.split('/').pop() || 'N/A'} vs ${run.file_b?.split('/').pop() || 'N/A'}`
+                      }))}
+                      size="sm"
+                      searchable={true}
+                      placeholder="📋 Switch Run..."
+                    />
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -1082,13 +1100,24 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                   <div className="mb-2 flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="block text-xs font-semibold mb-1">📊 Select Columns:</label>
-                      <select value={selectedComparisonColumn} onChange={(e) => { setSelectedComparisonColumn(e.target.value); loadFileComparisonData(e.target.value); }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#337ab7]">
-                        {results.results_a.map(r => (
-                          <option key={r.columns} value={r.columns}>{r.columns} ({r.uniqueness_score.toFixed(1)}%)</option>
-                        ))}
-                      </select>
+                      <ModernDropdown
+                        label="📊 Select Columns:"
+                        value={selectedComparisonColumn}
+                        onChange={(value) => { 
+                          setSelectedComparisonColumn(value as string); 
+                          loadFileComparisonData(value as string); 
+                        }}
+                        options={results.results_a.map(r => ({
+                          value: r.columns,
+                          label: r.columns,
+                          badge: `${r.uniqueness_score.toFixed(1)}%`,
+                          description: `${r.unique_rows?.toLocaleString() || 0} unique records`
+                        }))}
+                        size="sm"
+                        searchable={true}
+                        clearable={true}
+                        placeholder="Choose columns to compare..."
+                      />
                     </div>
                     {comparisonSummary && (
                       <button

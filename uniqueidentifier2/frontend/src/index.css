@@ -37,6 +37,23 @@
     @apply bg-slate-400;
   }
 
+  /* Custom scrollbar class for data quality viewer */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-indigo-300 rounded transition-colors;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-indigo-500;
+  }
+
   /* Animations */
   @keyframes slideIn {
     from {

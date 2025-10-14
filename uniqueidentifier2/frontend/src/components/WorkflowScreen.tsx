@@ -20,7 +20,37 @@ interface JobStatus {
   file_b: string;
   num_columns: number;
   stages: JobStage[];
+  started_at?: string;
+  completed_at?: string;
 }
+
+// Helper function to calculate duration
+const calculateDuration = (start?: string, end?: string): string => {
+  if (!start) return '';
+  
+  const startTime = new Date(start);
+  const endTime = end ? new Date(end) : new Date();
+  const diffMs = endTime.getTime() - startTime.getTime();
+  
+  const seconds = Math.floor(diffMs / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds % 60}s`;
+  } else {
+    return `${seconds}s`;
+  }
+};
+
+// Helper function to format time
+const formatTime = (timestamp?: string): string => {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+};
 
 interface WorkflowScreenProps {
   runId: number;
@@ -132,13 +162,13 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
 
       <div className="p-4 max-w-6xl mx-auto">
         
-        {/* Progress Bar */}
+        {/* Progress Bar with Timing */}
         <div className="bg-white rounded-lg shadow border border-slate-200 p-4 mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-900">Overall Progress</h3>
             <span className="text-sm font-bold text-blue-700">{jobStatus.progress}%</span>
           </div>
-          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-3">
             <div
               className={`h-full transition-all duration-500 ${
                 jobStatus.status === 'error' ? 'bg-red-600' : 'bg-blue-600'
@@ -146,8 +176,39 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
               style={{ width: `${jobStatus.progress}%` }}
             ></div>
           </div>
+          
+          {/* Timing Information */}
+          <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-200">
+            <div className="text-center">
+              <div className="text-xs text-gray-500 font-medium mb-1">Started</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {formatTime(jobStatus.started_at)}
+              </div>
+            </div>
+            <div className="text-center border-x border-slate-200">
+              <div className="text-xs text-gray-500 font-medium mb-1">
+                {jobStatus.status === 'completed' ? 'Completed' : jobStatus.status === 'running' ? 'Running' : 'Ended'}
+              </div>
+              <div className="text-sm font-semibold text-gray-900">
+                {jobStatus.status === 'completed' || jobStatus.status === 'error' 
+                  ? formatTime(jobStatus.completed_at)
+                  : '⟳ In Progress'
+                }
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-gray-500 font-medium mb-1">Duration</div>
+              <div className={`text-sm font-semibold ${
+                jobStatus.status === 'running' ? 'text-blue-600' : 
+                jobStatus.status === 'completed' ? 'text-green-600' : 'text-gray-900'
+              }`}>
+                {calculateDuration(jobStatus.started_at, jobStatus.completed_at) || 'N/A'}
+              </div>
+            </div>
+          </div>
+          
           {autoRefresh && (
-            <div className="mt-2 flex items-center justify-center space-x-2 text-xs text-gray-500">
+            <div className="mt-3 flex items-center justify-center space-x-2 text-xs text-gray-500">
               <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               <span>Auto-refreshing...</span>
             </div>
@@ -211,6 +272,38 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
                   </div>
                   {stage.details && (
                     <div className="text-xs text-gray-600 mt-1 truncate">{stage.details}</div>
+                  )}
+                  
+                  {/* Stage Timing */}
+                  {(stage.started_at || stage.completed_at) && (
+                    <div className="mt-2 flex items-center space-x-4 text-xs">
+                      {stage.started_at && (
+                        <div className="flex items-center space-x-1 text-gray-600">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>{formatTime(stage.started_at)}</span>
+                        </div>
+                      )}
+                      {stage.completed_at && (
+                        <div className="flex items-center space-x-1 text-gray-600">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>{formatTime(stage.completed_at)}</span>
+                        </div>
+                      )}
+                      {stage.started_at && (
+                        <div className={`flex items-center space-x-1 font-semibold ${
+                          stage.status === 'in_progress' ? 'text-blue-600' : 'text-green-600'
+                        }`}>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          <span>{calculateDuration(stage.started_at, stage.completed_at)}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

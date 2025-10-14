@@ -4,6 +4,7 @@ import type { RunDetails, AnalysisResult, JobStatus } from '../types';
 import toast from 'react-hot-toast';
 import ComparisonViewer from './ComparisonViewer';
 import DataQualityViewer from './DataQualityViewer';
+import ModernDropdown from './ui/ModernDropdown';
 
 interface EnhancedResultsViewerProps {
   runId: number;
@@ -516,20 +517,21 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
           {activeTab === 'comparison' && (
             <div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select columns to compare:
-                </label>
-                <select
+                <ModernDropdown
+                  label="Select columns to compare:"
                   value={selectedComboColumns}
-                  onChange={(e) => setSelectedComboColumns(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  {details.results_a.map((result) => (
-                    <option key={result.columns} value={result.columns}>
-                      {result.columns} ({result.uniqueness_score.toFixed(1)}% unique)
-                    </option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedComboColumns(value as string)}
+                  options={details.results_a.map((result) => ({
+                    value: result.columns,
+                    label: result.columns,
+                    badge: `${result.uniqueness_score.toFixed(1)}% unique`,
+                    description: `${result.count_a.toLocaleString()} records in Side A`
+                  }))}
+                  size="md"
+                  searchable={true}
+                  clearable={true}
+                  placeholder="Choose column combination to compare..."
+                />
               </div>
               {selectedComboColumns && (
                 <ComparisonViewer runId={runId} columns={selectedComboColumns} />
