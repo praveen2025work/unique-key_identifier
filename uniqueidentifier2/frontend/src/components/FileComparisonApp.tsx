@@ -836,6 +836,15 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     <h2 className="text-sm font-semibold text-gray-900">Analysis Results • Run #{results.run_id}</h2>
                     <p className="text-xs text-gray-500">{results.timestamp}</p>
                   </div>
+                  <div className="ml-4">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">📋 Switch Run</label>
+                    <select value={results.run_id} onChange={(e) => handleViewResults(parseInt(e.target.value))}
+                      className="h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
+                      {previousRuns.map(run => (
+                        <option key={run.id} value={run.id}>#{run.id} • {run.status} • {run.timestamp.slice(0, 16)}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-3 text-xs">
