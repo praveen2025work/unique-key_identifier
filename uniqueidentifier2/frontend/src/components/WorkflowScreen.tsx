@@ -80,8 +80,19 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
 
   const loadStatus = async () => {
     try {
-      const response = await fetch(`${apiEndpoint}/api/status/${runId}`);
-      if (!response.ok) return;
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      const response = await fetch(`${apiEndpoint}/api/status/${runId}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.warn('Status check failed:', response.status);
+        return;
+      }
       
       const data = await response.json();
       setJobStatus(data);
@@ -97,10 +108,16 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
               onViewResults();
             }, 2000);
           }
+        } else if (data.status === 'error') {
+          toast.error(`Analysis failed: ${data.error || 'Unknown error'}`);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch status:', error);
+      if (error.name === 'AbortError') {
+        console.warn('Status check timed out - backend may be busy');
+        // Don't show toast for every timeout, just log it
+      }
     }
   };
 
@@ -112,7 +129,16 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-sm text-gray-600">Loading workflow...</p>
+          <p className="text-sm text-gray-600">Loading workflow for Run #{runId}...</p>
+          <p className="text-xs text-gray-500 mt-2">If this takes too long, the backend may be processing large data or not responding.</p>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mt-4 px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+            >
+              ← Go Back
+            </button>
+          )}
         </div>
       </div>
     );

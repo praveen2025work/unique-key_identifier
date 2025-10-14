@@ -74,9 +74,22 @@ class ApiService {
   }
 
   async getJobStatus(runId: number): Promise<JobStatus> {
-    const response = await fetch(`${this.baseUrl}/api/status/${runId}`);
-    if (!response.ok) throw new Error('Failed to fetch job status');
-    return response.json();
+    // Add timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/api/status/${runId}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error('Failed to fetch job status');
+      return response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Status check timed out');
+      }
+      throw error;
+    }
   }
 
   async getRuns(environment?: string, limit: number = 50): Promise<AnalysisRun[]> {
@@ -92,9 +105,23 @@ class ApiService {
     const url = queryParams 
       ? `${this.baseUrl}/api/run/${runId}?${queryParams}`
       : `${this.baseUrl}/api/run/${runId}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch run details');
-    return response.json();
+    
+    // Add timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error('Failed to fetch run details');
+      return response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out - backend may be processing large data');
+      }
+      throw error;
+    }
   }
 
   async getRunDetailsWithPagination(

@@ -209,7 +209,16 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const handleViewResults = async (runId: number) => {
     try {
       toast.loading(`Loading Run #${runId}...`, { id: 'load-results' });
-      const response = await fetch(`${apiEndpoint}/api/run/${runId}`);
+      
+      // Add timeout to fetch
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      const response = await fetch(`${apiEndpoint}/api/run/${runId}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.detail || errorData.error || 'Failed to load results');
@@ -221,43 +230,22 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       setShowResults(true);
       setResultsTab('analysis');
       
-      // Set default comparison column and load comparison data upfront
+      // Set default comparison column (but don't load data yet - wait for user to click tab)
       if (data.results_a && data.results_a.length > 0) {
         const bestColumn = data.results_a[0].columns;
         setSelectedComparisonColumn(bestColumn);
-        
-        // Load file comparison data immediately
-        try {
-          const summaryResp = await fetch(`${apiEndpoint}/api/comparison/${runId}/summary?columns=${encodeURIComponent(bestColumn)}`);
-          if (summaryResp.ok) {
-            const summary = await summaryResp.json();
-            setComparisonSummary(summary);
-            
-            // Load matched, only_a, and only_b data upfront
-            const [matchedResp, onlyAResp, onlyBResp] = await Promise.all([
-              fetch(`${apiEndpoint}/api/comparison/${runId}/data?columns=${encodeURIComponent(bestColumn)}&category=matched&offset=0&limit=50`),
-              fetch(`${apiEndpoint}/api/comparison/${runId}/data?columns=${encodeURIComponent(bestColumn)}&category=only_a&offset=0&limit=50`),
-              fetch(`${apiEndpoint}/api/comparison/${runId}/data?columns=${encodeURIComponent(bestColumn)}&category=only_b&offset=0&limit=50`)
-            ]);
-            
-            const matchedData = matchedResp.ok ? await matchedResp.json() : { records: [] };
-            const onlyAData = onlyAResp.ok ? await onlyAResp.json() : { records: [] };
-            const onlyBData = onlyBResp.ok ? await onlyBResp.json() : { records: [] };
-            
-            setComparisonData({
-              matched: matchedData.records,
-              only_a: onlyAData.records,
-              only_b: onlyBData.records
-            });
-          }
-        } catch (err) {
-          console.log('File comparison data not available');
-        }
       }
       
-      // Load workflow status
+      // Load workflow status (lightweight)
       try {
-        const statusResp = await fetch(`${apiEndpoint}/api/status/${runId}`);
+        const controller2 = new AbortController();
+        const timeoutId2 = setTimeout(() => controller2.abort(), 10000);
+        
+        const statusResp = await fetch(`${apiEndpoint}/api/status/${runId}`, {
+          signal: controller2.signal
+        });
+        clearTimeout(timeoutId2);
+        
         if (statusResp.ok) {
           const statusData = await statusResp.json();
           setJobStatus(statusData);
@@ -266,9 +254,16 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
         console.log('No workflow status available');
       }
       
-      // Load data quality if available
+      // Data quality check is also lightweight (from database), OK to load
       try {
-        const qualityResp = await fetch(`${apiEndpoint}/api/data-quality/${runId}`);
+        const controller3 = new AbortController();
+        const timeoutId3 = setTimeout(() => controller3.abort(), 10000);
+        
+        const qualityResp = await fetch(`${apiEndpoint}/api/data-quality/${runId}`, {
+          signal: controller3.signal
+        });
+        clearTimeout(timeoutId3);
+        
         if (qualityResp.ok) {
           const qualityData = await qualityResp.json();
           setDataQualityReport(qualityData);
@@ -281,7 +276,12 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       window.scrollTo({ top: 0, behavior: 'smooth' });
       toast.success('✓ Results loaded', { id: 'load-results' });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to load results', { id: 'load-results' });
+      console.error('Error loading results:', error);
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out. The backend may be processing a large dataset or is not responding.', { id: 'load-results', duration: 5000 });
+      } else {
+        toast.error(error.message || 'Failed to load results', { id: 'load-results' });
+      }
     }
   };
 
@@ -292,22 +292,39 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
     }
     
     try {
-      toast.loading('Loading comparison data...', { id: 'load-comparison' });
+      toast.loading('Loading comparison data (may take time for large files)...', { id: 'load-comparison' });
+      
+      // Add timeout for summary (60 seconds - reading CSV files takes time)
+      const controller1 = new AbortController();
+      const timeoutId1 = setTimeout(() => controller1.abort(), 60000);
       
       // Load summary
-      const summaryResp = await fetch(`${apiEndpoint}/api/comparison/${currentRunId}/summary?columns=${encodeURIComponent(columns)}`);
+      const summaryResp = await fetch(
+        `${apiEndpoint}/api/comparison/${currentRunId}/summary?columns=${encodeURIComponent(columns)}`,
+        { signal: controller1.signal }
+      );
+      clearTimeout(timeoutId1);
+      
       if (!summaryResp.ok) {
         throw new Error('Failed to load comparison summary');
       }
       const summary = await summaryResp.json();
       setComparisonSummary(summary);
       
+      // Add timeout for data calls (60 seconds each)
+      const controller2 = new AbortController();
+      const timeoutId2 = setTimeout(() => controller2.abort(), 60000);
+      
       // Load all three categories upfront
       const [matchedResp, onlyAResp, onlyBResp] = await Promise.all([
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=matched&offset=0&limit=50`),
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_a&offset=0&limit=50`),
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_b&offset=0&limit=50`)
+        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=matched&offset=0&limit=50`, 
+          { signal: controller2.signal }),
+        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_a&offset=0&limit=50`, 
+          { signal: controller2.signal }),
+        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_b&offset=0&limit=50`, 
+          { signal: controller2.signal })
       ]);
+      clearTimeout(timeoutId2);
       
       const matchedData = matchedResp.ok ? await matchedResp.json() : { records: [] };
       const onlyAData = onlyAResp.ok ? await onlyAResp.json() : { records: [] };
@@ -320,9 +337,14 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       });
       
       toast.success('✓ Comparison loaded', { id: 'load-comparison' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load file comparison', err);
-      toast.error('Failed to load comparison data', { id: 'load-comparison' });
+      if (err.name === 'AbortError') {
+        toast.error('Comparison timed out - files may be too large. Try using smaller files or samples.', 
+          { id: 'load-comparison', duration: 6000 });
+      } else {
+        toast.error('Failed to load comparison data', { id: 'load-comparison' });
+      }
     }
   };
 

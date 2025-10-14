@@ -570,6 +570,8 @@ async def get_run_details(
 ):
     """Get detailed results for a specific run with pagination support"""
     try:
+        # Set a busy timeout to prevent database locks
+        conn.execute("PRAGMA busy_timeout = 10000")  # 10 seconds
         cursor = conn.cursor()
         
         # Get run info
