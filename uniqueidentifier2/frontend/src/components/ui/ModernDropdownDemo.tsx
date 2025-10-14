@@ -63,7 +63,7 @@ const ModernDropdownDemo = () => {
             <ModernDropdown
               label="Select a user"
               value={singleValue}
-              onChange={setSingleValue}
+              onChange={(value) => setSingleValue(value as string)}
               options={users}
               placeholder="Choose a user..."
               hint="Select one user from the list"
@@ -79,7 +79,7 @@ const ModernDropdownDemo = () => {
             <ModernDropdown
               label="Select technologies"
               value={multiValue}
-              onChange={setMultiValue}
+              onChange={(value) => setMultiValue(value as (string | number)[])}
               options={technologies}
               placeholder="Choose multiple..."
               multiple={true}
@@ -96,7 +96,7 @@ const ModernDropdownDemo = () => {
             <ModernDropdown
               label="Select a country"
               value={searchableValue}
-              onChange={setSearchableValue}
+              onChange={(value) => setSearchableValue(value as string)}
               options={countries}
               placeholder="Search countries..."
               searchable={true}
@@ -115,7 +115,7 @@ const ModernDropdownDemo = () => {
             <ModernDropdown
               label="Select status"
               value={variantValue}
-              onChange={setVariantValue}
+              onChange={(value) => setVariantValue(value as string)}
               options={statusOptions}
               placeholder="Choose status..."
               variant={variantValue as 'default' | 'success' | 'error' | 'warning' | 'info' || 'default'}

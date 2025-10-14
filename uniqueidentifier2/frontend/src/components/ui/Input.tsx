@@ -40,7 +40,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
 
 Input.displayName = 'Input';
 
-interface NumberInputProps extends Omit<InputProps, 'type'> {
+interface NumberInputProps extends Omit<InputProps, 'type' | 'onChange'> {
   min?: number;
   max?: number;
   step?: number;
