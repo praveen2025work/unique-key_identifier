@@ -495,12 +495,12 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       <div className="sticky top-0 z-50 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 shadow-md border-b border-slate-600">
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <svg className="w-7 h-7 text-[#337ab7]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12.65 10C11.7 7.31 8.9 5.5 5.77 6.12c-2.29.46-4.15 2.29-4.63 4.58C.32 14.57 3.26 18 7 18c2.61 0 4.83-1.67 5.65-4H17v2c0 1.1.9 2 2 2s2-.9 2-2v-2c1.1 0 2-.9 2-2s-.9-2-2-2h-8.35zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
             </svg>
             <div>
               <h1 className="text-sm font-semibold text-white">Unique Key Identifier</h1>
-              <p className="text-xs text-slate-300">Enterprise Edition</p>
+              <p className="text-xs text-slate-300">Enterprise Edition v2.0</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
@@ -536,10 +536,10 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Backend Endpoint</label>
                 <input type="text" value={tempEndpoint} onChange={(e) => setTempEndpoint(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#337ab7] focus:border-[#337ab7]" />
               </div>
               <div className="flex space-x-2">
-                <button onClick={saveEndpoint} className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700">Save</button>
+                <button onClick={saveEndpoint} className="flex-1 px-4 py-2 bg-[#337ab7] text-white text-sm font-medium rounded hover:bg-[#286090] transition-colors">Save</button>
                 <button onClick={() => setShowSettings(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300">Cancel</button>
               </div>
             </div>
@@ -563,25 +563,25 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <div className="col-span-3">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📁 Working Directory</label>
                     <input type="text" value={workingDir} onChange={(e) => setWorkingDir(e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent"
                       placeholder="/path/to/files (optional)" />
                   </div>
                   <div className="col-span-3">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📄 File A</label>
                     <input type="text" value={fileA} onChange={(e) => setFileA(e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent"
                       placeholder="file_a.csv" />
                   </div>
                   <div className="col-span-3">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📄 File B</label>
                     <input type="text" value={fileB} onChange={(e) => setFileB(e.target.value)}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent"
                       placeholder="file_b.csv" />
                   </div>
                   <div className="col-span-3">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📋 Recent Runs</label>
                     <select value={selectedRunId || ''} onChange={(e) => setSelectedRunId(e.target.value ? parseInt(e.target.value) : null)}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
                       <option value="">Select run...</option>
                       {previousRuns.map(run => (
                         <option key={run.id} value={run.id}>#{run.id} • {run.status} • {run.timestamp.slice(0, 16)}</option>
@@ -595,26 +595,27 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <div className="col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Columns</label>
                     <select value={numColumns} onChange={(e) => setNumColumns(parseInt(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent bg-white">
                       {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div className="col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📝 Max Rows</label>
                     <input type="number" value={maxRows} onChange={(e) => setMaxRows(parseInt(e.target.value) || 0)}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent" 
                       placeholder="0 (all)" />
                   </div>
-                  <div className="col-span-2 flex items-end">
-                    <label className="flex items-center space-x-2 cursor-pointer pb-1.5 bg-blue-50 px-3 py-2 rounded border border-blue-200">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">✅ Data Quality Check</label>
+                    <label className="flex items-center h-[30px] cursor-pointer bg-[#337ab7]/10 px-3 py-1.5 rounded border border-[#337ab7]/30 hover:bg-[#337ab7]/20 transition-colors">
                       <input type="checkbox" checked={dataQualityCheck} onChange={(e) => setDataQualityCheck(e.target.checked)} 
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                      <span className="text-xs font-semibold text-gray-700">✅ Data Quality Check</span>
+                        className="w-4 h-4 text-[#337ab7] border-gray-300 rounded focus:ring-[#337ab7] mr-2" />
+                      <span className="text-xs font-semibold text-gray-700">Enable</span>
                     </label>
                   </div>
-                  <div className="col-span-9 flex items-end space-x-2">
+                  <div className="col-span-8 flex items-end space-x-2">
                     <button onClick={handleLoadColumns} disabled={loadingColumns || !backendHealthy}
-                      className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1">
+                      className="px-3 py-1.5 bg-[#337ab7] text-white text-xs font-medium rounded hover:bg-[#286090] disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
@@ -623,7 +624,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     {selectedRunId && (
                       <>
                         <button onClick={() => handleViewResults(selectedRunId)}
-                          className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 flex items-center space-x-1">
+                          className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 flex items-center space-x-1 transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -631,7 +632,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                           <span>View Results</span>
                         </button>
                         <button onClick={() => handleCloneRun(selectedRunId)}
-                          className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded hover:bg-purple-700 flex items-center space-x-1">
+                          className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded hover:bg-purple-700 flex items-center space-x-1 transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
@@ -641,7 +642,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     )}
                     {fileInfo && columnsLoaded && (
                       <div className="flex-1 flex items-center justify-end space-x-3 text-xs text-gray-600">
-                        <span className="font-semibold text-blue-700">{fileInfo.column_count} cols</span>
+                        <span className="font-semibold text-[#337ab7]">{fileInfo.column_count} cols</span>
                         <span>A: {fileInfo.file_a_rows.toLocaleString()} rows</span>
                         <span>B: {fileInfo.file_b_rows.toLocaleString()} rows</span>
                         <span className="text-gray-500">~{fileInfo.estimated_time}</span>
@@ -667,7 +668,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       </p>
                     </div>
                     <button onClick={handleAnalyze} disabled={submitting || !backendHealthy}
-                      className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg">
+                      className="px-5 py-2 bg-[#337ab7] text-white text-sm font-semibold rounded hover:bg-[#286090] disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shadow-lg transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
@@ -838,7 +839,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-3 text-xs">
-                    <div><span className="font-semibold text-blue-700">{results.summary.total_combinations}</span> <span className="text-gray-600">total</span></div>
+                    <div><span className="font-semibold text-[#337ab7]">{results.summary.total_combinations}</span> <span className="text-gray-600">total</span></div>
                     <div><span className="font-semibold text-green-700">{results.summary.unique_keys_a}</span> <span className="text-gray-600">A</span></div>
                     <div><span className="font-semibold text-purple-700">{results.summary.unique_keys_b}</span> <span className="text-gray-600">B</span></div>
                     <div><span className="font-semibold text-orange-700">{Math.max(results.summary.best_score_a, results.summary.best_score_b).toFixed(1)}%</span> <span className="text-gray-600">best</span></div>
@@ -850,7 +851,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       </svg>
                       <span>CSV</span>
                     </button>
-                    <button onClick={downloadExcel} className="px-2.5 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 flex items-center space-x-1">
+                    <button onClick={downloadExcel} className="px-2.5 py-1.5 bg-[#337ab7] text-white text-xs font-medium rounded hover:bg-[#286090] flex items-center space-x-1 transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
@@ -909,7 +910,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       comparisonView === view.key
                         ? view.key === 'matched' ? 'bg-green-600 text-white' :
-                          view.key === 'only_a' ? 'bg-blue-600 text-white' :
+                          view.key === 'only_a' ? 'bg-[#337ab7] text-white' :
                           view.key === 'only_b' ? 'bg-purple-600 text-white' :
                           view.key === 'neither' ? 'bg-gray-600 text-white' :
                           'bg-slate-700 text-white'
@@ -934,14 +935,14 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     <thead className="bg-slate-700 text-white sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700 z-10">Combination</th>
-                        <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-blue-500 bg-blue-700">File A</th>
+                        <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]">File A</th>
                         <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700">File B</th>
                       </tr>
                       <tr className="bg-slate-600">
                         <th className="px-3 py-1.5 sticky left-0 bg-slate-600 z-10"></th>
-                        <th className="px-2 py-1.5 text-xs border-l border-blue-500">Unique</th>
+                        <th className="px-2 py-1.5 text-xs border-l border-[#337ab7]">Unique</th>
                         <th className="px-2 py-1.5 text-xs">Dups</th>
-                        <th className="px-2 py-1.5 text-xs border-r border-blue-500">Score</th>
+                        <th className="px-2 py-1.5 text-xs border-r border-[#337ab7]">Score</th>
                         <th className="px-2 py-1.5 text-xs">Unique</th>
                         <th className="px-2 py-1.5 text-xs">Dups</th>
                         <th className="px-2 py-1.5 text-xs">Score</th>
@@ -954,13 +955,13 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                         return (
                           <tr key={i} className="hover:bg-slate-50">
                             <td className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white">{combo}</td>
-                            <td className={`px-2 py-2 text-center border-l border-blue-200 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
+                            <td className={`px-2 py-2 text-center border-l border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
                               {resultA?.unique_rows.toLocaleString() || '-'}
                             </td>
                             <td className={`px-2 py-2 text-center text-red-600 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
                               {resultA?.duplicate_count.toLocaleString() || '-'}
                             </td>
-                            <td className={`px-2 py-2 text-center border-r border-blue-200 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
+                            <td className={`px-2 py-2 text-center border-r border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
                               {resultA?.uniqueness_score.toFixed(1) || '-'}%
                             </td>
                             <td className={`px-2 py-2 text-center ${resultB?.is_unique_key ? 'bg-purple-50 font-semibold text-purple-700' : ''}`}>
@@ -986,7 +987,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                         <div key={i} className="px-2 py-1 bg-green-100 border border-green-400 text-green-900 rounded text-xs font-mono">{combo}</div>
                       ))}
                         {comparisonView === 'only_a' && keyComparisonData.onlyA.map((combo, i) => (
-                        <div key={i} className="px-2 py-1 bg-blue-100 border border-blue-400 text-blue-900 rounded text-xs font-mono">{combo}</div>
+                        <div key={i} className="px-2 py-1 bg-[#337ab7]/10 border border-[#337ab7] text-[#337ab7] rounded text-xs font-mono">{combo}</div>
                       ))}
                         {comparisonView === 'only_b' && keyComparisonData.onlyB.map((combo, i) => (
                         <div key={i} className="px-2 py-1 bg-purple-100 border border-purple-400 text-purple-900 rounded text-xs font-mono">{combo}</div>
@@ -1009,17 +1010,17 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <div className="mb-2">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="font-semibold">Overall Progress</span>
-                      <span className="font-bold text-blue-700">{jobStatus.progress}%</span>
+                      <span className="font-bold text-[#337ab7]">{jobStatus.progress}%</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-full transition-all ${jobStatus.status === 'error' ? 'bg-red-600' : 'bg-blue-600'}`} style={{ width: `${jobStatus.progress}%` }}></div>
+                      <div className={`h-full transition-all ${jobStatus.status === 'error' ? 'bg-red-600' : 'bg-[#337ab7]'}`} style={{ width: `${jobStatus.progress}%` }}></div>
               </div>
             </div>
 
                   <div className="mb-2">
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
                       jobStatus.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      jobStatus.status === 'running' ? 'bg-blue-100 text-blue-800' :
+                      jobStatus.status === 'running' ? 'bg-[#337ab7]/10 text-[#337ab7]' :
                       jobStatus.status === 'error' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
@@ -1034,14 +1035,14 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <div className="space-y-1.5">
                     {jobStatus.stages && jobStatus.stages.map((stage: any, idx: number) => (
                       <div key={idx} className={`flex items-center space-x-2 p-2 rounded border text-xs ${
-                        stage.status === 'in_progress' ? 'border-blue-300 bg-blue-50' :
+                        stage.status === 'in_progress' ? 'border-[#337ab7]/30 bg-[#337ab7]/5' :
                         stage.status === 'completed' ? 'border-green-300 bg-green-50' :
                         stage.status === 'error' ? 'border-red-300 bg-red-50' :
                         'border-gray-200 bg-gray-50'
                       }`}>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                           stage.status === 'completed' ? 'bg-green-600 text-white' :
-                          stage.status === 'in_progress' ? 'bg-blue-600 text-white' :
+                          stage.status === 'in_progress' ? 'bg-[#337ab7] text-white' :
                           stage.status === 'error' ? 'bg-red-600 text-white' :
                           'bg-gray-300 text-gray-600'
                         }`}>
@@ -1052,7 +1053,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                             <div className="font-semibold truncate">{stage.name.replace(/_/g, ' ').toUpperCase()}</div>
                             <span className={`px-1.5 py-0.5 rounded text-xs flex-shrink-0 ml-2 ${
                               stage.status === 'completed' ? 'bg-green-200 text-green-800' :
-                              stage.status === 'in_progress' ? 'bg-blue-200 text-blue-800' :
+                              stage.status === 'in_progress' ? 'bg-[#337ab7]/20 text-[#337ab7]' :
                               stage.status === 'error' ? 'bg-red-200 text-red-800' :
                               'bg-gray-200 text-gray-600'
                             }`}>
@@ -1074,7 +1075,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     <div className="flex-1">
                       <label className="block text-xs font-semibold mb-1">📊 Select Columns:</label>
                       <select value={selectedComparisonColumn} onChange={(e) => { setSelectedComparisonColumn(e.target.value); loadFileComparisonData(e.target.value); }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#337ab7]">
                         {results.results_a.map(r => (
                           <option key={r.columns} value={r.columns}>{r.columns} ({r.uniqueness_score.toFixed(1)}%)</option>
                         ))}
@@ -1096,9 +1097,9 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   {comparisonSummary && (
                     <>
                       <div className="grid grid-cols-4 gap-2 mb-2">
-                        <div className="bg-blue-50 p-2 rounded border border-blue-200">
-                          <div className="text-xs text-blue-600 mb-0.5">Match Rate</div>
-                          <div className="text-lg font-bold text-blue-800">{comparisonSummary.match_rate}%</div>
+                        <div className="bg-[#337ab7]/5 p-2 rounded border border-[#337ab7]/20">
+                          <div className="text-xs text-[#337ab7] mb-0.5">Match Rate</div>
+                          <div className="text-lg font-bold text-[#337ab7]">{comparisonSummary.match_rate}%</div>
                         </div>
                         <div className="bg-green-50 p-2 rounded border border-green-200">
                           <div className="text-xs text-green-600 mb-0.5">Matched</div>
@@ -1141,7 +1142,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
                               {comparisonData[comparisonCategory].map((row: any, i: number) => (
-                                <tr key={i} className="hover:bg-blue-50 transition-colors">
+                                <tr key={i} className="hover:bg-[#337ab7]/5 transition-colors">
                                   {Object.values(row).map((val: any, j: number) => (
                                     <td key={j} className="px-3 py-2 text-xs cursor-pointer border-r border-gray-200 last:border-r-0" 
                                         onClick={() => { navigator.clipboard.writeText(String(val ?? '')); toast.success('Copied!'); }}
@@ -1218,7 +1219,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                             </div>
                             {disc.column && (
                               <div className="text-gray-700 font-semibold text-xs mb-1">
-                                📊 Column: <span className="font-bold text-blue-700">{disc.column}</span>
+                                📊 Column: <span className="font-bold text-[#337ab7]">{disc.column}</span>
                               </div>
                             )}
                             <div className="text-gray-700 mt-1 leading-relaxed">{disc.message}</div>
@@ -1247,7 +1248,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                               issue.severity === 'high' ? 'bg-red-50 border-red-500' : 'bg-yellow-50 border-yellow-500'
                             }`}>
                               <div className="flex items-start justify-between mb-1">
-                                <div className="font-semibold text-blue-700">{issue.column}</div>
+                                <div className="font-semibold text-[#337ab7]">{issue.column}</div>
                                 <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
                                   issue.severity === 'high' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800'
                                 }`}>{issue.severity.toUpperCase()}</span>
