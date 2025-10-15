@@ -51,6 +51,10 @@ from chunked_comparison import (
     ChunkedComparisonEngine, should_use_chunked_comparison,
     estimate_comparison_time, get_comparison_status
 )
+from chunked_file_exporter import (
+    ChunkedFileExporter, get_comparison_export_files,
+    read_export_file_paginated, get_export_summary, cleanup_export_files
+)
 
 app = FastAPI(
     title="Unique Key Identifier API",
@@ -1520,6 +1524,326 @@ async def download_comparison(run_id: int, columns: str = Query(...)):
         return JSONResponse({"error": f"Error generating download: {str(e)}"}, status_code=500)
 
 
+# ============================================================================
+# NEW ENTERPRISE CHUNKED COMPARISON ENDPOINTS
+# Full row-by-row, column-by-column comparison with file exports
+# ============================================================================
+
+@app.post("/api/comparison-export/{run_id}/generate")
+async def generate_comparison_export(
+    run_id: int,
+    columns: str = Query(...),
+    max_export_rows: int = Query(None, description="Optional limit on rows to export per category")
+):
+    """
+    Generate full row-by-row comparison and export to CSV files.
+    Creates matched.csv, only_a.csv, only_b.csv organized by run_id.
+    Handles massive files using chunked processing - no memory issues!
+    
+    Args:
+        run_id: Run ID
+        columns: Comma-separated column names to use as comparison keys
+        max_export_rows: Optional limit on rows to export (useful for testing)
+    
+    Returns:
+        Comparison summary with export file information
+    """
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT r.file_a, r.file_b, rp.working_directory, r.file_a_rows, r.file_b_rows
+            FROM runs r
+            LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
+            WHERE r.run_id = ?
+        ''', (run_id,))
+        run_info = cursor.fetchone()
+        
+        if not run_info:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        file_a_path = os.path.join(base_dir, file_a_name)
+        file_b_path = os.path.join(base_dir, file_b_name)
+        
+        # Validate files exist
+        if not os.path.exists(file_a_path):
+            raise HTTPException(status_code=404, detail=f"File A not found: {file_a_name}")
+        if not os.path.exists(file_b_path):
+            raise HTTPException(status_code=404, detail=f"File B not found: {file_b_name}")
+        
+        # Parse columns
+        column_list = [c.strip() for c in columns.split(',')]
+        
+        # Create exporter and run comparison
+        exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path)
+        
+        # Run comparison and export
+        result = exporter.compare_and_export(
+            columns=column_list,
+            max_export_rows=max_export_rows
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "message": "Comparison completed and files exported",
+            "run_id": run_id,
+            "columns": columns,
+            "summary": {
+                "matched_count": result['matched_count'],
+                "only_a_count": result['only_a_count'],
+                "only_b_count": result['only_b_count'],
+                "total_a": result['total_a'],
+                "total_b": result['total_b'],
+                "match_rate": result['match_rate'],
+                "processing_time": result['processing_time']
+            },
+            "export_info": {
+                "export_dir": result['export_dir'],
+                "files": result['export_paths']
+            },
+            "estimated_time": estimate_comparison_time(file_a_rows or 0, file_b_rows or 0)
+        })
+        
+    except ValueError as e:
+        return JSONResponse({"error": f"Validation error: {str(e)}"}, status_code=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error generating comparison: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-export/{run_id}/status")
+async def get_comparison_export_status(run_id: int, columns: str = Query(None)):
+    """
+    Check status of comparison exports for a run.
+    
+    Args:
+        run_id: Run ID
+        columns: Optional column filter
+        
+    Returns:
+        List of available comparison exports
+    """
+    try:
+        files = get_comparison_export_files(run_id, columns)
+        
+        if not files:
+            return JSONResponse({
+                "run_id": run_id,
+                "exports_available": False,
+                "message": "No comparison exports found for this run"
+            })
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "exports_available": True,
+            "total_files": len(files),
+            "files": files
+        })
+        
+    except Exception as e:
+        return JSONResponse({"error": f"Error checking status: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-export/{run_id}/summary")
+async def get_comparison_export_summary_endpoint(run_id: int):
+    """
+    Get summary of all comparison exports for a run.
+    Shows all column combinations and their export statistics.
+    
+    Args:
+        run_id: Run ID
+        
+    Returns:
+        Summary with statistics for all comparisons
+    """
+    try:
+        summary = get_export_summary(run_id)
+        return JSONResponse(summary)
+    except Exception as e:
+        return JSONResponse({"error": f"Error fetching summary: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-export/{run_id}/data")
+async def get_comparison_export_data(
+    run_id: int,
+    columns: str = Query(..., description="Column combination"),
+    category: str = Query(..., description="matched, only_a, or only_b"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return")
+):
+    """
+    Get paginated data from exported comparison files.
+    This is VERY FAST because it reads directly from exported CSV files
+    without re-processing the original large files.
+    
+    Args:
+        run_id: Run ID
+        columns: Column combination used for comparison
+        category: Data category ('matched', 'only_a', 'only_b')
+        offset: Starting position for pagination
+        limit: Number of records to return
+        
+    Returns:
+        Paginated records with metadata
+    """
+    try:
+        # Validate category
+        if category not in ['matched', 'only_a', 'only_b']:
+            raise HTTPException(status_code=400, detail="Invalid category. Must be 'matched', 'only_a', or 'only_b'")
+        
+        # Get export file info
+        files = get_comparison_export_files(run_id, columns)
+        
+        if not files:
+            return JSONResponse({
+                "error": "No exports found",
+                "message": f"No comparison exports found for run {run_id} with columns '{columns}'"
+            }, status_code=404)
+        
+        # Find the specific file
+        target_file = None
+        for file in files:
+            if file['category'] == category:
+                target_file = file
+                break
+        
+        if not target_file:
+            return JSONResponse({
+                "error": "Category not found",
+                "message": f"No {category} export found for this comparison"
+            }, status_code=404)
+        
+        # Check if file exists
+        if not target_file['exists']:
+            return JSONResponse({
+                "error": "File not found",
+                "message": "Export file has been deleted or moved"
+            }, status_code=404)
+        
+        # Read paginated data from file
+        result = read_export_file_paginated(
+            target_file['file_path'],
+            offset=offset,
+            limit=limit
+        )
+        
+        if 'error' in result:
+            return JSONResponse({
+                "error": "Read error",
+                "message": result['error']
+            }, status_code=500)
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "columns": columns,
+            "category": category,
+            "records": result['records'],
+            "pagination": {
+                "total": result['total'],
+                "offset": result['offset'],
+                "limit": result['limit'],
+                "showing": result['showing'],
+                "has_more": result['has_more'],
+                "total_pages": (result['total'] + limit - 1) // limit,
+                "current_page": (offset // limit) + 1
+            },
+            "file_info": {
+                "file_size_mb": target_file['file_size_mb'],
+                "row_count": target_file['row_count'],
+                "created_at": target_file['created_at']
+            }
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error fetching data: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-export/{run_id}/download")
+async def download_comparison_export(
+    run_id: int,
+    columns: str = Query(...),
+    category: str = Query(...)
+):
+    """
+    Download a specific comparison export file (matched, only_a, or only_b).
+    Returns the CSV file for download.
+    
+    Args:
+        run_id: Run ID
+        columns: Column combination
+        category: Data category ('matched', 'only_a', 'only_b')
+        
+    Returns:
+        CSV file download
+    """
+    try:
+        # Validate category
+        if category not in ['matched', 'only_a', 'only_b']:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        
+        # Get export file info
+        files = get_comparison_export_files(run_id, columns)
+        
+        if not files:
+            raise HTTPException(status_code=404, detail="No exports found")
+        
+        # Find the specific file
+        target_file = None
+        for file in files:
+            if file['category'] == category:
+                target_file = file
+                break
+        
+        if not target_file or not target_file['exists']:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Generate filename
+        safe_cols = columns.replace(',', '_').replace(' ', '')
+        filename = f"run_{run_id}_{safe_cols}_{category}.csv"
+        
+        return FileResponse(
+            target_file['file_path'],
+            media_type='text/csv',
+            filename=filename
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse({"error": f"Error downloading file: {str(e)}"}, status_code=500)
+
+
+@app.delete("/api/comparison-export/{run_id}/cleanup")
+async def cleanup_comparison_exports(run_id: int):
+    """
+    Clean up all comparison export files for a specific run.
+    Removes files and database entries.
+    
+    Args:
+        run_id: Run ID
+        
+    Returns:
+        Success message
+    """
+    try:
+        cleanup_export_files(run_id=run_id)
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Successfully cleaned up exports for run {run_id}",
+            "run_id": run_id
+        })
+        
+    except Exception as e:
+        return JSONResponse({"error": f"Error cleaning up exports: {str(e)}"}, status_code=500)
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize enterprise features on startup"""
@@ -1532,12 +1856,20 @@ async def startup_event():
     print("🔧 Enterprise features loaded:")
     print("   - Data Quality Checking")
     print("   - File Comparison & Downloads")
+    print("   - Chunked Comparison Exports (Row-by-Row)")
     print("   - Result File Generation")
     print("   - Audit Logging")
     print("   - Job Scheduling")
     print("   - Notifications")
     print("   - Run Comparison")
     print("   - Parallel Processing")
+    print("=" * 60)
+    print("📦 New: Enterprise Row-by-Row Comparison")
+    print("   - Handles files of ANY size without memory issues")
+    print("   - Creates matched.csv, only_a.csv, only_b.csv")
+    print("   - Organized by run_id for easy tracking")
+    print("   - Lightning-fast pagination from cached files")
+    print("   See: ENTERPRISE_COMPARISON_GUIDE.md for details")
     print("=" * 60)
 
 

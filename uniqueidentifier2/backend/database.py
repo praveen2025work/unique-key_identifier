@@ -166,6 +166,26 @@ def create_tables():
         ON comparison_results(run_id, column_combination, category)
     ''')
     
+    # NEW: Comparison export files table for tracking exported CSV files
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comparison_export_files (
+            file_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            column_combination TEXT,
+            category TEXT,
+            file_path TEXT,
+            file_size INTEGER DEFAULT 0,
+            row_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_export_files_run 
+        ON comparison_export_files(run_id, column_combination)
+    ''')
+    
     conn.commit()
 
 def update_job_status(run_id, status=None, stage=None, progress=None, error=None):
