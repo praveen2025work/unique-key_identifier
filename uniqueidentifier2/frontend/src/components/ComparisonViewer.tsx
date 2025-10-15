@@ -165,7 +165,7 @@ export default function ComparisonViewer({ runId, columns }: ComparisonViewerPro
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 mb-6 border-b-2 border-gray-200">
+      <div className="flex space-x-2 mb-4 border-b-2 border-gray-200">
         <button
           onClick={() => setActiveTab('matched')}
           className={`px-6 py-3 font-medium rounded-t-lg transition-colors ${
@@ -196,6 +196,77 @@ export default function ComparisonViewer({ runId, columns }: ComparisonViewerPro
         >
           📙 Only in B ({summary.only_b_count})
         </button>
+      </div>
+
+      {/* Pagination Controls - TOP (Sticky) */}
+      <div className="sticky top-0 z-20 bg-white border-b-2 border-gray-300 shadow-sm mb-4 p-4 rounded-t-lg">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-sm text-gray-700 font-medium">
+            Showing <span className="font-bold text-primary">{currentData.length.toLocaleString()}</span> of{' '}
+            <span className="font-bold text-primary">
+              {(activeTab === 'matched' ? summary.matched_count :
+                activeTab === 'only_a' ? summary.only_a_count :
+                summary.only_b_count).toLocaleString()}
+            </span> records
+            {currentData.length < (activeTab === 'matched' ? summary.matched_count :
+              activeTab === 'only_a' ? summary.only_a_count :
+              summary.only_b_count) && (
+              <span className="ml-2 text-orange-600 text-xs">
+                • Load more below
+              </span>
+            )}
+          </div>
+          
+          {/* Pagination Controls */}
+          {(activeTab === 'matched' ? summary.matched_count :
+            activeTab === 'only_a' ? summary.only_a_count :
+            summary.only_b_count) > 100 && (
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+              <button
+                onClick={() => {
+                  setData(prev => ({ ...prev, [activeTab]: [] }));
+                  setOffset(prev => ({ ...prev, [activeTab]: 0 }));
+                  setHasMore(prev => ({ ...prev, [activeTab]: true }));
+                  loadData(activeTab, false);
+                }}
+                className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={offset[activeTab] === 0}
+              >
+                ⟲ Reset
+              </button>
+              
+              <div className="px-3 py-1.5 text-xs font-semibold bg-gray-100 rounded border border-gray-300">
+                Page {Math.floor(offset[activeTab] / 100) + 1}
+              </div>
+              
+              {hasMore[activeTab] && !currentLoading && (
+                <button
+                  onClick={() => loadData(activeTab, true)}
+                  className="px-4 py-1.5 bg-primary text-white rounded hover:bg-primary-dark transition-colors text-xs font-semibold shadow-sm"
+                >
+                  Load Next 100 →
+                </button>
+              )}
+              
+              {!hasMore[activeTab] && offset[activeTab] > 0 && (
+                <span className="text-xs text-green-600 font-bold px-2 py-1 bg-green-50 rounded border border-green-200">
+                  ✓ All Loaded
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Performance Tip - Compact */}
+        {(activeTab === 'matched' ? summary.matched_count :
+          activeTab === 'only_a' ? summary.only_a_count :
+          summary.only_b_count) > 10000 && currentData.length < 1000 && (
+          <div className="mt-2 text-xs text-blue-700 bg-blue-50 px-3 py-1.5 rounded border border-blue-200">
+            💡 For {((activeTab === 'matched' ? summary.matched_count :
+              activeTab === 'only_a' ? summary.only_a_count :
+              summary.only_b_count) / 1000).toFixed(0)}K+ records, use enterprise exports for complete CSV files
+          </div>
+        )}
       </div>
 
       {/* Data Table */}
@@ -255,81 +326,6 @@ export default function ComparisonViewer({ runId, columns }: ComparisonViewerPro
           <div className="text-center p-4 text-gray-600">
             <div className="inline-block animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full mr-2"></div>
             Loading more records...
-          </div>
-        )}
-      </div>
-
-      {/* Pagination Footer */}
-      <div className="mt-6 border-t border-gray-200 pt-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{currentData.length.toLocaleString()}</span> of{' '}
-            <span className="font-semibold">
-              {(activeTab === 'matched' ? summary.matched_count :
-                activeTab === 'only_a' ? summary.only_a_count :
-                summary.only_b_count).toLocaleString()}
-            </span> records
-            {currentData.length < (activeTab === 'matched' ? summary.matched_count :
-              activeTab === 'only_a' ? summary.only_a_count :
-              summary.only_b_count) && (
-              <span className="ml-2 text-orange-600">
-                • Use pagination below to load more
-              </span>
-            )}
-          </div>
-          
-          {/* Pagination Controls */}
-          {(activeTab === 'matched' ? summary.matched_count :
-            activeTab === 'only_a' ? summary.only_a_count :
-            summary.only_b_count) > 100 && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setData(prev => ({ ...prev, [activeTab]: [] }));
-                  setOffset(prev => ({ ...prev, [activeTab]: 0 }));
-                  setHasMore(prev => ({ ...prev, [activeTab]: true }));
-                  loadData(activeTab, false);
-                }}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
-                disabled={offset[activeTab] === 0}
-              >
-                Reset
-              </button>
-              
-              <span className="text-sm text-gray-600">
-                Page: {Math.floor(offset[activeTab] / 100) + 1}
-              </span>
-              
-              {hasMore[activeTab] && !currentLoading && (
-                <button
-                  onClick={() => loadData(activeTab, true)}
-                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors text-sm font-medium"
-                >
-                  Load Next 100 →
-                </button>
-              )}
-              
-              {!hasMore[activeTab] && offset[activeTab] > 0 && (
-                <span className="text-sm text-green-600 font-medium">
-                  ✓ All loaded
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        
-        {/* Performance Tip */}
-        {(activeTab === 'matched' ? summary.matched_count :
-          activeTab === 'only_a' ? summary.only_a_count :
-          summary.only_b_count) > 10000 && currentData.length < 1000 && (
-          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              <strong>💡 Tip:</strong> For {((activeTab === 'matched' ? summary.matched_count :
-                activeTab === 'only_a' ? summary.only_a_count :
-                summary.only_b_count) / 1000).toFixed(0)}K+ records, 
-              consider using the <strong>Enterprise Row-by-Row Exports</strong> below to download 
-              complete CSV files for external analysis.
-            </p>
           </div>
         )}
       </div>
