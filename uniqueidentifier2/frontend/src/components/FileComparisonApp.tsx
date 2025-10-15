@@ -309,6 +309,18 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
         throw new Error('Failed to load comparison summary');
       }
       const summary = await summaryResp.json();
+      
+      // Check if comparison is disabled due to file size
+      if (summary.comparison_disabled) {
+        setComparisonSummary(summary);
+        setComparisonData({ matched: [], only_a: [], only_b: [] });
+        toast.error(
+          summary.message || 'Comparison disabled for large files', 
+          { id: 'load-comparison', duration: 6000 }
+        );
+        return;
+      }
+      
       setComparisonSummary(summary);
       
       // Add timeout for data calls (60 seconds each)
@@ -330,10 +342,20 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       const onlyAData = onlyAResp.ok ? await onlyAResp.json() : { records: [] };
       const onlyBData = onlyBResp.ok ? await onlyBResp.json() : { records: [] };
       
+      // Check if any data response indicates comparison is disabled
+      if (matchedData.comparison_disabled || onlyAData.comparison_disabled || onlyBData.comparison_disabled) {
+        toast.error(
+          matchedData.message || 'Comparison disabled for large files', 
+          { id: 'load-comparison', duration: 6000 }
+        );
+        setComparisonData({ matched: [], only_a: [], only_b: [] });
+        return;
+      }
+      
       setComparisonData({
-        matched: matchedData.records,
-        only_a: onlyAData.records,
-        only_b: onlyBData.records
+        matched: matchedData.records || [],
+        only_a: onlyAData.records || [],
+        only_b: onlyBData.records || []
       });
       
       toast.success('✓ Comparison loaded', { id: 'load-comparison' });

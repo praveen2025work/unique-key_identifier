@@ -43,6 +43,10 @@ from parallel_processor import process_large_files_parallel, ChunkedFileProcesso
 from job_queue import job_queue, working_dir_manager, JobStatus
 from export_manager import ExportManager
 from file_comparison import compare_files_by_columns, get_comparison_data, generate_comparison_summary
+from comparison_cache import (
+    generate_comparison_cache, get_comparison_from_cache, 
+    get_comparison_summary_from_db, clear_comparison_cache
+)
 
 app = FastAPI(
     title="Unique Key Identifier API",
@@ -220,6 +224,27 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         conn.commit()
         
         update_stage_status(run_id, 'storing_results', 'completed', f'Saved {len(results_a) + len(results_b)} results')
+        
+        # NEW: Generate comparison cache for efficient retrieval
+        try:
+            update_job_status(run_id, stage='generating_comparison_cache', progress=95)
+            update_stage_status(run_id, 'generating_comparison_cache', 'in_progress', 'Creating comparison cache files')
+            
+            # Get all analyzed column combinations
+            analyzed_combinations = [r['columns'] for r in results_a]
+            
+            # Generate cache (files already loaded, so this is fast!)
+            cache_count = generate_comparison_cache(run_id, df_a, df_b, analyzed_combinations)
+            
+            update_stage_status(run_id, 'generating_comparison_cache', 'completed', 
+                              f'Generated {cache_count} comparison caches')
+            print(f"✅ Generated {cache_count} comparison caches for run {run_id}")
+        except Exception as cache_error:
+            # Don't fail the whole job if cache generation fails
+            print(f"⚠️  Warning: Failed to generate comparison cache: {cache_error}")
+            update_stage_status(run_id, 'generating_comparison_cache', 'error', 
+                              f'Cache generation failed: {str(cache_error)}')
+        
         update_job_status(run_id, status='completed', stage='completed', progress=100)
         
     except Exception as e:
@@ -423,6 +448,7 @@ async def compare_files(
             ('analyzing_file_a', 3 + stage_offset, 'pending'),
             ('analyzing_file_b', 4 + stage_offset, 'pending'),
             ('storing_results', 5 + stage_offset, 'pending'),
+            ('generating_comparison_cache', 6 + stage_offset, 'pending'),
         ])
         
         for stage_name, order, status in stages:
@@ -1040,7 +1066,7 @@ async def get_comparison_summary(run_id: int, columns: str = Query(...)):
         # Get run info
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT r.file_a, r.file_b, COALESCE(rp.working_directory, r.working_directory, '') as work_dir
+            SELECT r.file_a, r.file_b, COALESCE(rp.working_directory, r.working_directory, '') as work_dir, r.file_a_rows, r.file_b_rows
             FROM runs r
             LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
             WHERE r.run_id = ?
@@ -1050,16 +1076,48 @@ async def get_comparison_summary(run_id: int, columns: str = Query(...)):
         if not run_info:
             raise HTTPException(status_code=404, detail="Run not found")
         
-        file_a_name, file_b_name, work_dir = run_info
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
+        
+        # CHECK FILE SIZE BEFORE READING - Prevent crash!
+        max_rows = max(file_a_rows or 0, file_b_rows or 0)
+        if max_rows > 100000:  # More than 100K rows
+            # Return a safe response instead of crashing
+            return JSONResponse({
+                "file_a": file_a_name,
+                "file_b": file_b_name,
+                "error": "File too large for comparison",
+                "message": f"Files have {max_rows:,} rows. Comparison feature is disabled for files > 100K rows to prevent memory issues.",
+                "matched_count": 0,
+                "only_a_count": 0,
+                "only_b_count": 0,
+                "total_rows_a": file_a_rows or 0,
+                "total_rows_b": file_b_rows or 0,
+                "comparison_disabled": True
+            })
         
         # Determine file paths
         base_dir = work_dir if work_dir else SCRIPT_DIR
         file_a_path = os.path.join(base_dir, file_a_name)
         file_b_path = os.path.join(base_dir, file_b_name)
         
-        # Read files
-        df_a, _ = read_data_file(file_a_path)
-        df_b, _ = read_data_file(file_b_path)
+        # Check if files exist
+        if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
+            return JSONResponse({
+                "error": "Files not found",
+                "message": "Source CSV files are not accessible. They may have been moved or deleted.",
+                "comparison_disabled": True
+            }, status_code=404)
+        
+        # Read files WITH MEMORY PROTECTION
+        try:
+            df_a, _ = read_data_file(file_a_path)
+            df_b, _ = read_data_file(file_b_path)
+        except MemoryError:
+            return JSONResponse({
+                "error": "Out of memory",
+                "message": "Files are too large to compare in memory. Please use smaller files or samples.",
+                "comparison_disabled": True
+            }, status_code=507)
         
         # Parse columns
         column_list = [c.strip() for c in columns.split(',')]
@@ -1068,9 +1126,16 @@ async def get_comparison_summary(run_id: int, columns: str = Query(...)):
         summary = generate_comparison_summary(df_a, df_b, column_list)
         summary['file_a'] = file_a_name
         summary['file_b'] = file_b_name
+        summary['comparison_disabled'] = False
         
         return JSONResponse(summary)
         
+    except MemoryError:
+        return JSONResponse({
+            "error": "Out of memory",
+            "message": "Files are too large to compare. Please use smaller files or samples.",
+            "comparison_disabled": True
+        }, status_code=507)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1090,7 +1155,7 @@ async def get_comparison_data_api(
         # Get run info
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT r.file_a, r.file_b, COALESCE(rp.working_directory, r.working_directory, '') as work_dir
+            SELECT r.file_a, r.file_b, COALESCE(rp.working_directory, r.working_directory, '') as work_dir, r.file_a_rows, r.file_b_rows
             FROM runs r
             LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
             WHERE r.run_id = ?
@@ -1100,16 +1165,49 @@ async def get_comparison_data_api(
         if not run_info:
             raise HTTPException(status_code=404, detail="Run not found")
         
-        file_a_name, file_b_name, work_dir = run_info
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
+        
+        # CHECK FILE SIZE BEFORE READING - Prevent crash!
+        max_rows = max(file_a_rows or 0, file_b_rows or 0)
+        if max_rows > 100000:  # More than 100K rows
+            # Return empty data instead of crashing
+            return JSONResponse({
+                "records": [],
+                "total": 0,
+                "offset": offset,
+                "limit": limit,
+                "error": "File too large for comparison",
+                "message": f"Files have {max_rows:,} rows. Comparison feature is disabled for files > 100K rows.",
+                "comparison_disabled": True
+            })
         
         # Determine file paths
         base_dir = work_dir if work_dir else SCRIPT_DIR
         file_a_path = os.path.join(base_dir, file_a_name)
         file_b_path = os.path.join(base_dir, file_b_name)
         
-        # Read files
-        df_a, _ = read_data_file(file_a_path)
-        df_b, _ = read_data_file(file_b_path)
+        # Check if files exist
+        if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
+            return JSONResponse({
+                "records": [],
+                "total": 0,
+                "error": "Files not found",
+                "message": "Source CSV files are not accessible.",
+                "comparison_disabled": True
+            }, status_code=404)
+        
+        # Read files WITH MEMORY PROTECTION
+        try:
+            df_a, _ = read_data_file(file_a_path)
+            df_b, _ = read_data_file(file_b_path)
+        except MemoryError:
+            return JSONResponse({
+                "records": [],
+                "total": 0,
+                "error": "Out of memory",
+                "message": "Files are too large to compare in memory.",
+                "comparison_disabled": True
+            }, status_code=507)
         
         # Parse columns
         column_list = [c.strip() for c in columns.split(',')]
@@ -1122,10 +1220,176 @@ async def get_comparison_data_api(
         
         return JSONResponse(data)
         
+    except MemoryError:
+        return JSONResponse({
+            "records": [],
+            "total": 0,
+            "error": "Out of memory",
+            "message": "Files are too large to compare.",
+            "comparison_disabled": True
+        }, status_code=507)
     except Exception as e:
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": f"Error fetching comparison data: {str(e)}"}, status_code=500)
+
+
+# ============================================================================
+# NEW OPTIMIZED COMPARISON ENDPOINTS - Using Cache (No File Reading!)
+# ============================================================================
+
+@app.get("/api/comparison-v2/{run_id}/available")
+async def get_available_comparisons(run_id: int):
+    """
+    Get list of available pre-generated comparisons for a run
+    INSTANT - reads from database only!
+    """
+    try:
+        summaries = get_comparison_summary_from_db(run_id)
+        
+        if not summaries:
+            return JSONResponse({
+                "run_id": run_id,
+                "available_comparisons": [],
+                "message": "No pre-generated comparisons available for this run. They may not have been generated during analysis."
+            })
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "available_comparisons": summaries,
+            "count": len(summaries)
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error fetching comparisons: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-v2/{run_id}/summary")
+async def get_comparison_summary_v2(run_id: int, columns: str = Query(...)):
+    """
+    Get comparison summary from cache
+    INSTANT - reads from cache file, no CSV loading!
+    """
+    try:
+        # Try to get from cache first
+        cache_data = get_comparison_from_cache(run_id, columns)
+        
+        if cache_data:
+            return JSONResponse({
+                "run_id": run_id,
+                "columns": columns,
+                "summary": cache_data['summary'],
+                "from_cache": True,
+                "generated_at": cache_data.get('generated_at')
+            })
+        
+        # Fallback: Get from database
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT matched_count, only_a_count, only_b_count, total_a, total_b, generated_at
+            FROM comparison_summary
+            WHERE run_id = ? AND column_combination = ?
+        ''', (run_id, columns))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            return JSONResponse({
+                "run_id": run_id,
+                "columns": columns,
+                "summary": {
+                    "matched_count": row[0],
+                    "only_a_count": row[1],
+                    "only_b_count": row[2],
+                    "total_a": row[3],
+                    "total_b": row[4]
+                },
+                "from_cache": False,
+                "generated_at": row[5]
+            })
+        
+        # Not found
+        return JSONResponse({
+            "error": "Comparison not found",
+            "message": f"No pre-generated comparison found for columns: {columns}",
+            "comparison_available": False
+        }, status_code=404)
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error fetching summary: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-v2/{run_id}/data")
+async def get_comparison_data_v2(
+    run_id: int,
+    columns: str = Query(...),
+    category: str = Query(...),  # matched, only_a, only_b
+    offset: int = Query(0),
+    limit: int = Query(100)
+):
+    """
+    Get comparison data from cache
+    INSTANT - reads from cache file, no CSV loading!
+    """
+    try:
+        # Get from cache
+        cache_data = get_comparison_from_cache(run_id, columns)
+        
+        if not cache_data:
+            return JSONResponse({
+                "error": "Comparison not found",
+                "message": "No pre-generated comparison data available",
+                "records": [],
+                "total": 0
+            }, status_code=404)
+        
+        # Get the requested category
+        if category == 'matched':
+            sample_data = cache_data.get('matched_sample', [])
+            total = cache_data['summary']['matched_count']
+        elif category == 'only_a':
+            sample_data = cache_data.get('only_a_sample', [])
+            total = cache_data['summary']['only_a_count']
+        elif category == 'only_b':
+            sample_data = cache_data.get('only_b_sample', [])
+            total = cache_data['summary']['only_b_count']
+        else:
+            return JSONResponse({"error": "Invalid category"}, status_code=400)
+        
+        # Apply pagination
+        paginated_data = sample_data[offset:offset+limit]
+        
+        # Format records
+        column_list = columns.split(',')
+        records = []
+        for key_str in paginated_data:
+            if '||' in key_str:
+                values = key_str.split('||')
+            else:
+                values = [key_str]
+            
+            record = {col: val for col, val in zip(column_list, values)}
+            records.append(record)
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "columns": columns,
+            "category": category,
+            "records": records,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "showing_sample": len(sample_data) < total,
+            "sample_size": len(sample_data)
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error fetching data: {str(e)}"}, status_code=500)
 
 
 @app.get("/api/download/{run_id}/comparison")

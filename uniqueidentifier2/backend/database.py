@@ -117,6 +117,29 @@ def create_tables():
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # NEW: Comparison summary table for performant UI display
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comparison_summary (
+            run_id INTEGER,
+            column_combination TEXT,
+            matched_count INTEGER DEFAULT 0,
+            only_a_count INTEGER DEFAULT 0,
+            only_b_count INTEGER DEFAULT 0,
+            total_a INTEGER DEFAULT 0,
+            total_b INTEGER DEFAULT 0,
+            generated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (run_id, column_combination),
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    
+    # Create index for fast lookups
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_comparison_run 
+        ON comparison_summary(run_id)
+    ''')
+    
     conn.commit()
 
 def update_job_status(run_id, status=None, stage=None, progress=None, error=None):
