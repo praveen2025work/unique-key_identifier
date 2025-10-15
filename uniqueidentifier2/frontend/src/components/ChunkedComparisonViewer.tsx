@@ -58,8 +58,9 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
   const [pageSize, setPageSize] = useState(100);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if exports exist on component mount
+  // Load comparison summary from cache on component mount (instant, no file processing!)
   useEffect(() => {
+    loadComparisonSummary();
     checkExportStatus();
   }, [runId, columns]);
 
@@ -70,11 +71,43 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
     }
   }, [selectedCategory, currentPage, pageSize, exportFiles]);
 
-  const checkExportStatus = async () => {
+  const loadComparisonSummary = async () => {
     try {
       setLoading(true);
       setError(null);
       
+      // Try to load from pre-generated cache (created during analysis workflow)
+      const response = await fetch(
+        `${apiBaseUrl}/api/comparison-v2/${runId}/summary?columns=${encodeURIComponent(columns)}`
+      );
+      const data = await response.json();
+
+      if (data.summary) {
+        // Summary loaded from cache - instant, no file processing!
+        setSummary({
+          matched_count: data.summary.matched_count || 0,
+          only_a_count: data.summary.only_a_count || 0,
+          only_b_count: data.summary.only_b_count || 0,
+          total_a: data.summary.total_a || 0,
+          total_b: data.summary.total_b || 0,
+          match_rate: ((data.summary.matched_count / Math.max(data.summary.total_a + data.summary.total_b, 1)) * 100 * 2) || 0,
+          processing_time: 0
+        });
+        console.log('✅ Loaded comparison summary from cache (no file processing)');
+      } else {
+        // No cache available - might need to generate
+        console.log('⚠️ No cached comparison summary found');
+      }
+    } catch (err) {
+      console.error('Error loading comparison summary:', err);
+      // Don't set error - this is not critical, just means cache not available
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkExportStatus = async () => {
+    try {
       const response = await fetch(
         `${apiBaseUrl}/api/comparison-export/${runId}/status?columns=${encodeURIComponent(columns)}`
       );
@@ -82,35 +115,11 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
 
       if (data.exports_available) {
         setExportFiles(data.files);
-        
-        // Extract summary from files
-        const matchedFile = data.files.find((f: ComparisonExportFile) => f.category === 'matched');
-        const onlyAFile = data.files.find((f: ComparisonExportFile) => f.category === 'only_a');
-        const onlyBFile = data.files.find((f: ComparisonExportFile) => f.category === 'only_b');
-        
-        if (matchedFile || onlyAFile || onlyBFile) {
-          const totalA = (matchedFile?.row_count || 0) + (onlyAFile?.row_count || 0);
-          const totalB = (matchedFile?.row_count || 0) + (onlyBFile?.row_count || 0);
-          const matchRate = totalA + totalB > 0 
-            ? ((matchedFile?.row_count || 0) / (totalA + totalB) * 100 * 2) // *2 because matched counts for both
-            : 0;
-          
-          setSummary({
-            matched_count: matchedFile?.row_count || 0,
-            only_a_count: onlyAFile?.row_count || 0,
-            only_b_count: onlyBFile?.row_count || 0,
-            total_a: totalA,
-            total_b: totalB,
-            match_rate: Math.round(matchRate * 100) / 100,
-            processing_time: 0
-          });
-        }
+        console.log('✅ Full export files are available for download');
       }
     } catch (err) {
       console.error('Error checking export status:', err);
-      setError('Failed to check export status');
-    } finally {
-      setLoading(false);
+      // Don't set error - exports are optional
     }
   };
 
@@ -221,18 +230,105 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
 
   const currentFile = getCurrentFile();
 
-  // If no exports, show generate button
-  if (!loading && exportFiles.length === 0) {
+  // Show summary from cache if available (instant, no file processing!)
+  if (!loading && exportFiles.length === 0 && summary) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">Comparison Summary</h2>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-green-600">✅ Loaded from analysis workflow</span>
+            <span className="text-gray-500">•</span>
+            <span className="text-gray-600">Instant load, no file processing</span>
+          </div>
+        </div>
+
+        {/* Summary Cards - Show cached data immediately */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-600 font-medium">Matched</p>
+                <p className="text-2xl font-bold text-green-700">
+                  {summary.matched_count.toLocaleString()}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
+            </div>
+            <p className="text-xs text-green-600 mt-2">
+              {summary.match_rate.toFixed(2)}% match rate
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Only in A</p>
+                <p className="text-2xl font-bold text-blue-700">
+                  {summary.only_a_count.toLocaleString()}
+                </p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-purple-600 font-medium">Only in B</p>
+                <p className="text-2xl font-bold text-purple-700">
+                  {summary.only_b_count.toLocaleString()}
+                </p>
+              </div>
+              <AlertCircle className="h-8 w-8 text-purple-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Optional: Generate full exports */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-blue-900 mb-1">Need to view or download full records?</h4>
+              <p className="text-sm text-blue-700">
+                Generate full CSV exports to browse paginated records and download files
+              </p>
+            </div>
+            <button
+              onClick={generateComparison}
+              disabled={generating}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap ml-4"
+            >
+              {generating ? (
+                <>
+                  <Loader className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Generate Full Exports
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no exports AND no cache, show generate button (shouldn't happen if workflow completed)
+  if (!loading && exportFiles.length === 0 && !summary) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Row-by-Row Comparison</h2>
         <div className="text-center py-8">
           <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <p className="text-gray-600 mb-4">
-            No comparison exports found for these columns.
+            No comparison data available for these columns.
           </p>
           <p className="text-sm text-gray-500 mb-6">
-            Generate a full row-by-row comparison to create matched, only_a, and only_b files.
+            The comparison cache was not generated during analysis. Generate it now to view results.
           </p>
           <button
             onClick={generateComparison}

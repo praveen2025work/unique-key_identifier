@@ -99,8 +99,8 @@ def test_comparison_export(file_a_path, file_b_path, expected_results):
     # Clean up any previous test exports
     cleanup_export_files(run_id=TEST_RUN_ID)
     
-    # Create exporter
-    exporter = ChunkedFileExporter(TEST_RUN_ID, file_a_path, file_b_path)
+    # Create exporter (test files are CSV, so using default comma delimiter)
+    exporter = ChunkedFileExporter(TEST_RUN_ID, file_a_path, file_b_path, ',', ',')
     
     # Test 1: Single column comparison
     print(f"\n📊 Test 1: Single Column Comparison (customer_id)")

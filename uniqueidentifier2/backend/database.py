@@ -80,6 +80,8 @@ def create_tables():
             data_quality_check INTEGER DEFAULT 0,
             environment TEXT DEFAULT 'default',
             validated_columns TEXT,
+            file_a_delimiter TEXT,
+            file_b_delimiter TEXT,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
@@ -87,6 +89,19 @@ def create_tables():
     # Add validated_columns column if it doesn't exist (migration)
     try:
         cursor.execute("ALTER TABLE run_parameters ADD COLUMN validated_columns TEXT")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
+    # Add delimiter columns if they don't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE run_parameters ADD COLUMN file_a_delimiter TEXT")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
+    try:
+        cursor.execute("ALTER TABLE run_parameters ADD COLUMN file_b_delimiter TEXT")
         conn.commit()
     except:
         pass  # Column already exists

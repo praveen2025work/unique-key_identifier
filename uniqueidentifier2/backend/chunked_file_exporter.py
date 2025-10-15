@@ -28,10 +28,13 @@ class ChunkedFileExporter:
     5. Creates separate files for matched, only_a, only_b
     """
     
-    def __init__(self, run_id: int, file_a_path: str, file_b_path: str):
+    def __init__(self, run_id: int, file_a_path: str, file_b_path: str, 
+                 file_a_delimiter: str = ',', file_b_delimiter: str = ','):
         self.run_id = run_id
         self.file_a_path = file_a_path
         self.file_b_path = file_b_path
+        self.file_a_delimiter = file_a_delimiter
+        self.file_b_delimiter = file_b_delimiter
         self.chunk_size = COMPARISON_CHUNK_SIZE
         
         # Create run-specific directory
@@ -70,10 +73,10 @@ class ChunkedFileExporter:
         # PHASE 1: Extract unique keys from both files
         print(f"📊 Phase 1/3: Extracting unique keys...")
         keys_a, total_rows_a = self._extract_unique_keys_chunked(
-            self.file_a_path, columns, 'File A'
+            self.file_a_path, columns, 'File A', self.file_a_delimiter
         )
         keys_b, total_rows_b = self._extract_unique_keys_chunked(
-            self.file_b_path, columns, 'File B'
+            self.file_b_path, columns, 'File B', self.file_b_delimiter
         )
         
         print(f"✅ Found {len(keys_a):,} unique keys in A, {len(keys_b):,} in B")
@@ -98,7 +101,7 @@ class ChunkedFileExporter:
             matched_path = os.path.join(comparison_dir, "matched.csv")
             matched_count = self._export_records_chunked(
                 self.file_a_path, columns, matched_keys, matched_path,
-                max_rows=max_export_rows, label="Matched"
+                max_rows=max_export_rows, label="Matched", delimiter=self.file_a_delimiter
             )
             export_paths['matched'] = matched_path
             export_paths['matched_count'] = matched_count
@@ -110,7 +113,7 @@ class ChunkedFileExporter:
             only_a_path = os.path.join(comparison_dir, "only_a.csv")
             only_a_count = self._export_records_chunked(
                 self.file_a_path, columns, only_a_keys, only_a_path,
-                max_rows=max_export_rows, label="A-Only"
+                max_rows=max_export_rows, label="A-Only", delimiter=self.file_a_delimiter
             )
             export_paths['only_a'] = only_a_path
             export_paths['only_a_count'] = only_a_count
@@ -122,7 +125,7 @@ class ChunkedFileExporter:
             only_b_path = os.path.join(comparison_dir, "only_b.csv")
             only_b_count = self._export_records_chunked(
                 self.file_b_path, columns, only_b_keys, only_b_path,
-                max_rows=max_export_rows, label="B-Only"
+                max_rows=max_export_rows, label="B-Only", delimiter=self.file_b_delimiter
             )
             export_paths['only_b'] = only_b_path
             export_paths['only_b_count'] = only_b_count
@@ -160,7 +163,8 @@ class ChunkedFileExporter:
         self, 
         file_path: str, 
         columns: List[str],
-        label: str
+        label: str,
+        delimiter: str = ','
     ) -> Tuple[set, int]:
         """
         Extract unique composite keys from a file using chunked reading.
@@ -171,7 +175,8 @@ class ChunkedFileExporter:
         chunk_num = 0
         
         try:
-            for chunk in pd.read_csv(file_path, chunksize=self.chunk_size, low_memory=False):
+            for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
+                                    encoding='utf-8', on_bad_lines='skip', low_memory=False):
                 chunk_num += 1
                 total_rows += len(chunk)
                 
@@ -210,7 +215,8 @@ class ChunkedFileExporter:
         target_keys: set,
         output_path: str,
         max_rows: int = None,
-        label: str = "Records"
+        label: str = "Records",
+        delimiter: str = ','
     ) -> int:
         """
         Export full row data for target keys by reading file in chunks.
@@ -237,7 +243,8 @@ class ChunkedFileExporter:
         # For moderate sets, the set itself is fine
         target_keys_set = target_keys
         
-        for chunk in pd.read_csv(file_path, chunksize=self.chunk_size, low_memory=False):
+        for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
+                                encoding='utf-8', on_bad_lines='skip', low_memory=False):
             chunk_num += 1
             
             # Create composite key for this chunk

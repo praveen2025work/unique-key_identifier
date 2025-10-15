@@ -176,14 +176,14 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         if num_columns > len(df_a.columns):
             raise ValueError(f"Number of columns ({num_columns}) exceeds available columns ({len(df_a.columns)})")
         
-        # Store validated column list for later use
+        # Store validated column list and delimiters for later use
         validated_columns = list(df_a.columns)
         cursor = conn.cursor()
         cursor.execute('''
             UPDATE run_parameters 
-            SET validated_columns = ?
+            SET validated_columns = ?, file_a_delimiter = ?, file_b_delimiter = ?
             WHERE run_id = ?
-        ''', (json.dumps(validated_columns), run_id))
+        ''', (json.dumps(validated_columns), delim_a, delim_b, run_id))
         conn.commit()
         
         update_stage_status(run_id, 'validating_data', 'completed', f'✅ Validated {len(df_a.columns)} matching columns')
@@ -1575,7 +1575,8 @@ async def generate_comparison_export(
     try:
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT r.file_a, r.file_b, rp.working_directory, r.file_a_rows, r.file_b_rows
+            SELECT r.file_a, r.file_b, rp.working_directory, r.file_a_rows, r.file_b_rows,
+                   rp.file_a_delimiter, rp.file_b_delimiter
             FROM runs r
             LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
             WHERE r.run_id = ?
@@ -1585,7 +1586,16 @@ async def generate_comparison_export(
         if not run_info:
             raise HTTPException(status_code=404, detail="Run not found")
         
-        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows, delim_a, delim_b = run_info
+        
+        # Default to comma if delimiters not stored (backward compatibility)
+        if delim_a is None:
+            from file_processing import detect_delimiter
+            delim_a = detect_delimiter(os.path.join(work_dir if work_dir else SCRIPT_DIR, file_a_name))
+        if delim_b is None:
+            from file_processing import detect_delimiter
+            delim_b = detect_delimiter(os.path.join(work_dir if work_dir else SCRIPT_DIR, file_b_name))
+        
         base_dir = work_dir if work_dir else SCRIPT_DIR
         file_a_path = os.path.join(base_dir, file_a_name)
         file_b_path = os.path.join(base_dir, file_b_name)
@@ -1605,7 +1615,8 @@ async def generate_comparison_export(
         # Create exporter and run comparison
         # Note: Validation happens inside ChunkedFileExporter during processing
         # The analysis already validated these columns exist in both files
-        exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path)
+        print(f"🔍 Using delimiters: File A='{delim_a}', File B='{delim_b}'")
+        exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
         
         # Run comparison and export
         result = exporter.compare_and_export(
