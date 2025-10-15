@@ -292,81 +292,61 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
     }
     
     try {
-      toast.loading('Loading comparison data (may take time for large files)...', { id: 'load-comparison' });
+      toast.loading('Loading comparison data...', { id: 'load-comparison' });
       
-      // Add timeout for summary (60 seconds - reading CSV files takes time)
-      const controller1 = new AbortController();
-      const timeoutId1 = setTimeout(() => controller1.abort(), 60000);
+      // TRY NEW OPTIMIZED ENDPOINT FIRST (instant, from cache!)
+      try {
+        const summaryResp = await fetch(
+          `${apiEndpoint}/api/comparison-v2/${currentRunId}/summary?columns=${encodeURIComponent(columns)}`
+        );
+        
+        if (summaryResp.ok) {
+          const summary = await summaryResp.json();
+          
+          // Check if cache exists
+          if (summary.summary) {
+            setComparisonSummary(summary.summary);
+            
+            // Load data from cache (instant!)
+            const [matchedResp, onlyAResp, onlyBResp] = await Promise.all([
+              fetch(`${apiEndpoint}/api/comparison-v2/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=matched&offset=0&limit=100`),
+              fetch(`${apiEndpoint}/api/comparison-v2/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_a&offset=0&limit=100`),
+              fetch(`${apiEndpoint}/api/comparison-v2/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_b&offset=0&limit=100`)
+            ]);
+            
+            const matchedData = matchedResp.ok ? await matchedResp.json() : { records: [] };
+            const onlyAData = onlyAResp.ok ? await onlyAResp.json() : { records: [] };
+            const onlyBData = onlyBResp.ok ? await onlyBResp.json() : { records: [] };
+            
+            setComparisonData({
+              matched: matchedData.records || [],
+              only_a: onlyAData.records || [],
+              only_b: onlyBData.records || []
+            });
+            
+            toast.success('✓ Comparison loaded (from cache)', { id: 'load-comparison' });
+            return; // Success! Exit early
+          }
+        }
+      } catch (cacheErr) {
+        console.log('Cache not available, using message-only mode');
+      }
       
-      // Load summary
-      const summaryResp = await fetch(
-        `${apiEndpoint}/api/comparison/${currentRunId}/summary?columns=${encodeURIComponent(columns)}`,
-        { signal: controller1.signal }
+      // FALLBACK: Show message that comparison is not available for large files
+      toast.error(
+        'Comparison data not available for this run. For large files, only counts are shown to prevent memory issues.', 
+        { id: 'load-comparison', duration: 5000 }
       );
-      clearTimeout(timeoutId1);
       
-      if (!summaryResp.ok) {
-        throw new Error('Failed to load comparison summary');
-      }
-      const summary = await summaryResp.json();
+      // Set empty data
+      setComparisonSummary(null);
+      setComparisonData({ matched: [], only_a: [], only_b: [] });
       
-      // Check if comparison is disabled due to file size
-      if (summary.comparison_disabled) {
-        setComparisonSummary(summary);
-        setComparisonData({ matched: [], only_a: [], only_b: [] });
-        toast.error(
-          summary.message || 'Comparison disabled for large files', 
-          { id: 'load-comparison', duration: 6000 }
-        );
-        return;
-      }
-      
-      setComparisonSummary(summary);
-      
-      // Add timeout for data calls (60 seconds each)
-      const controller2 = new AbortController();
-      const timeoutId2 = setTimeout(() => controller2.abort(), 60000);
-      
-      // Load all three categories upfront
-      const [matchedResp, onlyAResp, onlyBResp] = await Promise.all([
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=matched&offset=0&limit=50`, 
-          { signal: controller2.signal }),
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_a&offset=0&limit=50`, 
-          { signal: controller2.signal }),
-        fetch(`${apiEndpoint}/api/comparison/${currentRunId}/data?columns=${encodeURIComponent(columns)}&category=only_b&offset=0&limit=50`, 
-          { signal: controller2.signal })
-      ]);
-      clearTimeout(timeoutId2);
-      
-      const matchedData = matchedResp.ok ? await matchedResp.json() : { records: [] };
-      const onlyAData = onlyAResp.ok ? await onlyAResp.json() : { records: [] };
-      const onlyBData = onlyBResp.ok ? await onlyBResp.json() : { records: [] };
-      
-      // Check if any data response indicates comparison is disabled
-      if (matchedData.comparison_disabled || onlyAData.comparison_disabled || onlyBData.comparison_disabled) {
-        toast.error(
-          matchedData.message || 'Comparison disabled for large files', 
-          { id: 'load-comparison', duration: 6000 }
-        );
-        setComparisonData({ matched: [], only_a: [], only_b: [] });
-        return;
-      }
-      
-      setComparisonData({
-        matched: matchedData.records || [],
-        only_a: onlyAData.records || [],
-        only_b: onlyBData.records || []
-      });
-      
-      toast.success('✓ Comparison loaded', { id: 'load-comparison' });
     } catch (err: any) {
       console.error('Failed to load file comparison', err);
-      if (err.name === 'AbortError') {
-        toast.error('Comparison timed out - files may be too large. Try using smaller files or samples.', 
-          { id: 'load-comparison', duration: 6000 });
-      } else {
-        toast.error('Failed to load comparison data', { id: 'load-comparison' });
-      }
+      toast.error('Failed to load comparison data', { id: 'load-comparison' });
+      setComparisonSummary(null);
+      setComparisonData({ matched: [], only_a: [], only_b: [] });
     }
   };
 
@@ -1165,9 +1145,21 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     </div>
                     {comparisonSummary && (
                       <button
-                        onClick={() => window.open(`${apiEndpoint}/api/download/${currentRunId}/comparison?columns=${encodeURIComponent(selectedComparisonColumn)}`, '_blank')}
+                        onClick={() => {
+                          // Check if download is available (only for small files)
+                          fetch(`${apiEndpoint}/api/download/${currentRunId}/comparison?columns=${encodeURIComponent(selectedComparisonColumn)}`)
+                            .then(resp => {
+                              if (resp.ok) {
+                                window.open(`${apiEndpoint}/api/download/${currentRunId}/comparison?columns=${encodeURIComponent(selectedComparisonColumn)}`, '_blank');
+                              } else {
+                                resp.json().then(data => {
+                                  toast.error(data.message || 'Download disabled for large files', { duration: 5000 });
+                                });
+                              }
+                            });
+                        }}
                         className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex items-center space-x-1"
-                        title="Download comparison data as Excel">
+                        title="Download comparison data as Excel (disabled for large files)">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
