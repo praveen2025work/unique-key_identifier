@@ -70,6 +70,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const [numColumns, setNumColumns] = useState(2);
   const [maxRows, setMaxRows] = useState(0);
   const [dataQualityCheck, setDataQualityCheck] = useState(false);
+  const [generateComparisons, setGenerateComparisons] = useState(true);
   
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [includedCombinations, setIncludedCombinations] = useState<string[]>([]);
@@ -411,6 +412,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       formData.append('excluded_combinations', excludedCombinations.join('\n'));
       formData.append('working_directory', workingDir);
       formData.append('data_quality_check', dataQualityCheck.toString());
+      formData.append('generate_comparisons', generateComparisons.toString());
       formData.append('environment', 'default');
       const response = await fetch(`${apiEndpoint}/compare`, { method: 'POST', body: formData });
       if (!response.ok) {
@@ -647,6 +649,14 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     <label className="flex items-center h-[30px] cursor-pointer bg-[#337ab7]/10 px-3 py-1.5 rounded border border-[#337ab7]/30 hover:bg-[#337ab7]/20 transition-colors">
                       <input type="checkbox" checked={dataQualityCheck} onChange={(e) => setDataQualityCheck(e.target.checked)} 
                         className="w-4 h-4 text-[#337ab7] border-gray-300 rounded focus:ring-[#337ab7] mr-2" />
+                      <span className="text-xs font-semibold text-gray-700">Enable</span>
+                    </label>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Generate Comparisons</label>
+                    <label className="flex items-center h-[30px] cursor-pointer bg-green-50 px-3 py-1.5 rounded border border-green-300 hover:bg-green-100 transition-colors">
+                      <input type="checkbox" checked={generateComparisons} onChange={(e) => setGenerateComparisons(e.target.checked)} 
+                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-2" />
                       <span className="text-xs font-semibold text-gray-700">Enable</span>
                     </label>
                   </div>

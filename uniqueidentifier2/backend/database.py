@@ -82,6 +82,7 @@ def create_tables():
             validated_columns TEXT,
             file_a_delimiter TEXT,
             file_b_delimiter TEXT,
+            generate_comparisons INTEGER DEFAULT 1,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
@@ -102,6 +103,13 @@ def create_tables():
     
     try:
         cursor.execute("ALTER TABLE run_parameters ADD COLUMN file_b_delimiter TEXT")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
+    # Add generate_comparisons column if it doesn't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE run_parameters ADD COLUMN generate_comparisons INTEGER DEFAULT 1")
         conn.commit()
     except:
         pass  # Column already exists

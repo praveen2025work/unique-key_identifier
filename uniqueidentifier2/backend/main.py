@@ -80,7 +80,7 @@ job_lock = threading.Lock()
 
 def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, 
                          specified_combinations=None, excluded_combinations=None, 
-                         working_directory=None, data_quality_check=False):
+                         working_directory=None, data_quality_check=False, generate_comparisons=True):
     """Background job to process file analysis"""
     try:
         # Pre-check file sizes
@@ -257,7 +257,7 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         # NEW: Generate comparison cache for efficient retrieval
         try:
-            update_job_status(run_id, stage='generating_comparison_cache', progress=95)
+            update_job_status(run_id, stage='generating_comparison_cache', progress=92)
             update_stage_status(run_id, 'generating_comparison_cache', 'in_progress', 'Creating comparison cache files')
             
             # Get all analyzed column combinations
@@ -274,6 +274,51 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             print(f"⚠️  Warning: Failed to generate comparison cache: {cache_error}")
             update_stage_status(run_id, 'generating_comparison_cache', 'error', 
                               f'Cache generation failed: {str(cache_error)}')
+        
+        # NEW: Generate full chunked comparison exports (optional)
+        if generate_comparisons:
+            try:
+                update_job_status(run_id, stage='generating_full_comparisons', progress=95)
+                update_stage_status(run_id, 'generating_full_comparisons', 'in_progress', 
+                                  'Generating full comparison exports (matched, only_a, only_b)')
+                
+                # Create ChunkedFileExporter with correct delimiters
+                exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
+                
+                # Generate full exports for each analyzed combination
+                generated_count = 0
+                for combination in analyzed_combinations:
+                    try:
+                        # Parse columns
+                        if isinstance(combination, str):
+                            column_list = [c.strip() for c in combination.split(',')]
+                        else:
+                            column_list = list(combination)
+                        
+                        print(f"   Generating full comparison for: {', '.join(column_list)}")
+                        
+                        # Generate full chunked exports
+                        result = exporter.compare_and_export(columns=column_list)
+                        
+                        generated_count += 1
+                        print(f"   ✅ Exported {result['matched_count']:,} matched, "
+                              f"{result['only_a_count']:,} only_a, {result['only_b_count']:,} only_b")
+                        
+                    except Exception as combo_error:
+                        print(f"   ⚠️  Warning: Failed to generate comparison for {combination}: {combo_error}")
+                        continue
+                
+                update_stage_status(run_id, 'generating_full_comparisons', 'completed', 
+                                  f'Generated {generated_count} full comparison exports')
+                print(f"✅ Generated {generated_count} full comparison exports for run {run_id}")
+                
+            except Exception as export_error:
+                # Don't fail the whole job if export generation fails
+                print(f"⚠️  Warning: Failed to generate full comparison exports: {export_error}")
+                update_stage_status(run_id, 'generating_full_comparisons', 'error', 
+                                  f'Export generation failed: {str(export_error)}')
+        else:
+            print(f"⏭️  Skipping full comparison generation (generate_comparisons=False)")
         
         update_job_status(run_id, status='completed', stage='completed', progress=100)
         
@@ -421,6 +466,7 @@ async def compare_files(
     excluded_combinations: str = Form(""),
     working_directory: str = Form(""),
     data_quality_check: bool = Form(False),
+    generate_comparisons: bool = Form(True),
     environment: str = Form("default")
 ):
     """Start async analysis job and return run_id"""
@@ -457,9 +503,9 @@ async def compare_files(
         
         # Store run parameters
         cursor.execute('''
-            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory, data_quality_check, environment)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or '', 1 if data_quality_check else 0, environment))
+            INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory, data_quality_check, generate_comparisons, environment)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or '', 1 if data_quality_check else 0, 1 if generate_comparisons else 0, environment))
         conn.commit()
         
         # Create job stages - conditionally include data quality check
@@ -480,6 +526,10 @@ async def compare_files(
             ('storing_results', 5 + stage_offset, 'pending'),
             ('generating_comparison_cache', 6 + stage_offset, 'pending'),
         ])
+        
+        # Add full comparison generation stage if enabled
+        if generate_comparisons:
+            stages.append(('generating_full_comparisons', 7 + stage_offset, 'pending'))
         
         for stage_name, order, status in stages:
             cursor.execute('''
@@ -528,7 +578,7 @@ async def compare_files(
         
         # Start background processing
         thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check))
+                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check, generate_comparisons))
         thread.daemon = True
         thread.start()
         
