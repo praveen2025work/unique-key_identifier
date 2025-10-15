@@ -285,9 +285,19 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                 # Create ChunkedFileExporter with correct delimiters
                 exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
                 
-                # Generate full exports for each analyzed combination
+                # Build list of combinations to generate
+                combinations_to_generate = list(analyzed_combinations)
+                
+                # Add "all columns" combination for file-file comparison if not already included
+                all_columns = validated_columns  # All columns from the files
+                all_columns_str = ','.join(all_columns)
+                if all_columns_str not in [str(c) if isinstance(c, str) else ','.join(c) for c in analyzed_combinations]:
+                    print(f"   Adding full file-file comparison with ALL columns: {all_columns_str}")
+                    combinations_to_generate.append(all_columns)
+                
+                # Generate full exports for each combination
                 generated_count = 0
-                for combination in analyzed_combinations:
+                for combination in combinations_to_generate:
                     try:
                         # Parse columns
                         if isinstance(combination, str):
@@ -309,7 +319,7 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                         continue
                 
                 update_stage_status(run_id, 'generating_full_comparisons', 'completed', 
-                                  f'Generated {generated_count} full comparison exports')
+                                  f'Generated {generated_count} full comparison exports (includes file-file)')
                 print(f"✅ Generated {generated_count} full comparison exports for run {run_id}")
                 
             except Exception as export_error:
@@ -1144,22 +1154,16 @@ async def get_data_quality_results(run_id: int):
 @app.get("/api/comparison/{run_id}/summary")
 async def get_comparison_summary(run_id: int, columns: str = Query(...)):
     """
-    DEPRECATED ENDPOINT - DO NOT USE
-    This endpoint has been replaced with /api/comparison-v2/{run_id}/summary
-    Redirecting to prevent backend crashes
+    DEPRECATED ENDPOINT - REDIRECTS TO NEW CHUNKED FILE APPROACH
+    Use /api/comparison-export/{run_id}/status instead for chunk-based comparison
     """
     return JSONResponse({
         "error": "Endpoint deprecated",
-        "message": "This endpoint causes backend crashes and has been disabled. Use /api/comparison-v2/{run_id}/summary instead.",
-        "new_endpoint": f"/api/comparison-v2/{run_id}/summary?columns={columns}",
+        "message": "This endpoint has been replaced with chunked file-based comparison for better performance and memory efficiency.",
+        "new_endpoint": f"/api/comparison-export/{run_id}/status?columns={columns}",
+        "alternative": f"/api/comparison-export/{run_id}/summary",
         "deprecated": True
     }, status_code=410)  # 410 Gone
-
-# OLD IMPLEMENTATION REMOVED TO PREVENT CRASHES
-# If you need this functionality, use the new optimized endpoints:
-# - /api/comparison-v2/{run_id}/available
-# - /api/comparison-v2/{run_id}/summary
-# - /api/comparison-v2/{run_id}/data
 
 
 @app.get("/api/comparison/{run_id}/data")
@@ -1171,20 +1175,17 @@ async def get_comparison_data_api_old(
     limit: int = Query(100)
 ):
     """
-    DEPRECATED ENDPOINT - DO NOT USE
-    This endpoint has been replaced with /api/comparison-v2/{run_id}/data
-    Redirecting to prevent backend crashes
+    DEPRECATED ENDPOINT - REDIRECTS TO NEW CHUNKED FILE APPROACH
+    Use /api/comparison-export/{run_id}/chunk-file instead
     """
     return JSONResponse({
         "error": "Endpoint deprecated",
-        "message": "This endpoint causes backend crashes and has been disabled. Use /api/comparison-v2/{run_id}/data instead.",
-        "new_endpoint": f"/api/comparison-v2/{run_id}/data?columns={columns}&category={category}&offset={offset}&limit={limit}",
+        "message": "This endpoint has been replaced with chunked file-based comparison. Use /chunk-file for better performance.",
+        "new_endpoint": f"/api/comparison-export/{run_id}/chunk-file?columns={columns}&category={category}&chunk_index=1",
         "deprecated": True,
         "records": [],
         "total": 0
     }, status_code=410)  # 410 Gone
-
-# OLD IMPLEMENTATIONS REMOVED - Use optimized cache-based endpoints instead
 
 
 # ============================================================================
@@ -1334,29 +1335,26 @@ async def get_comparison_generation_status(run_id: int, columns: str = Query(...
 
 
 # ============================================================================
-# NEW OPTIMIZED COMPARISON ENDPOINTS - Using Cache (No File Reading!)
+# DEPRECATED COMPARISON-V2 ENDPOINTS (Keys Only - No Full Row Data)
+# Use /api/comparison-export/{run_id}/* endpoints instead for full row data
 # ============================================================================
 
 @app.get("/api/comparison-v2/{run_id}/available")
 async def get_available_comparisons(run_id: int):
     """
-    Get list of available pre-generated comparisons for a run
-    INSTANT - reads from database only!
+    DEPRECATED: Returns only comparison keys, not full row data.
+    Use /api/comparison-export/{run_id}/summary for full chunked file comparison.
     """
     try:
         summaries = get_comparison_summary_from_db(run_id)
         
-        if not summaries:
-            return JSONResponse({
-                "run_id": run_id,
-                "available_comparisons": [],
-                "message": "No pre-generated comparisons available for this run. They may not have been generated during analysis."
-            })
-        
         return JSONResponse({
             "run_id": run_id,
             "available_comparisons": summaries,
-            "count": len(summaries)
+            "count": len(summaries) if summaries else 0,
+            "deprecated": True,
+            "message": "This endpoint returns keys only. Use /api/comparison-export/{run_id}/summary for full row data.",
+            "new_endpoint": f"/api/comparison-export/{run_id}/summary"
         })
     except Exception as e:
         import traceback
@@ -1367,8 +1365,8 @@ async def get_available_comparisons(run_id: int):
 @app.get("/api/comparison-v2/{run_id}/summary")
 async def get_comparison_summary_v2(run_id: int, columns: str = Query(...)):
     """
-    Get comparison summary from cache
-    INSTANT - reads from cache file, no CSV loading!
+    DEPRECATED: Returns summary with keys only, not full row data.
+    Use /api/comparison-export/{run_id}/status?columns={columns} for full chunked file info.
     """
     try:
         # Try to get from cache first
@@ -1380,7 +1378,10 @@ async def get_comparison_summary_v2(run_id: int, columns: str = Query(...)):
                 "columns": columns,
                 "summary": cache_data['summary'],
                 "from_cache": True,
-                "generated_at": cache_data.get('generated_at')
+                "generated_at": cache_data.get('generated_at'),
+                "deprecated": True,
+                "message": "This endpoint returns keys only. Use /api/comparison-export/{run_id}/status for chunked files.",
+                "new_endpoint": f"/api/comparison-export/{run_id}/status?columns={columns}"
             })
         
         # Fallback: Get from database
@@ -1405,14 +1406,17 @@ async def get_comparison_summary_v2(run_id: int, columns: str = Query(...)):
                     "total_b": row[4]
                 },
                 "from_cache": False,
-                "generated_at": row[5]
+                "generated_at": row[5],
+                "deprecated": True,
+                "new_endpoint": f"/api/comparison-export/{run_id}/status?columns={columns}"
             })
         
         # Not found
         return JSONResponse({
             "error": "Comparison not found",
             "message": f"No pre-generated comparison found for columns: {columns}",
-            "comparison_available": False
+            "comparison_available": False,
+            "new_endpoint": f"/api/comparison-export/{run_id}/generate?columns={columns}"
         }, status_code=404)
         
     except Exception as e:
@@ -1430,8 +1434,8 @@ async def get_comparison_data_v2(
     limit: int = Query(100)
 ):
     """
-    Get comparison data from cache
-    INSTANT - reads from cache file, no CSV loading!
+    DEPRECATED: Returns keys only, not full row data.
+    Use /api/comparison-export/{run_id}/chunk-file for full row data from chunked files.
     """
     try:
         # Get from cache
@@ -1440,9 +1444,11 @@ async def get_comparison_data_v2(
         if not cache_data:
             return JSONResponse({
                 "error": "Comparison not found",
-                "message": "No pre-generated comparison data available",
+                "message": "No pre-generated comparison data available. Generate using /api/comparison-export/{run_id}/generate",
                 "records": [],
-                "total": 0
+                "total": 0,
+                "deprecated": True,
+                "new_endpoint": f"/api/comparison-export/{run_id}/chunk-file?columns={columns}&category={category}&chunk_index=1"
             }, status_code=404)
         
         # Get the requested category
@@ -1461,7 +1467,7 @@ async def get_comparison_data_v2(
         # Apply pagination
         paginated_data = sample_data[offset:offset+limit]
         
-        # Format records
+        # Format records (keys only)
         column_list = columns.split(',')
         records = []
         for key_str in paginated_data:
@@ -1482,7 +1488,10 @@ async def get_comparison_data_v2(
             "offset": offset,
             "limit": limit,
             "showing_sample": len(sample_data) < total,
-            "sample_size": len(sample_data)
+            "sample_size": len(sample_data),
+            "deprecated": True,
+            "message": "This endpoint returns keys only. Use /api/comparison-export/{run_id}/chunk-file for full row data.",
+            "new_endpoint": f"/api/comparison-export/{run_id}/chunk-file?columns={columns}&category={category}&chunk_index=1"
         })
         
     except Exception as e:
@@ -1707,13 +1716,14 @@ async def generate_comparison_export(
 async def get_comparison_export_status(run_id: int, columns: str = Query(None)):
     """
     Check status of comparison exports for a run.
+    Returns list of chunk files with details.
     
     Args:
         run_id: Run ID
         columns: Optional column filter
         
     Returns:
-        List of available comparison exports
+        List of available comparison chunk files grouped by category
     """
     try:
         files = get_comparison_export_files(run_id, columns)
@@ -1725,11 +1735,28 @@ async def get_comparison_export_status(run_id: int, columns: str = Query(None)):
                 "message": "No comparison exports found for this run"
             })
         
+        # Group files by category
+        grouped_files = {
+            'matched': [],
+            'only_a': [],
+            'only_b': []
+        }
+        
+        for file in files:
+            category = file['category']
+            if category in grouped_files:
+                grouped_files[category].append(file)
+        
         return JSONResponse({
             "run_id": run_id,
             "exports_available": True,
             "total_files": len(files),
-            "files": files
+            "files_by_category": grouped_files,
+            "chunk_summary": {
+                "matched_chunks": len(grouped_files['matched']),
+                "only_a_chunks": len(grouped_files['only_a']),
+                "only_b_chunks": len(grouped_files['only_b'])
+            }
         })
         
     except Exception as e:
@@ -1755,6 +1782,99 @@ async def get_comparison_export_summary_endpoint(run_id: int):
         return JSONResponse({"error": f"Error fetching summary: {str(e)}"}, status_code=500)
 
 
+@app.get("/api/comparison-export/{run_id}/chunk-file")
+async def get_chunk_file_data(
+    run_id: int,
+    columns: str = Query(..., description="Column combination"),
+    category: str = Query(..., description="matched, only_a, or only_b"),
+    chunk_index: int = Query(1, ge=1, description="Chunk file index")
+):
+    """
+    Get data from a specific chunk file.
+    Returns entire chunk file contents (max 10k records).
+    
+    Args:
+        run_id: Run ID
+        columns: Column combination used for comparison
+        category: Data category ('matched', 'only_a', 'only_b')
+        chunk_index: Chunk file index (1-based)
+        
+    Returns:
+        Chunk file data with metadata
+    """
+    try:
+        # Validate category
+        if category not in ['matched', 'only_a', 'only_b']:
+            raise HTTPException(status_code=400, detail="Invalid category")
+        
+        # Get all chunk files for this category
+        files = get_comparison_export_files(run_id, columns)
+        
+        if not files:
+            return JSONResponse({
+                "error": "No exports found",
+                "message": f"No comparison exports found for run {run_id}"
+            }, status_code=404)
+        
+        # Find the specific chunk file
+        target_file = None
+        for file in files:
+            if file['category'] == category and file['chunk_index'] == chunk_index:
+                target_file = file
+                break
+        
+        if not target_file:
+            return JSONResponse({
+                "error": "Chunk not found",
+                "message": f"Chunk {chunk_index} not found for category {category}"
+            }, status_code=404)
+        
+        # Check if file exists
+        if not target_file['exists']:
+            return JSONResponse({
+                "error": "File not found",
+                "message": "Chunk file has been deleted or moved"
+            }, status_code=404)
+        
+        # Read entire chunk file
+        try:
+            df = pd.read_csv(target_file['file_path'], low_memory=False)
+            records = df.to_dict('records')
+            
+            # Handle NaN values
+            for record in records:
+                for key, value in record.items():
+                    if pd.isna(value):
+                        record[key] = None
+            
+            return JSONResponse({
+                "run_id": run_id,
+                "columns": columns,
+                "category": category,
+                "chunk_index": chunk_index,
+                "chunk_name": target_file['chunk_name'],
+                "records": records,
+                "record_count": len(records),
+                "file_info": {
+                    "file_size_mb": target_file['file_size_mb'],
+                    "row_count": target_file['row_count'],
+                    "created_at": target_file['created_at']
+                }
+            })
+        except Exception as read_error:
+            return JSONResponse({
+                "error": "Read error",
+                "message": f"Failed to read chunk file: {str(read_error)}"
+            }, status_code=500)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error fetching chunk: {str(e)}"}, status_code=500)
+
+
 @app.get("/api/comparison-export/{run_id}/data")
 async def get_comparison_export_data(
     run_id: int,
@@ -1764,9 +1884,8 @@ async def get_comparison_export_data(
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return")
 ):
     """
+    DEPRECATED: Use /chunk-file endpoint instead for better performance.
     Get paginated data from exported comparison files.
-    This is VERY FAST because it reads directly from exported CSV files
-    without re-processing the original large files.
     
     Args:
         run_id: Run ID
@@ -1783,7 +1902,7 @@ async def get_comparison_export_data(
         if category not in ['matched', 'only_a', 'only_b']:
             raise HTTPException(status_code=400, detail="Invalid category. Must be 'matched', 'only_a', or 'only_b'")
         
-        # Get export file info
+        # Get export file info (now returns chunk files)
         files = get_comparison_export_files(run_id, columns)
         
         if not files:
@@ -1792,18 +1911,17 @@ async def get_comparison_export_data(
                 "message": f"No comparison exports found for run {run_id} with columns '{columns}'"
             }, status_code=404)
         
-        # Find the specific file
-        target_file = None
-        for file in files:
-            if file['category'] == category:
-                target_file = file
-                break
+        # Get all files for this category
+        category_files = [f for f in files if f['category'] == category]
         
-        if not target_file:
+        if not category_files:
             return JSONResponse({
                 "error": "Category not found",
                 "message": f"No {category} export found for this comparison"
             }, status_code=404)
+        
+        # For backward compatibility, read first chunk file
+        target_file = category_files[0]
         
         # Check if file exists
         if not target_file['exists']:
@@ -1825,25 +1943,31 @@ async def get_comparison_export_data(
                 "message": result['error']
             }, status_code=500)
         
+        # Calculate total across all chunks
+        total_records = sum(f['row_count'] for f in category_files)
+        
         return JSONResponse({
             "run_id": run_id,
             "columns": columns,
             "category": category,
             "records": result['records'],
             "pagination": {
-                "total": result['total'],
+                "total": total_records,
                 "offset": result['offset'],
                 "limit": result['limit'],
                 "showing": result['showing'],
                 "has_more": result['has_more'],
-                "total_pages": (result['total'] + limit - 1) // limit,
+                "total_pages": (total_records + limit - 1) // limit,
                 "current_page": (offset // limit) + 1
             },
             "file_info": {
+                "total_chunks": len(category_files),
+                "current_chunk": 1,
                 "file_size_mb": target_file['file_size_mb'],
                 "row_count": target_file['row_count'],
                 "created_at": target_file['created_at']
-            }
+            },
+            "note": "Use /chunk-file endpoint for better chunk-by-chunk navigation"
         })
         
     except HTTPException:

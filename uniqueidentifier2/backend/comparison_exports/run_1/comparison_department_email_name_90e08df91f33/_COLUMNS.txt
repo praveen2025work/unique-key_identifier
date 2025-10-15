@@ -1,0 +1,9 @@
+Run ID: 1
+Columns: department,email,name
+Column Count: 3
+Generated: 2025-10-15 15:32:49
+
+Column List:
+  1. department
+  2. email
+  3. name

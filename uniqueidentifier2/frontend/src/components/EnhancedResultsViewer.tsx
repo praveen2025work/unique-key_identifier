@@ -3,7 +3,7 @@ import apiService from '../services/api';
 import type { RunDetails, AnalysisResult, JobStatus } from '../types';
 import toast from 'react-hot-toast';
 import ComparisonViewer from './ComparisonViewer';
-import UnifiedComparisonViewer from './UnifiedComparisonViewer';
+import ChunkedFileListViewer from './ChunkedFileListViewer';
 import DataQualityViewer from './DataQualityViewer';
 import ModernDropdown from './ui/ModernDropdown';
 import WorkflowView from './WorkflowView';
@@ -627,7 +627,11 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                 />
               </div>
               {selectedComboColumns && (
-                <UnifiedComparisonViewer runId={runId} columns={selectedComboColumns} />
+                <ChunkedFileListViewer 
+                  runId={runId} 
+                  columns={selectedComboColumns}
+                  apiEndpoint={apiService['baseUrl']}
+                />
               )}
             </div>
           )}

@@ -10,6 +10,7 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 from pathlib import Path
 import time
+import hashlib
 from database import conn
 from config import COMPARISON_CHUNK_SIZE
 
@@ -70,6 +71,17 @@ class ChunkedFileExporter:
         comparison_dir = self._get_comparison_dir(column_str)
         os.makedirs(comparison_dir, exist_ok=True)
         
+        # Create README file with column mapping for easy reference
+        readme_path = os.path.join(comparison_dir, '_COLUMNS.txt')
+        with open(readme_path, 'w') as f:
+            f.write(f"Run ID: {self.run_id}\n")
+            f.write(f"Columns: {column_str}\n")
+            f.write(f"Column Count: {len(columns)}\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"\nColumn List:\n")
+            for i, col in enumerate(columns, 1):
+                f.write(f"  {i}. {col}\n")
+        
         # PHASE 1: Extract unique keys from both files
         print(f"📊 Phase 1/3: Extracting unique keys...")
         keys_a, total_rows_a = self._extract_unique_keys_chunked(
@@ -92,45 +104,55 @@ class ChunkedFileExporter:
         
         print(f"✅ Matched: {len(matched_keys):,} | A-only: {len(only_a_keys):,} | B-only: {len(only_b_keys):,}")
         
-        # PHASE 3: Export full row data for each category
-        print(f"📊 Phase 3/3: Exporting full row data to CSV files...")
+        # PHASE 3: Export full row data for each category (10k records per file)
+        print(f"📊 Phase 3/3: Exporting full row data to chunked CSV files (10k per file)...")
         export_paths = {}
+        all_chunk_files = []
+        
+        # Determine max rows per file
+        rows_per_file = max_export_rows if max_export_rows else 10000
         
         # Export matched records
         if matched_keys:
-            matched_path = os.path.join(comparison_dir, "matched.csv")
-            matched_count = self._export_records_chunked(
-                self.file_a_path, columns, matched_keys, matched_path,
-                max_rows=max_export_rows, label="Matched", delimiter=self.file_a_delimiter
+            matched_count, matched_files = self._export_records_chunked(
+                self.file_a_path, columns, matched_keys, comparison_dir,
+                category="matched", max_rows_per_file=rows_per_file,
+                label="Matched", delimiter=self.file_a_delimiter
             )
-            export_paths['matched'] = matched_path
             export_paths['matched_count'] = matched_count
+            export_paths['matched_files'] = matched_files
+            all_chunk_files.extend(matched_files)
         else:
             export_paths['matched_count'] = 0
+            export_paths['matched_files'] = []
         
         # Export only_a records
         if only_a_keys:
-            only_a_path = os.path.join(comparison_dir, "only_a.csv")
-            only_a_count = self._export_records_chunked(
-                self.file_a_path, columns, only_a_keys, only_a_path,
-                max_rows=max_export_rows, label="A-Only", delimiter=self.file_a_delimiter
+            only_a_count, only_a_files = self._export_records_chunked(
+                self.file_a_path, columns, only_a_keys, comparison_dir,
+                category="only_a", max_rows_per_file=rows_per_file,
+                label="A-Only", delimiter=self.file_a_delimiter
             )
-            export_paths['only_a'] = only_a_path
             export_paths['only_a_count'] = only_a_count
+            export_paths['only_a_files'] = only_a_files
+            all_chunk_files.extend(only_a_files)
         else:
             export_paths['only_a_count'] = 0
+            export_paths['only_a_files'] = []
         
         # Export only_b records
         if only_b_keys:
-            only_b_path = os.path.join(comparison_dir, "only_b.csv")
-            only_b_count = self._export_records_chunked(
-                self.file_b_path, columns, only_b_keys, only_b_path,
-                max_rows=max_export_rows, label="B-Only", delimiter=self.file_b_delimiter
+            only_b_count, only_b_files = self._export_records_chunked(
+                self.file_b_path, columns, only_b_keys, comparison_dir,
+                category="only_b", max_rows_per_file=rows_per_file,
+                label="B-Only", delimiter=self.file_b_delimiter
             )
-            export_paths['only_b'] = only_b_path
             export_paths['only_b_count'] = only_b_count
+            export_paths['only_b_files'] = only_b_files
+            all_chunk_files.extend(only_b_files)
         else:
             export_paths['only_b_count'] = 0
+            export_paths['only_b_files'] = []
         
         processing_time = round(time.time() - start_time, 2)
         
@@ -213,34 +235,36 @@ class ChunkedFileExporter:
         file_path: str,
         key_columns: List[str],
         target_keys: set,
-        output_path: str,
-        max_rows: int = None,
+        output_dir: str,
+        category: str,
+        max_rows_per_file: int = 10000,
         label: str = "Records",
         delimiter: str = ','
-    ) -> int:
+    ) -> Tuple[int, List[str]]:
         """
         Export full row data for target keys by reading file in chunks.
-        This avoids loading entire file into memory.
+        Creates multiple chunk files with max_rows_per_file records each.
         
         Args:
             file_path: Path to source CSV file
             key_columns: Columns used to create composite key
             target_keys: Set of keys to export
-            output_path: Path to output CSV file
-            max_rows: Maximum rows to export (None = no limit)
+            output_dir: Directory to save chunk files
+            category: Category name (matched, only_a, only_b)
+            max_rows_per_file: Maximum rows per chunk file (default 10k)
             label: Label for progress messages
+            delimiter: CSV delimiter
             
         Returns:
-            Number of records exported
+            Tuple of (total_records_exported, list_of_chunk_file_paths)
         """
-        print(f"   Exporting {label} records to {os.path.basename(output_path)}...")
+        print(f"   Exporting {label} records to multiple chunk files (max {max_rows_per_file:,} per file)...")
         
         exported_count = 0
         chunk_num = 0
-        first_chunk = True
-        
-        # Convert target_keys to list for faster membership testing (if very large)
-        # For moderate sets, the set itself is fine
+        file_chunk_num = 1
+        chunk_file_paths = []
+        current_chunk_records = []
         target_keys_set = target_keys
         
         for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
@@ -258,41 +282,57 @@ class ChunkedFileExporter:
             matched_rows = chunk[mask]
             
             if len(matched_rows) > 0:
-                # Check if we've hit the max_rows limit
-                if max_rows and exported_count + len(matched_rows) > max_rows:
-                    remaining = max_rows - exported_count
-                    matched_rows = matched_rows.head(remaining)
-                
-                # Write to CSV (append mode after first write)
-                matched_rows.to_csv(
-                    output_path,
-                    mode='w' if first_chunk else 'a',
-                    header=first_chunk,
-                    index=False
-                )
-                
+                # Add to current chunk
+                current_chunk_records.append(matched_rows)
                 exported_count += len(matched_rows)
-                first_chunk = False
                 
-                # Break if we've hit the limit
-                if max_rows and exported_count >= max_rows:
-                    print(f"   ⚠️  Hit export limit of {max_rows:,} rows for {label}")
-                    break
+                # Check if we need to write current chunk
+                total_in_current_chunk = sum(len(df) for df in current_chunk_records)
+                if total_in_current_chunk >= max_rows_per_file:
+                    # Write chunk file
+                    chunk_file_path = os.path.join(output_dir, f"{category}_chunk_{file_chunk_num:04d}.csv")
+                    combined_df = pd.concat(current_chunk_records, ignore_index=True)
+                    combined_df.to_csv(chunk_file_path, index=False)
+                    chunk_file_paths.append(chunk_file_path)
+                    print(f"   ✅ Created chunk file {file_chunk_num}: {len(combined_df):,} records")
+                    
+                    # Reset for next chunk
+                    current_chunk_records = []
+                    file_chunk_num += 1
             
             if chunk_num % 10 == 0:
                 print(f"   {label}: Processed {chunk_num * self.chunk_size:,} rows, exported {exported_count:,} so far...")
         
-        print(f"   ✅ Exported {exported_count:,} {label} records")
-        return exported_count
+        # Write remaining records
+        if current_chunk_records:
+            chunk_file_path = os.path.join(output_dir, f"{category}_chunk_{file_chunk_num:04d}.csv")
+            combined_df = pd.concat(current_chunk_records, ignore_index=True)
+            combined_df.to_csv(chunk_file_path, index=False)
+            chunk_file_paths.append(chunk_file_path)
+            print(f"   ✅ Created chunk file {file_chunk_num}: {len(combined_df):,} records")
+        
+        print(f"   ✅ Exported {exported_count:,} {label} records to {len(chunk_file_paths)} chunk files")
+        return exported_count, chunk_file_paths
     
     def _get_comparison_dir(self, column_str: str) -> str:
-        """Get directory path for specific column combination"""
-        # Create safe directory name from columns
-        safe_name = column_str.replace(',', '_').replace(' ', '').replace('/', '_')[:100]
+        """
+        Get directory path for specific column combination.
+        Uses MD5 hash to avoid long folder names (Windows 260 char limit).
+        """
+        # Create short hash from column string (first 12 chars of MD5)
+        column_hash = hashlib.md5(column_str.encode()).hexdigest()[:12]
+        
+        # Create readable prefix from first few columns (max 30 chars)
+        first_cols = column_str.split(',')[:3]  # Take first 3 columns
+        prefix = '_'.join(first_cols).replace(' ', '')[:30]
+        
+        # Folder name: prefix + hash (max ~45 chars total)
+        safe_name = f"{prefix}_{column_hash}"
+        
         return os.path.join(self.run_export_dir, f"comparison_{safe_name}")
     
     def _store_comparison_metadata(self, summary: Dict):
-        """Store comparison metadata in database"""
+        """Store comparison metadata in database including all chunk files"""
         cursor = conn.cursor()
         
         # Store summary
@@ -312,66 +352,88 @@ class ChunkedFileExporter:
             datetime.now().isoformat()
         ))
         
-        # Store export file paths
+        # Store chunk file paths
         export_paths = summary.get('export_paths', {})
         timestamp = datetime.now().isoformat()
+        export_dir = summary.get('export_dir', '')
+        
+        # Delete old chunk files for this combination first
+        cursor.execute('''
+            DELETE FROM comparison_export_files 
+            WHERE run_id = ? AND column_combination = ?
+        ''', (self.run_id, summary['columns']))
+        
+        # Store directory mapping for reference (helps identify folders)
+        print(f"✅ Export directory: {export_dir}")
+        print(f"   Full columns: {summary['columns']}")
         
         for category in ['matched', 'only_a', 'only_b']:
-            if category in export_paths:
-                file_path = export_paths[category]
-                file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
-                row_count = export_paths.get(f'{category}_count', 0)
-                
-                cursor.execute('''
-                    INSERT INTO comparison_export_files 
-                    (run_id, column_combination, category, file_path, file_size, row_count, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    self.run_id,
-                    summary['columns'],
-                    category,
-                    file_path,
-                    file_size,
-                    row_count,
-                    timestamp
-                ))
+            chunk_files = export_paths.get(f'{category}_files', [])
+            category_count = export_paths.get(f'{category}_count', 0)
+            
+            if chunk_files:
+                for idx, file_path in enumerate(chunk_files, 1):
+                    file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
+                    
+                    # Count rows in chunk file (from file, more accurate)
+                    try:
+                        with open(file_path, 'r') as f:
+                            row_count = sum(1 for _ in f) - 1  # Subtract header
+                    except:
+                        row_count = 0
+                    
+                    cursor.execute('''
+                        INSERT INTO comparison_export_files 
+                        (run_id, column_combination, category, file_path, file_size, row_count, created_at, chunk_index)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        self.run_id,
+                        summary['columns'],
+                        category,
+                        file_path,
+                        file_size,
+                        row_count,
+                        timestamp,
+                        idx
+                    ))
         
         conn.commit()
-        print(f"✅ Metadata stored in database")
+        print(f"✅ Metadata stored in database (chunk files tracked)")
 
 
 def get_comparison_export_files(run_id: int, columns: str = None) -> List[Dict]:
     """
-    Get list of exported comparison files for a run.
+    Get list of exported comparison chunk files for a run.
     
     Args:
         run_id: Run ID
         columns: Optional column combination filter
         
     Returns:
-        List of file information dictionaries
+        List of file information dictionaries with chunk details
     """
     cursor = conn.cursor()
     
     if columns:
         cursor.execute('''
-            SELECT file_id, column_combination, category, file_path, file_size, row_count, created_at
+            SELECT file_id, column_combination, category, file_path, file_size, row_count, created_at, chunk_index
             FROM comparison_export_files
             WHERE run_id = ? AND column_combination = ?
-            ORDER BY category
+            ORDER BY category, chunk_index
         ''', (run_id, columns))
     else:
         cursor.execute('''
-            SELECT file_id, column_combination, category, file_path, file_size, row_count, created_at
+            SELECT file_id, column_combination, category, file_path, file_size, row_count, created_at, chunk_index
             FROM comparison_export_files
             WHERE run_id = ?
-            ORDER BY column_combination, category
+            ORDER BY column_combination, category, chunk_index
         ''', (run_id,))
     
     rows = cursor.fetchall()
     
     files = []
     for row in rows:
+        chunk_index = row[7] if len(row) > 7 else 1
         files.append({
             'file_id': row[0],
             'columns': row[1],
@@ -381,6 +443,8 @@ def get_comparison_export_files(run_id: int, columns: str = None) -> List[Dict]:
             'file_size_mb': round(row[4] / (1024 * 1024), 2),
             'row_count': row[5],
             'created_at': row[6],
+            'chunk_index': chunk_index,
+            'chunk_name': f"{row[2]}_chunk_{chunk_index:04d}.csv",
             'exists': os.path.exists(row[3])
         })
     

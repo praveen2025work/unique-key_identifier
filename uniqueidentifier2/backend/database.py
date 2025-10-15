@@ -209,13 +209,26 @@ def create_tables():
             file_size INTEGER DEFAULT 0,
             row_count INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            chunk_index INTEGER DEFAULT 1,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
     
+    # Add chunk_index column if it doesn't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE comparison_export_files ADD COLUMN chunk_index INTEGER DEFAULT 1")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
     cursor.execute('''
         CREATE INDEX IF NOT EXISTS idx_export_files_run 
         ON comparison_export_files(run_id, column_combination)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_export_files_chunk 
+        ON comparison_export_files(run_id, column_combination, category, chunk_index)
     ''')
     
     conn.commit()

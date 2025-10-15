@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import ModernDropdown from './ui/ModernDropdown';
-import SimpleComparisonViewer from './SimpleComparisonViewer';
+import ChunkedFileListViewer from './ChunkedFileListViewer';
 
 interface FileInfo {
   columns: string[];
@@ -624,7 +624,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   </div>
                 </div>
 
-                {/* Row 2: Settings + Actions */}
+                {/* Row 2: Settings + Load Columns Button */}
                 <div className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-1">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Columns</label>
@@ -645,7 +645,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       placeholder="0 (all)" />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">✅ Data Quality Check</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">✅ Quality Check</label>
                     <label className="flex items-center h-[30px] cursor-pointer bg-[#337ab7]/10 px-3 py-1.5 rounded border border-[#337ab7]/30 hover:bg-[#337ab7]/20 transition-colors">
                       <input type="checkbox" checked={dataQualityCheck} onChange={(e) => setDataQualityCheck(e.target.checked)} 
                         className="w-4 h-4 text-[#337ab7] border-gray-300 rounded focus:ring-[#337ab7] mr-2" />
@@ -653,21 +653,23 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     </label>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Generate Comparisons</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Comparisons</label>
                     <label className="flex items-center h-[30px] cursor-pointer bg-green-50 px-3 py-1.5 rounded border border-green-300 hover:bg-green-100 transition-colors">
                       <input type="checkbox" checked={generateComparisons} onChange={(e) => setGenerateComparisons(e.target.checked)} 
                         className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-2" />
                       <span className="text-xs font-semibold text-gray-700">Enable</span>
                     </label>
                   </div>
-                  <div className="col-span-8 flex items-end space-x-2">
+                  <div className="col-span-2">
                     <button onClick={handleLoadColumns} disabled={loadingColumns || !backendHealthy}
-                      className="px-3 py-1.5 bg-[#337ab7] text-white text-xs font-medium rounded hover:bg-[#286090] disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 transition-colors">
+                      className="w-full h-[30px] bg-[#337ab7] text-white text-xs font-medium rounded hover:bg-[#286090] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1 transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
-                      <span>Load Columns</span>
+                      <span>{columnsLoaded ? '✓ Loaded' : 'Load'}</span>
                     </button>
+                  </div>
+                  <div className="col-span-4 flex items-end justify-end space-x-2">
                     {selectedRunId && (
                       <>
                         <button onClick={() => handleViewResults(selectedRunId)}
@@ -676,7 +678,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-                          <span>View Results</span>
+                          <span>View</span>
                         </button>
                         <button onClick={() => handleCloneRun(selectedRunId)}
                           className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded hover:bg-purple-700 flex items-center space-x-1 transition-colors">
@@ -687,16 +689,18 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                         </button>
                       </>
                     )}
-                    {fileInfo && columnsLoaded && (
-                      <div className="flex-1 flex items-center justify-end space-x-3 text-xs text-gray-600">
-                        <span className="font-semibold text-[#337ab7]">{fileInfo.column_count} cols</span>
-                        <span>A: {fileInfo.file_a_rows.toLocaleString()} rows</span>
-                        <span>B: {fileInfo.file_b_rows.toLocaleString()} rows</span>
-                        <span className="text-gray-500">~{fileInfo.estimated_time}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
+                
+                {/* Row 3: File Info (only show when columns loaded) */}
+                {fileInfo && columnsLoaded && (
+                  <div className="flex items-center justify-end space-x-4 text-xs text-gray-600 px-2">
+                    <span className="font-semibold text-[#337ab7]">{fileInfo.column_count} cols</span>
+                    <span>A: {fileInfo.file_a_rows.toLocaleString()} rows</span>
+                    <span>B: {fileInfo.file_b_rows.toLocaleString()} rows</span>
+                    <span className="text-gray-500">~{fileInfo.estimated_time}</span>
+                  </div>
+                )}
 
               </div>
             </div>
@@ -1173,7 +1177,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                         </div>
                         
                         {/* Comparison Viewer */}
-                        <SimpleComparisonViewer 
+                        <ChunkedFileListViewer 
                           runId={currentRunId!} 
                           columns={comparisonKey}
                           apiEndpoint={apiEndpoint}
@@ -1205,27 +1209,26 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 return (
                   <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                     {allColumnsKey ? (
-                      <div className="space-y-2">
-                        {/* Info Banner */}
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-                          <div className="flex items-start gap-2">
-                            <span className="text-blue-600 text-xl">📁</span>
-                            <div className="flex-1">
-                              <p className="text-xs font-bold text-blue-900">Full File A-B Comparison</p>
-                              <p className="text-xs text-blue-700 mt-1">
-                                Showing <strong>ALL rows</strong> from both files with <strong>ALL columns</strong> regardless of column combination.
-                                Using key: <span className="font-mono bg-blue-100 px-1 rounded">{allColumnsKey}</span>
-                              </p>
-                            </div>
+                      <div className="space-y-1">
+                        {/* Compact Info Banner */}
+                        <div className="bg-blue-50 border-l-4 border-blue-500 px-3 py-2 rounded-r flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-blue-600">📁</span>
+                            <p className="text-xs font-semibold text-blue-900">
+                              Full File A-B Comparison
+                            </p>
+                            <span className="text-gray-400">|</span>
+                            <p className="text-xs text-blue-700">
+                              ALL rows with ALL columns • Key: <span className="font-mono bg-blue-100 px-1 rounded">{allColumnsKey}</span>
+                            </p>
                           </div>
                         </div>
                         
                         {/* Full File Comparison Viewer */}
-                        <SimpleComparisonViewer 
+                        <ChunkedFileListViewer 
                           runId={currentRunId!} 
                           columns={allColumnsKey}
                           apiEndpoint={apiEndpoint}
-                          onClose={() => {}}
                         />
                       </div>
                     ) : (
