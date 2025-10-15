@@ -159,12 +159,34 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, stage='validating_data', progress=30)
         update_stage_status(run_id, 'validating_data', 'in_progress', 'Checking column structure')
         
-        if list(df_a.columns) != list(df_b.columns):
-            raise ValueError("Files have different columns")
+        # Check if columns match between files
+        cols_a = set(df_a.columns)
+        cols_b = set(df_b.columns)
+        
+        if cols_a != cols_b:
+            missing_in_a = cols_b - cols_a
+            missing_in_b = cols_a - cols_b
+            error_msg = "Column mismatch between files:\n"
+            if missing_in_a:
+                error_msg += f"  - Missing in File A: {', '.join(missing_in_a)}\n"
+            if missing_in_b:
+                error_msg += f"  - Missing in File B: {', '.join(missing_in_b)}"
+            raise ValueError(error_msg)
+            
         if num_columns > len(df_a.columns):
             raise ValueError(f"Number of columns ({num_columns}) exceeds available columns ({len(df_a.columns)})")
         
-        update_stage_status(run_id, 'validating_data', 'completed', f'Validated {len(df_a.columns)} columns')
+        # Store validated column list for later use
+        validated_columns = list(df_a.columns)
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE run_parameters 
+            SET validated_columns = ?
+            WHERE run_id = ?
+        ''', (json.dumps(validated_columns), run_id))
+        conn.commit()
+        
+        update_stage_status(run_id, 'validating_data', 'completed', f'✅ Validated {len(df_a.columns)} matching columns')
         update_job_status(run_id, progress=35)
         
         # Stage 3: Analyzing File A
@@ -1574,8 +1596,32 @@ async def generate_comparison_export(
         if not os.path.exists(file_b_path):
             raise HTTPException(status_code=404, detail=f"File B not found: {file_b_name}")
         
-        # Parse columns
-        column_list = [c.strip() for c in columns.split(',')]
+        # Parse and validate columns
+        column_list = [c.strip() for c in columns.split(',') if c.strip()]
+        
+        if not column_list:
+            raise ValueError("No columns specified for comparison")
+        
+        # CRITICAL: Validate columns exist in BOTH files before processing
+        # Read first chunk to validate columns
+        try:
+            df_a_sample = pd.read_csv(file_a_path, nrows=1)
+            df_b_sample = pd.read_csv(file_b_path, nrows=1)
+            
+            missing_in_a = [col for col in column_list if col not in df_a_sample.columns]
+            missing_in_b = [col for col in column_list if col not in df_b_sample.columns]
+            
+            if missing_in_a:
+                raise ValueError(f"Columns not found in File A: {', '.join(missing_in_a)}. Available columns: {', '.join(df_a_sample.columns.tolist())}")
+            if missing_in_b:
+                raise ValueError(f"Columns not found in File B: {', '.join(missing_in_b)}. Available columns: {', '.join(df_b_sample.columns.tolist())}")
+                
+        except pd.errors.EmptyDataError:
+            raise ValueError("One or both files are empty")
+        except Exception as e:
+            if "not found in File" in str(e):
+                raise  # Re-raise our custom error
+            raise ValueError(f"Error reading files: {str(e)}")
         
         # Create exporter and run comparison
         exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path)

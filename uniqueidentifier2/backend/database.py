@@ -79,9 +79,18 @@ def create_tables():
             working_directory TEXT,
             data_quality_check INTEGER DEFAULT 0,
             environment TEXT DEFAULT 'default',
+            validated_columns TEXT,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
+    
+    # Add validated_columns column if it doesn't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE run_parameters ADD COLUMN validated_columns TEXT")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS result_files (
             file_id INTEGER PRIMARY KEY AUTOINCREMENT,
