@@ -44,9 +44,10 @@ MAX_PAGE_SIZE = 500  # Maximum results per page
 COMPARISON_BATCH_SIZE = 1000  # Batch size for comparison data loading
 
 # Chunked Comparison Settings for Large Files (>100K records)
+# Optimized for files up to 70M+ records
 COMPARISON_CHUNK_THRESHOLD = 100000  # Enable chunked comparison above 100K rows
-COMPARISON_CHUNK_SIZE = 10000  # Process 10K rows per chunk
-COMPARISON_DB_BATCH_SIZE = 5000  # Insert results to DB in batches of 5K
-MAX_COMPARISON_MEMORY_ROWS = 50000  # Max rows to keep in memory at once
+COMPARISON_CHUNK_SIZE = 50000  # Process 50K rows per chunk (increased for 70M files)
+COMPARISON_DB_BATCH_SIZE = 10000  # Insert results to DB in batches of 10K
+MAX_COMPARISON_MEMORY_ROWS = 100000  # Max rows to keep in memory at once
 COMPARISON_ENABLE_PROGRESS = True  # Show progress during chunked comparison
 

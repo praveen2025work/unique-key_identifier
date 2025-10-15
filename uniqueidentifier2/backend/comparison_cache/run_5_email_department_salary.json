@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "email,department,salary",
+  "generated_at": "2025-10-15T00:03:23.048659",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "grace.lee@email.com||HR||58000",
+    "alice.brown@email.com||HR||55000",
+    "charlie.wilson@email.com||Sales||70000",
+    "bob.johnson@email.com||Engineering||80000",
+    "henry.taylor@email.com||Engineering||90000",
+    "diana.davis@email.com||Engineering||85000",
+    "eve.miller@email.com||Marketing||60000",
+    "jane.smith@email.com||Marketing||65000",
+    "john.doe@email.com||Engineering||75000",
+    "frank.garcia@email.com||Sales||72000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "isabel.martinez@email.com||Marketing||63000",
+    "jack.anderson@email.com||Engineering||78000"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "run_id": 3,
+  "columns": "department,salary",
+  "generated_at": "2025-10-15T10:51:26.234180",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Sales||72000",
+    "Sales||70000",
+    "Engineering||75000",
+    "Engineering||80000",
+    "HR||55000",
+    "Engineering||85000",
+    "Marketing||60000",
+    "Engineering||90000",
+    "Marketing||65000",
+    "HR||58000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Marketing||63000",
+    "Engineering||78000"
+  ]
+}

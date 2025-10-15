@@ -1,0 +1,29 @@
+{
+  "run_id": 4,
+  "columns": "name",
+  "generated_at": "2025-10-15T10:52:14.220091",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Charlie Wilson",
+    "Bob Johnson",
+    "Grace Lee",
+    "Diana Davis",
+    "Alice Brown",
+    "Eve Miller",
+    "Frank Garcia",
+    "Jane Smith",
+    "Henry Taylor",
+    "John Doe"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Isabel Martinez",
+    "Jack Anderson"
+  ]
+}

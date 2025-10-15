@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "id,email,salary",
+  "generated_at": "2025-10-15T00:03:22.972401",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "2||jane.smith@email.com||65000",
+    "5||charlie.wilson@email.com||70000",
+    "4||alice.brown@email.com||55000",
+    "7||eve.miller@email.com||60000",
+    "6||diana.davis@email.com||85000",
+    "3||bob.johnson@email.com||80000",
+    "9||grace.lee@email.com||58000",
+    "8||frank.garcia@email.com||72000",
+    "10||henry.taylor@email.com||90000",
+    "1||john.doe@email.com||75000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "12||jack.anderson@email.com||78000",
+    "11||isabel.martinez@email.com||63000"
+  ]
+}

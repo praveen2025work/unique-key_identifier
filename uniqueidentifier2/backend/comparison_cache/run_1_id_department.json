@@ -1,0 +1,29 @@
+{
+  "run_id": 1,
+  "columns": "id,department",
+  "generated_at": "2025-10-15T09:10:20.758558",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "9||HR",
+    "4||HR",
+    "2||Marketing",
+    "10||Engineering",
+    "3||Engineering",
+    "7||Marketing",
+    "1||Engineering",
+    "6||Engineering",
+    "5||Sales",
+    "8||Sales"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "11||Marketing",
+    "12||Engineering"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "run_id": 2,
+  "columns": "id",
+  "generated_at": "2025-10-15T09:22:21.019439",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "1",
+    "2",
+    "9",
+    "7",
+    "8",
+    "4",
+    "3",
+    "10",
+    "6",
+    "5"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "12",
+    "11"
+  ]
+}

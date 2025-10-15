@@ -124,7 +124,13 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
         { method: 'POST' }
       );
       
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('Comparison response:', data);
       
       if (data.success) {
         setSummary(data.summary);
@@ -135,7 +141,7 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
       }
     } catch (err) {
       console.error('Error generating comparison:', err);
-      setError('Failed to generate comparison');
+      setError(err instanceof Error ? err.message : 'Failed to generate comparison');
     } finally {
       setGenerating(false);
     }

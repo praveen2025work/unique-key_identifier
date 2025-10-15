@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "salary",
+  "generated_at": "2025-10-15T00:03:22.908215",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "80000",
+    "85000",
+    "75000",
+    "58000",
+    "60000",
+    "90000",
+    "55000",
+    "72000",
+    "65000",
+    "70000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "63000",
+    "78000"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "name,department,salary",
+  "generated_at": "2025-10-15T00:03:23.036308",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Jane Smith||Marketing||65000",
+    "John Doe||Engineering||75000",
+    "Diana Davis||Engineering||85000",
+    "Charlie Wilson||Sales||70000",
+    "Alice Brown||HR||55000",
+    "Bob Johnson||Engineering||80000",
+    "Henry Taylor||Engineering||90000",
+    "Eve Miller||Marketing||60000",
+    "Frank Garcia||Sales||72000",
+    "Grace Lee||HR||58000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Jack Anderson||Engineering||78000",
+    "Isabel Martinez||Marketing||63000"
+  ]
+}

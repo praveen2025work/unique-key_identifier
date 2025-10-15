@@ -1,0 +1,29 @@
+{
+  "run_id": 4,
+  "columns": "name,department",
+  "generated_at": "2025-10-15T10:52:14.389759",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Grace Lee||HR",
+    "Charlie Wilson||Sales",
+    "Diana Davis||Engineering",
+    "Bob Johnson||Engineering",
+    "Alice Brown||HR",
+    "John Doe||Engineering",
+    "Frank Garcia||Sales",
+    "Henry Taylor||Engineering",
+    "Eve Miller||Marketing",
+    "Jane Smith||Marketing"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Isabel Martinez||Marketing",
+    "Jack Anderson||Engineering"
+  ]
+}

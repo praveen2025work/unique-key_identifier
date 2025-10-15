@@ -1,0 +1,29 @@
+{
+  "run_id": 1,
+  "columns": "name,salary",
+  "generated_at": "2025-10-15T09:10:20.709465",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Alice Brown||55000",
+    "Bob Johnson||80000",
+    "Grace Lee||58000",
+    "Jane Smith||65000",
+    "John Doe||75000",
+    "Frank Garcia||72000",
+    "Henry Taylor||90000",
+    "Charlie Wilson||70000",
+    "Diana Davis||85000",
+    "Eve Miller||60000"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Jack Anderson||78000",
+    "Isabel Martinez||63000"
+  ]
+}

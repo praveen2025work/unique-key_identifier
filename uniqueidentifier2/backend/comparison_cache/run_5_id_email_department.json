@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "id,email,department",
+  "generated_at": "2025-10-15T00:03:22.959756",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "1||john.doe@email.com||Engineering",
+    "10||henry.taylor@email.com||Engineering",
+    "7||eve.miller@email.com||Marketing",
+    "4||alice.brown@email.com||HR",
+    "8||frank.garcia@email.com||Sales",
+    "2||jane.smith@email.com||Marketing",
+    "6||diana.davis@email.com||Engineering",
+    "9||grace.lee@email.com||HR",
+    "3||bob.johnson@email.com||Engineering",
+    "5||charlie.wilson@email.com||Sales"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "11||isabel.martinez@email.com||Marketing",
+    "12||jack.anderson@email.com||Engineering"
+  ]
+}

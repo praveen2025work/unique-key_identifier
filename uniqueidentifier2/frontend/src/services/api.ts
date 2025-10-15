@@ -189,10 +189,12 @@ class ApiService {
 
   async getComparisonSummary(runId: number, columns: string): Promise<ComparisonSummary> {
     const response = await fetch(
-      `${this.baseUrl}/api/comparison/${runId}/summary?columns=${encodeURIComponent(columns)}`
+      `${this.baseUrl}/api/comparison-v2/${runId}/summary?columns=${encodeURIComponent(columns)}`
     );
     if (!response.ok) throw new Error('Failed to fetch comparison summary');
-    return response.json();
+    const data = await response.json();
+    // Return the summary object if wrapped, or the data itself
+    return data.summary || data;
   }
 
   async getComparisonData(
@@ -203,7 +205,7 @@ class ApiService {
     limit: number = 100
   ): Promise<ComparisonDataResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/comparison/${runId}/data?columns=${encodeURIComponent(columns)}&category=${category}&offset=${offset}&limit=${limit}`
+      `${this.baseUrl}/api/comparison-v2/${runId}/data?columns=${encodeURIComponent(columns)}&category=${category}&offset=${offset}&limit=${limit}`
     );
     if (!response.ok) throw new Error('Failed to fetch comparison data');
     return response.json();

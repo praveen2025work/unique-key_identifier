@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import ModernDropdown from './ui/ModernDropdown';
+import SimpleComparisonViewer from './SimpleComparisonViewer';
 
 interface FileInfo {
   columns: string[];
@@ -89,7 +90,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
 
   // New state for enhanced features
-  const [resultsTab, setResultsTab] = useState<'analysis' | 'workflow' | 'fileComparison' | 'dataQuality'>('analysis');
+  const [resultsTab, setResultsTab] = useState<'analysis' | 'workflow' | 'fileComparison' | 'fullFileComparison' | 'dataQuality'>('analysis');
   const [selectedComparisonColumn, setSelectedComparisonColumn] = useState<string>('');
   const [comparisonSummary, setComparisonSummary] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>({ matched: [], only_a: [], only_b: [] });
@@ -935,7 +936,13 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                     resultsTab === 'fileComparison' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}>
-                  🔄 File Comparison
+                  🔄 Column Combination Results
+                </button>
+                <button onClick={() => setResultsTab('fullFileComparison')}
+                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    resultsTab === 'fullFileComparison' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}>
+                  📁 Full File A-B Comparison
                 </button>
                 {dataQualityReport && (
                   <button onClick={() => setResultsTab('dataQuality')}
@@ -1119,134 +1126,108 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 </div>
               )}
               
-              {/* File Comparison Tab - NEW */}
-              {resultsTab === 'fileComparison' && (
-                <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                  <div className="mb-2 flex items-end gap-2">
-                    <div className="flex-1">
-                      <ModernDropdown
-                        label="📊 Select Columns:"
-                        value={selectedComparisonColumn}
-                        onChange={(value) => { 
-                          setSelectedComparisonColumn(value as string); 
-                          loadFileComparisonData(value as string); 
-                        }}
-                        options={results.results_a.map(r => ({
-                          value: r.columns,
-                          label: r.columns,
-                          badge: `${r.uniqueness_score.toFixed(1)}%`,
-                          description: `${r.unique_rows?.toLocaleString() || 0} unique records`
-                        }))}
-                        size="sm"
-                        searchable={true}
-                        clearable={true}
-                        placeholder="Choose columns to compare..."
-                      />
-                    </div>
-                    {comparisonSummary && (
-                      <button
-                        onClick={() => {
-                          // Check if download is available (only for small files)
-                          fetch(`${apiEndpoint}/api/download/${currentRunId}/comparison?columns=${encodeURIComponent(selectedComparisonColumn)}`)
-                            .then(resp => {
-                              if (resp.ok) {
-                                window.open(`${apiEndpoint}/api/download/${currentRunId}/comparison?columns=${encodeURIComponent(selectedComparisonColumn)}`, '_blank');
-                              } else {
-                                resp.json().then(data => {
-                                  toast.error(data.message || 'Download disabled for large files', { duration: 5000 });
-                                });
-                              }
-                            });
-                        }}
-                        className="px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 flex items-center space-x-1"
-                        title="Download comparison data as Excel (disabled for large files)">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span>Excel</span>
-                      </button>
+              {/* File Comparison Tab - AUTO-SELECTS BEST KEY */}
+              {resultsTab === 'fileComparison' && (() => {
+                // Auto-select best unique key (highest score)
+                const bestKey = results.results_a.reduce((best, current) => 
+                  current.uniqueness_score > (best?.uniqueness_score || 0) ? current : best
+                , results.results_a[0]);
+                
+                const comparisonKey = selectedComparisonColumn || bestKey?.columns || '';
+                
+                return (
+                  <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                    {comparisonKey ? (
+                      <div className="space-y-2">
+                        {/* Compact Key Selector Bar */}
+                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded border border-slate-300">
+                          <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Matching Key:</span>
+                          <div className="flex-shrink" style={{ minWidth: '200px', maxWidth: '300px' }}>
+                            <ModernDropdown
+                              value={selectedComparisonColumn || bestKey?.columns}
+                              onChange={(value) => setSelectedComparisonColumn(value as string)}
+                              options={results.results_a.map(r => ({
+                                value: r.columns,
+                                label: r.columns,
+                                badge: r.is_unique_key ? '✓ Unique' : `${r.uniqueness_score.toFixed(1)}%`,
+                                description: `${r.unique_rows?.toLocaleString() || 0} unique`
+                              }))}
+                              size="sm"
+                              searchable={true}
+                              placeholder="Select key columns..."
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 italic whitespace-nowrap">
+                            (Auto-selected best unique key)
+                          </span>
+                        </div>
+                        
+                        {/* Comparison Viewer */}
+                        <SimpleComparisonViewer 
+                          runId={currentRunId!} 
+                          columns={comparisonKey}
+                          apiEndpoint={apiEndpoint}
+                          onClose={() => setSelectedComparisonColumn('')}
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-gray-500">
+                        <div className="text-4xl mb-2">⚠️</div>
+                        <p className="text-sm font-semibold">No comparison data available</p>
+                        <p className="text-xs">Run an analysis first to see file comparison</p>
+                      </div>
                     )}
                   </div>
-                  
-                  {comparisonSummary && (
-                    <>
-                      <div className="grid grid-cols-4 gap-2 mb-2">
-                        <div className="bg-[#337ab7]/5 p-2 rounded border border-[#337ab7]/20">
-                          <div className="text-xs text-[#337ab7] mb-0.5">Match Rate</div>
-                          <div className="text-lg font-bold text-[#337ab7]">{comparisonSummary.match_rate}%</div>
+                );
+              })()}
+              
+              {/* Full File A-B Comparison Tab - Shows ALL data from both files */}
+              {resultsTab === 'fullFileComparison' && (() => {
+                // Find the combination with the most columns (that's all columns)
+                const allColumnsResult = results?.results_a?.reduce((max, current) => {
+                  const maxCols = max?.columns?.split(',').length || 0;
+                  const currentCols = current?.columns?.split(',').length || 0;
+                  return currentCols > maxCols ? current : max;
+                }, results.results_a[0]);
+                
+                const allColumnsKey = allColumnsResult?.columns || '';
+                
+                return (
+                  <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                    {allColumnsKey ? (
+                      <div className="space-y-2">
+                        {/* Info Banner */}
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                          <div className="flex items-start gap-2">
+                            <span className="text-blue-600 text-xl">📁</span>
+                            <div className="flex-1">
+                              <p className="text-xs font-bold text-blue-900">Full File A-B Comparison</p>
+                              <p className="text-xs text-blue-700 mt-1">
+                                Showing <strong>ALL rows</strong> from both files with <strong>ALL columns</strong> regardless of column combination.
+                                Using key: <span className="font-mono bg-blue-100 px-1 rounded">{allColumnsKey}</span>
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="bg-green-50 p-2 rounded border border-green-200">
-                          <div className="text-xs text-green-600 mb-0.5">Matched</div>
-                          <div className="text-lg font-bold text-green-800">{comparisonSummary.matched_count}</div>
-                        </div>
-                        <div className="bg-cyan-50 p-2 rounded border border-cyan-200">
-                          <div className="text-xs text-cyan-600 mb-0.5">Only in A</div>
-                          <div className="text-lg font-bold text-cyan-800">{comparisonSummary.only_a_count}</div>
-                        </div>
-                        <div className="bg-orange-50 p-2 rounded border border-orange-200">
-                          <div className="text-xs text-orange-600 mb-0.5">Only in B</div>
-                          <div className="text-lg font-bold text-orange-800">{comparisonSummary.only_b_count}</div>
-                        </div>
+                        
+                        {/* Full File Comparison Viewer */}
+                        <SimpleComparisonViewer 
+                          runId={currentRunId!} 
+                          columns={allColumnsKey}
+                          apiEndpoint={apiEndpoint}
+                          onClose={() => {}}
+                        />
                       </div>
-                      
-                      <div className="flex space-x-1 mb-2">
-                        <button onClick={() => { setComparisonCategory('matched'); loadComparisonCategory('matched'); }}
-                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${comparisonCategory === 'matched' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                          ✅ Matched ({comparisonSummary.matched_count})
-                        </button>
-                        <button onClick={() => { setComparisonCategory('only_a'); loadComparisonCategory('only_a'); }}
-                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${comparisonCategory === 'only_a' ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                          📘 Only in A ({comparisonSummary.only_a_count})
-                        </button>
-                        <button onClick={() => { setComparisonCategory('only_b'); loadComparisonCategory('only_b'); }}
-                          className={`px-2 py-1 rounded text-xs font-medium transition-colors ${comparisonCategory === 'only_b' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                          📙 Only in B ({comparisonSummary.only_b_count})
-                        </button>
+                    ) : (
+                      <div className="text-center p-8 text-gray-500">
+                        <div className="text-4xl mb-2">⚠️</div>
+                        <p className="text-sm font-semibold">No file data available</p>
+                        <p className="text-xs">Run an analysis first to see full file comparison</p>
                       </div>
-                      
-                      {comparisonData[comparisonCategory] && comparisonData[comparisonCategory].length > 0 ? (
-                        <div className="overflow-auto border rounded" style={{ maxHeight: 'calc(100vh - 380px)' }}>
-                          <table className="w-full text-xs">
-                            <thead className="bg-slate-700 text-white sticky top-0 z-10">
-                              <tr>
-                                {Object.keys(comparisonData[comparisonCategory][0]).map((col: string) => (
-                                  <th key={col} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide border-r border-slate-600 last:border-r-0">{col}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200 bg-white">
-                              {comparisonData[comparisonCategory].map((row: any, i: number) => (
-                                <tr key={i} className="hover:bg-[#337ab7]/5 transition-colors">
-                                  {Object.values(row).map((val: any, j: number) => (
-                                    <td key={j} className="px-3 py-2 text-xs cursor-pointer border-r border-gray-200 last:border-r-0" 
-                                        onClick={() => { navigator.clipboard.writeText(String(val ?? '')); toast.success('Copied!'); }}
-                                        title="Click to copy">
-                                      {val === null || val === undefined ? <span className="text-gray-400 italic">null</span> : <span className="font-mono">{String(val)}</span>}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div className="text-center p-12 text-gray-500" style={{ minHeight: 'calc(100vh - 380px)' }}>
-                          <div className="text-6xl mb-4">📭</div>
-                          <p className="text-sm font-semibold">No records in this category</p>
-                          <p className="text-xs text-gray-400 mt-1">Try selecting a different column combination</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  
-                  {!comparisonSummary && (
-                    <div className="text-center p-6 text-gray-500">
-                      <div className="text-3xl mb-2">⏳</div>
-                      <p className="text-xs">Select columns to view comparison</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
               
               {/* Data Quality Tab - NEW - ENHANCED WITH FULL DETAILS */}
               {resultsTab === 'dataQuality' && dataQualityReport && (

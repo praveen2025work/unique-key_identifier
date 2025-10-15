@@ -1,0 +1,29 @@
+{
+  "run_id": 5,
+  "columns": "id,name,department",
+  "generated_at": "2025-10-15T00:03:22.935745",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "9||Grace Lee||HR",
+    "10||Henry Taylor||Engineering",
+    "1||John Doe||Engineering",
+    "4||Alice Brown||HR",
+    "5||Charlie Wilson||Sales",
+    "2||Jane Smith||Marketing",
+    "3||Bob Johnson||Engineering",
+    "6||Diana Davis||Engineering",
+    "7||Eve Miller||Marketing",
+    "8||Frank Garcia||Sales"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "12||Jack Anderson||Engineering",
+    "11||Isabel Martinez||Marketing"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "run_id": 1,
+  "columns": "id,email",
+  "generated_at": "2025-10-15T09:10:20.740901",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "5||charlie.wilson@email.com",
+    "4||alice.brown@email.com",
+    "10||henry.taylor@email.com",
+    "2||jane.smith@email.com",
+    "7||eve.miller@email.com",
+    "6||diana.davis@email.com",
+    "9||grace.lee@email.com",
+    "1||john.doe@email.com",
+    "8||frank.garcia@email.com",
+    "3||bob.johnson@email.com"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "12||jack.anderson@email.com",
+    "11||isabel.martinez@email.com"
+  ]
+}

@@ -369,6 +369,53 @@ def get_comparison_export_files(run_id: int, columns: str = None) -> List[Dict]:
     return files
 
 
+# Cache for file row counts to avoid re-counting large files
+_file_row_count_cache = {}
+
+def _get_cached_row_count(file_path: str) -> int:
+    """
+    Get row count from cache or count and cache it.
+    Optimized for very large files (up to 70M+ records).
+    """
+    # Check cache first
+    file_mtime = os.path.getmtime(file_path)
+    cache_key = f"{file_path}:{file_mtime}"
+    
+    if cache_key in _file_row_count_cache:
+        return _file_row_count_cache[cache_key]
+    
+    # Try to get from database first (fastest)
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT row_count FROM comparison_export_files 
+            WHERE file_path = ? 
+            ORDER BY created_at DESC LIMIT 1
+        ''', (file_path,))
+        result = cursor.fetchone()
+        if result and result[0]:
+            _file_row_count_cache[cache_key] = result[0]
+            return result[0]
+    except:
+        pass
+    
+    # Fallback: Count lines efficiently for large files
+    # Use buffered reading for better performance
+    print(f"⏱️ Counting rows in large file (this may take a moment)...")
+    row_count = 0
+    with open(file_path, 'rb') as f:
+        # Read in 64KB chunks for speed
+        buffer_size = 64 * 1024
+        chunk = f.read(buffer_size)
+        while chunk:
+            row_count += chunk.count(b'\n')
+            chunk = f.read(buffer_size)
+    
+    row_count -= 1  # Subtract header row
+    _file_row_count_cache[cache_key] = row_count
+    return row_count
+
+
 def read_export_file_paginated(
     file_path: str,
     offset: int = 0,
@@ -376,7 +423,10 @@ def read_export_file_paginated(
 ) -> Dict:
     """
     Read exported CSV file with pagination support.
-    Uses skiprows and nrows for memory-efficient reading.
+    Optimized for very large files (70M+ records) using:
+    - Cached row counts (no re-counting on every request)
+    - Memory-efficient chunked reading with skiprows/nrows
+    - Fast binary line counting when cache miss
     
     Args:
         file_path: Path to exported CSV file
@@ -397,20 +447,17 @@ def read_export_file_paginated(
         }
     
     try:
-        # Get total row count (excluding header)
-        # Read just to count rows (fast)
-        with open(file_path, 'r') as f:
-            total_rows = sum(1 for _ in f) - 1  # -1 for header
+        # Get total row count from cache (very fast for large files)
+        total_rows = _get_cached_row_count(file_path)
         
-        # Read paginated chunk
+        # Read paginated chunk (memory-efficient)
         # skiprows: skip header (0) + offset rows (1 to offset+1)
-        # We need to skip row 0 (header is read separately), then skip offset data rows
         if offset == 0:
-            df = pd.read_csv(file_path, nrows=limit)
+            df = pd.read_csv(file_path, nrows=limit, low_memory=False)
         else:
-            # Skip offset rows (after header)
+            # Skip offset rows (after header) - use range for memory efficiency
             skip_rows = list(range(1, offset + 1))
-            df = pd.read_csv(file_path, skiprows=skip_rows, nrows=limit)
+            df = pd.read_csv(file_path, skiprows=skip_rows, nrows=limit, low_memory=False)
         
         # Convert to records
         records = df.to_dict('records')
@@ -427,11 +474,14 @@ def read_export_file_paginated(
             'offset': offset,
             'limit': limit,
             'has_more': offset + limit < total_rows,
-            'showing': len(records)
+            'showing': len(records),
+            'total_pages': (total_rows + limit - 1) // limit  # Ceiling division
         }
     
     except Exception as e:
         print(f"Error reading file {file_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             'records': [],
             'total': 0,
