@@ -47,6 +47,10 @@ from comparison_cache import (
     generate_comparison_cache, get_comparison_from_cache, 
     get_comparison_summary_from_db, clear_comparison_cache
 )
+from chunked_comparison import (
+    ChunkedComparisonEngine, should_use_chunked_comparison,
+    estimate_comparison_time, get_comparison_status
+)
 
 app = FastAPI(
     title="Unique Key Identifier API",
@@ -1061,7 +1065,7 @@ async def get_data_quality_results(run_id: int):
 
 @app.get("/api/comparison/{run_id}/summary")
 async def get_comparison_summary(run_id: int, columns: str = Query(...)):
-    """Get comparison summary for specific columns"""
+    """Get comparison summary for specific columns - supports files of any size using chunked processing"""
     try:
         # Get run info
         cursor = conn.cursor()
@@ -1078,21 +1082,26 @@ async def get_comparison_summary(run_id: int, columns: str = Query(...)):
         
         file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
         
-        # CHECK FILE SIZE BEFORE READING - Prevent crash!
-        max_rows = max(file_a_rows or 0, file_b_rows or 0)
-        if max_rows > 100000:  # More than 100K rows
-            # Return a safe response instead of crashing
+        # Check if comparison already exists in database
+        existing_comparison = get_comparison_status(run_id, columns)
+        if existing_comparison:
+            # Return cached summary
             return JSONResponse({
                 "file_a": file_a_name,
                 "file_b": file_b_name,
-                "error": "File too large for comparison",
-                "message": f"Files have {max_rows:,} rows. Comparison feature is disabled for files > 100K rows to prevent memory issues.",
-                "matched_count": 0,
-                "only_a_count": 0,
-                "only_b_count": 0,
-                "total_rows_a": file_a_rows or 0,
-                "total_rows_b": file_b_rows or 0,
-                "comparison_disabled": True
+                "file_a_rows": file_a_rows or 0,
+                "file_b_rows": file_b_rows or 0,
+                "matched_count": existing_comparison['matched_count'],
+                "only_a_count": existing_comparison['only_a_count'],
+                "only_b_count": existing_comparison['only_b_count'],
+                "total_a": existing_comparison['total_a'],
+                "total_b": existing_comparison['total_b'],
+                "match_rate": round((existing_comparison['matched_count'] / 
+                    (existing_comparison['total_a'] + existing_comparison['total_b'] - existing_comparison['matched_count']) * 100) 
+                    if (existing_comparison['total_a'] + existing_comparison['total_b'] - existing_comparison['matched_count']) > 0 else 0, 2),
+                "generated_at": existing_comparison['generated_at'],
+                "from_cache": True,
+                "comparison_disabled": False
             })
         
         # Determine file paths
@@ -1108,32 +1117,55 @@ async def get_comparison_summary(run_id: int, columns: str = Query(...)):
                 "comparison_disabled": True
             }, status_code=404)
         
-        # Read files WITH MEMORY PROTECTION
-        try:
-            df_a, _ = read_data_file(file_a_path)
-            df_b, _ = read_data_file(file_b_path)
-        except MemoryError:
-            return JSONResponse({
-                "error": "Out of memory",
-                "message": "Files are too large to compare in memory. Please use smaller files or samples.",
-                "comparison_disabled": True
-            }, status_code=507)
+        # Determine if we should use chunked comparison
+        use_chunked = should_use_chunked_comparison(file_a_rows or 0, file_b_rows or 0)
         
-        # Parse columns
-        column_list = [c.strip() for c in columns.split(',')]
-        
-        # Generate summary
-        summary = generate_comparison_summary(df_a, df_b, column_list)
-        summary['file_a'] = file_a_name
-        summary['file_b'] = file_b_name
-        summary['comparison_disabled'] = False
-        
-        return JSONResponse(summary)
+        if use_chunked:
+            # Use chunked comparison for large files (>100K rows)
+            print(f"🔄 Using chunked comparison for large files ({max(file_a_rows or 0, file_b_rows or 0):,} rows)")
+            column_list = [c.strip() for c in columns.split(',')]
+            
+            engine = ChunkedComparisonEngine(run_id, file_a_path, file_b_path)
+            summary = engine.compare_files_chunked(column_list)
+            
+            summary['file_a'] = file_a_name
+            summary['file_b'] = file_b_name
+            summary['file_a_rows'] = file_a_rows or 0
+            summary['file_b_rows'] = file_b_rows or 0
+            summary['comparison_disabled'] = False
+            summary['chunked_processing'] = True
+            
+            return JSONResponse(summary)
+        else:
+            # Use in-memory comparison for smaller files (<100K rows)
+            try:
+                df_a, _ = read_data_file(file_a_path)
+                df_b, _ = read_data_file(file_b_path)
+            except MemoryError:
+                return JSONResponse({
+                    "error": "Out of memory",
+                    "message": "Files are too large to compare in memory.",
+                    "comparison_disabled": True
+                }, status_code=507)
+            
+            # Parse columns
+            column_list = [c.strip() for c in columns.split(',')]
+            
+            # Generate summary
+            summary = generate_comparison_summary(df_a, df_b, column_list)
+            summary['file_a'] = file_a_name
+            summary['file_b'] = file_b_name
+            summary['file_a_rows'] = file_a_rows or 0
+            summary['file_b_rows'] = file_b_rows or 0
+            summary['comparison_disabled'] = False
+            summary['chunked_processing'] = False
+            
+            return JSONResponse(summary)
         
     except MemoryError:
         return JSONResponse({
             "error": "Out of memory",
-            "message": "Files are too large to compare. Please use smaller files or samples.",
+            "message": "Files are too large to compare. Please try again.",
             "comparison_disabled": True
         }, status_code=507)
     except Exception as e:
@@ -1150,7 +1182,7 @@ async def get_comparison_data_api(
     offset: int = Query(0),
     limit: int = Query(100)
 ):
-    """Get paginated comparison data"""
+    """Get paginated comparison data - supports files of any size using chunked processing"""
     try:
         # Get run info
         cursor = conn.cursor()
@@ -1167,21 +1199,38 @@ async def get_comparison_data_api(
         
         file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
         
-        # CHECK FILE SIZE BEFORE READING - Prevent crash!
-        max_rows = max(file_a_rows or 0, file_b_rows or 0)
-        if max_rows > 100000:  # More than 100K rows
-            # Return empty data instead of crashing
+        # Check if comparison exists in database (from chunked processing or cache)
+        existing_comparison = get_comparison_status(run_id, columns)
+        
+        if existing_comparison:
+            # Use database results for large files (chunked processing)
+            print(f"📊 Loading comparison data from database (chunked processing)")
+            
+            # Determine file paths (needed for engine)
+            base_dir = work_dir if work_dir else SCRIPT_DIR
+            file_a_path = os.path.join(base_dir, file_a_name)
+            file_b_path = os.path.join(base_dir, file_b_name)
+            
+            engine = ChunkedComparisonEngine(run_id, file_a_path, file_b_path)
+            data = engine.get_comparison_data_paginated(columns, category, offset, limit)
+            
+            return JSONResponse(data)
+        
+        # For smaller files without cached comparison, use in-memory processing
+        use_chunked = should_use_chunked_comparison(file_a_rows or 0, file_b_rows or 0)
+        
+        if use_chunked:
+            # Generate comparison first if not exists
             return JSONResponse({
+                "error": "Comparison not generated",
+                "message": "Please generate comparison summary first before fetching data for large files.",
                 "records": [],
                 "total": 0,
-                "offset": offset,
-                "limit": limit,
-                "error": "File too large for comparison",
-                "message": f"Files have {max_rows:,} rows. Comparison feature is disabled for files > 100K rows.",
-                "comparison_disabled": True
-            })
+                "comparison_disabled": False,
+                "requires_generation": True
+            }, status_code=400)
         
-        # Determine file paths
+        # Small files - use in-memory comparison
         base_dir = work_dir if work_dir else SCRIPT_DIR
         file_a_path = os.path.join(base_dir, file_a_name)
         file_b_path = os.path.join(base_dir, file_b_name)
@@ -1196,7 +1245,7 @@ async def get_comparison_data_api(
                 "comparison_disabled": True
             }, status_code=404)
         
-        # Read files WITH MEMORY PROTECTION
+        # Read files
         try:
             df_a, _ = read_data_file(file_a_path)
             df_b, _ = read_data_file(file_b_path)
@@ -1232,6 +1281,152 @@ async def get_comparison_data_api(
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": f"Error fetching comparison data: {str(e)}"}, status_code=500)
+
+
+# ============================================================================
+# NEW CHUNKED COMPARISON ENDPOINTS - For Large Files (>100K records)
+# ============================================================================
+
+@app.post("/api/comparison/{run_id}/generate")
+async def generate_comparison_chunked(
+    run_id: int,
+    columns: str = Query(...),
+    background_tasks: BackgroundTasks = None
+):
+    """
+    Generate comparison for large files using chunked processing.
+    This endpoint triggers background processing for files >100K rows.
+    """
+    try:
+        # Get run info
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT r.file_a, r.file_b, COALESCE(rp.working_directory, r.working_directory, '') as work_dir, r.file_a_rows, r.file_b_rows
+            FROM runs r
+            LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
+            WHERE r.run_id = ?
+        ''', (run_id,))
+        run_info = cursor.fetchone()
+        
+        if not run_info:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows = run_info
+        
+        # Check if comparison already exists
+        existing_comparison = get_comparison_status(run_id, columns)
+        if existing_comparison:
+            return JSONResponse({
+                "message": "Comparison already exists",
+                "status": "completed",
+                "summary": existing_comparison,
+                "from_cache": True
+            })
+        
+        # Determine file paths
+        base_dir = work_dir if work_dir else SCRIPT_DIR
+        file_a_path = os.path.join(base_dir, file_a_name)
+        file_b_path = os.path.join(base_dir, file_b_name)
+        
+        # Check if files exist
+        if not os.path.exists(file_a_path) or not os.path.exists(file_b_path):
+            return JSONResponse({
+                "error": "Files not found",
+                "message": "Source CSV files are not accessible."
+            }, status_code=404)
+        
+        # Parse columns
+        column_list = [c.strip() for c in columns.split(',')]
+        
+        # Determine if we should use chunked comparison
+        use_chunked = should_use_chunked_comparison(file_a_rows or 0, file_b_rows or 0)
+        
+        if use_chunked:
+            # Process synchronously for now (can be moved to background task)
+            print(f"🔄 Generating chunked comparison for run {run_id}")
+            engine = ChunkedComparisonEngine(run_id, file_a_path, file_b_path)
+            summary = engine.compare_files_chunked(column_list)
+            
+            return JSONResponse({
+                "message": "Comparison generated successfully",
+                "status": "completed",
+                "summary": summary,
+                "chunked_processing": True,
+                "estimated_time": estimate_comparison_time(file_a_rows or 0, file_b_rows or 0)
+            })
+        else:
+            # Small files - generate inline
+            df_a, _ = read_data_file(file_a_path)
+            df_b, _ = read_data_file(file_b_path)
+            
+            summary = generate_comparison_summary(df_a, df_b, column_list)
+            
+            # Store in database for consistency
+            cursor = conn.cursor()
+            column_str = ','.join(column_list)
+            cursor.execute('''
+                INSERT OR REPLACE INTO comparison_summary 
+                (run_id, column_combination, matched_count, only_a_count, only_b_count, 
+                 total_a, total_b, generated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                run_id,
+                column_str,
+                summary['matched_count'],
+                summary['only_a_count'],
+                summary['only_b_count'],
+                summary['total_a'],
+                summary['total_b'],
+                datetime.now().isoformat()
+            ))
+            conn.commit()
+            
+            return JSONResponse({
+                "message": "Comparison generated successfully",
+                "status": "completed",
+                "summary": summary,
+                "chunked_processing": False
+            })
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"error": f"Error generating comparison: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison/{run_id}/status")
+async def get_comparison_generation_status(run_id: int, columns: str = Query(...)):
+    """Check if comparison has been generated for specific columns"""
+    try:
+        existing_comparison = get_comparison_status(run_id, columns)
+        
+        if existing_comparison:
+            return JSONResponse({
+                "status": "completed",
+                "exists": True,
+                "summary": existing_comparison
+            })
+        else:
+            # Get file sizes to estimate time
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT file_a_rows, file_b_rows FROM runs WHERE run_id = ?
+            ''', (run_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                file_a_rows, file_b_rows = row
+                return JSONResponse({
+                    "status": "not_generated",
+                    "exists": False,
+                    "estimated_time": estimate_comparison_time(file_a_rows or 0, file_b_rows or 0),
+                    "requires_chunked": should_use_chunked_comparison(file_a_rows or 0, file_b_rows or 0)
+                })
+            else:
+                raise HTTPException(status_code=404, detail="Run not found")
+                
+    except Exception as e:
+        return JSONResponse({"error": f"Error checking status: {str(e)}"}, status_code=500)
 
 
 # ============================================================================

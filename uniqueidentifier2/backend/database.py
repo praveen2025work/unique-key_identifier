@@ -140,6 +140,32 @@ def create_tables():
         ON comparison_summary(run_id)
     ''')
     
+    # NEW: Comparison results table for chunked data storage
+    # Stores individual comparison keys for paginated retrieval
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comparison_results (
+            result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            column_combination TEXT,
+            category TEXT,
+            key_value TEXT,
+            position INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        )
+    ''')
+    
+    # Create indexes for fast paginated queries
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_comparison_results_lookup 
+        ON comparison_results(run_id, column_combination, category, position)
+    ''')
+    
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_comparison_results_category 
+        ON comparison_results(run_id, column_combination, category)
+    ''')
+    
     conn.commit()
 
 def update_job_status(run_id, status=None, stage=None, progress=None, error=None):
