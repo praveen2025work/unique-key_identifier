@@ -264,13 +264,19 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
             </button>
             <button
               onClick={() => setActiveTab('comparison')}
-              className={`px-6 py-4 font-medium transition-colors whitespace-nowrap ${
+              className={`px-6 py-4 font-medium transition-colors whitespace-nowrap relative ${
                 activeTab === 'comparison'
                   ? 'bg-primary text-white border-b-4 border-primary'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
               🔄 File Comparison
+              {activeTab !== 'comparison' && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('quality')}
@@ -314,6 +320,30 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                       ({details.file_b_rows?.toLocaleString() || 'N/A'} rows)
                     </span>
                   </div>
+                </div>
+              </div>
+
+              {/* Important Notice - File Comparison Available */}
+              <div className="mb-4 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="text-2xl mr-3">💡</span>
+                    <div>
+                      <p className="font-semibold text-blue-900">Want to see file-to-file row comparison?</p>
+                      <p className="text-sm text-blue-700">Click any <strong>"Compare"</strong> button below or switch to the <strong>"🔄 File Comparison"</strong> tab above</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (filteredResults.length > 0) {
+                        setSelectedComboColumns(filteredResults[0].columns);
+                      }
+                      setActiveTab('comparison');
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold whitespace-nowrap"
+                  >
+                    Go to File Comparison →
+                  </button>
                 </div>
               </div>
 
@@ -456,9 +486,10 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                                 setSelectedComboColumns(result.columns);
                                 setActiveTab('comparison');
                               }}
-                              className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark transition-colors font-medium"
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+                              title="View file-to-file row comparison"
                             >
-                              Compare
+                              🔄 Compare Files
                             </button>
                           </td>
                         </tr>
