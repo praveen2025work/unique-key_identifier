@@ -1596,34 +1596,15 @@ async def generate_comparison_export(
         if not os.path.exists(file_b_path):
             raise HTTPException(status_code=404, detail=f"File B not found: {file_b_name}")
         
-        # Parse and validate columns
+        # Parse columns
         column_list = [c.strip() for c in columns.split(',') if c.strip()]
         
         if not column_list:
             raise ValueError("No columns specified for comparison")
         
-        # CRITICAL: Validate columns exist in BOTH files before processing
-        # Read first chunk to validate columns
-        try:
-            df_a_sample = pd.read_csv(file_a_path, nrows=1)
-            df_b_sample = pd.read_csv(file_b_path, nrows=1)
-            
-            missing_in_a = [col for col in column_list if col not in df_a_sample.columns]
-            missing_in_b = [col for col in column_list if col not in df_b_sample.columns]
-            
-            if missing_in_a:
-                raise ValueError(f"Columns not found in File A: {', '.join(missing_in_a)}. Available columns: {', '.join(df_a_sample.columns.tolist())}")
-            if missing_in_b:
-                raise ValueError(f"Columns not found in File B: {', '.join(missing_in_b)}. Available columns: {', '.join(df_b_sample.columns.tolist())}")
-                
-        except pd.errors.EmptyDataError:
-            raise ValueError("One or both files are empty")
-        except Exception as e:
-            if "not found in File" in str(e):
-                raise  # Re-raise our custom error
-            raise ValueError(f"Error reading files: {str(e)}")
-        
         # Create exporter and run comparison
+        # Note: Validation happens inside ChunkedFileExporter during processing
+        # The analysis already validated these columns exist in both files
         exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path)
         
         # Run comparison and export

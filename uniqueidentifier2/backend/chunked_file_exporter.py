@@ -170,25 +170,36 @@ class ChunkedFileExporter:
         total_rows = 0
         chunk_num = 0
         
-        for chunk in pd.read_csv(file_path, chunksize=self.chunk_size, low_memory=False):
-            chunk_num += 1
-            total_rows += len(chunk)
-            
-            # Validate columns exist
-            for col in columns:
-                if col not in chunk.columns:
-                    raise ValueError(f"Column '{col}' not found in {label}")
-            
-            # Create composite keys
-            if len(columns) == 1:
-                keys = chunk[columns[0]].astype(str)
-            else:
-                keys = chunk[columns].astype(str).agg('||'.join, axis=1)
-            
-            unique_keys.update(keys.unique())
-            
-            if chunk_num % 10 == 0:
-                print(f"   {label}: Processed {total_rows:,} rows, {len(unique_keys):,} unique keys...")
+        try:
+            for chunk in pd.read_csv(file_path, chunksize=self.chunk_size, low_memory=False):
+                chunk_num += 1
+                total_rows += len(chunk)
+                
+                # Validate columns exist (only on first chunk)
+                if chunk_num == 1:
+                    missing_cols = [col for col in columns if col not in chunk.columns]
+                    if missing_cols:
+                        available = ', '.join(chunk.columns.tolist())
+                        raise ValueError(
+                            f"Column(s) {', '.join(missing_cols)} not found in {label}. "
+                            f"Available columns: {available}"
+                        )
+                
+                # Create composite keys
+                if len(columns) == 1:
+                    keys = chunk[columns[0]].astype(str)
+                else:
+                    keys = chunk[columns].astype(str).agg('||'.join, axis=1)
+                
+                unique_keys.update(keys.unique())
+                
+                if chunk_num % 10 == 0:
+                    print(f"   {label}: Processed {total_rows:,} rows, {len(unique_keys):,} unique keys...")
+        except Exception as e:
+            if "Column(s)" in str(e) and "not found" in str(e):
+                raise  # Re-raise our formatted error
+            # Generic error with helpful context
+            raise ValueError(f"Error reading {label} from {os.path.basename(file_path)}: {str(e)}")
         
         return unique_keys, total_rows
     
