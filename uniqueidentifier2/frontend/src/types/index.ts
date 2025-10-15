@@ -38,6 +38,8 @@ export interface JobStatus {
   num_columns: number;
   environment: string;
   stages: JobStage[];
+  started_at?: string;
+  completed_at?: string;
 }
 
 export interface AnalysisResult {

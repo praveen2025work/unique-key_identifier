@@ -3,6 +3,7 @@ import apiService from '../services/api';
 import type { RunDetails, AnalysisResult, JobStatus } from '../types';
 import toast from 'react-hot-toast';
 import ComparisonViewer from './ComparisonViewer';
+import UnifiedComparisonViewer from './UnifiedComparisonViewer';
 import DataQualityViewer from './DataQualityViewer';
 import ModernDropdown from './ui/ModernDropdown';
 import WorkflowView from './WorkflowView';
@@ -28,7 +29,7 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
   const [workflowLoaded, setWorkflowLoaded] = useState(false);
   const [analysisLoaded, setAnalysisLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50); // Smaller page size for extreme datasets
+  const [pageSize, setPageSize] = useState(100); // Show 100 results per page
 
   useEffect(() => {
     loadInitialData();
@@ -86,7 +87,8 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
   const loadAnalysisData = async () => {
     try {
       toast.loading('Loading analysis results...', { id: 'load-analysis' });
-      const detailsData = await apiService.getRunDetailsWithPagination(runId, currentPage, pageSize);
+      // Load ALL results without pagination limits
+      const detailsData = await apiService.getRunDetails(runId);
       setDetails(detailsData);
       setAnalysisLoaded(true);
       
@@ -94,7 +96,8 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
       if (detailsData.results_a.length > 0) {
         setSelectedComboColumns(detailsData.results_a[0].columns);
       }
-      toast.success('Analysis results loaded', { id: 'load-analysis' });
+      const totalResults = Math.max(detailsData.results_a.length, detailsData.results_b.length);
+      toast.success(`Loaded ${totalResults} column combinations`, { id: 'load-analysis' });
     } catch (error) {
       toast.error('Failed to load analysis results', { id: 'load-analysis' });
       console.error(error);
@@ -149,6 +152,17 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
       r.columns.toLowerCase().includes(filterText.toLowerCase())
     );
   }
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredResults.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedResults = filteredResults.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showUniqueOnly, filterText, analysisTab]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-500 to-purple-800 p-4">
@@ -358,14 +372,14 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredResults.length === 0 ? (
+                    {paginatedResults.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                           No results match your filters
                         </td>
                       </tr>
                     ) : (
-                      filteredResults.map((result, index) => (
+                      paginatedResults.map((result, index) => (
                         <tr
                           key={index}
                           className={`border-b hover:bg-gray-50 transition-colors ${
@@ -428,8 +442,95 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                 </table>
               </div>
 
-              <div className="mt-4 text-sm text-gray-600">
-                Showing {filteredResults.length} of {currentResults.length} results
+              {/* Pagination Controls */}
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-4">
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredResults.length)} of {filteredResults.length} results
+                  {filteredResults.length !== currentResults.length && ` (filtered from ${currentResults.length} total)`}
+                </div>
+                
+                {/* Page Size Selector */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Rows per page:</label>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="250">250</option>
+                    <option value="500">500</option>
+                  </select>
+                </div>
+
+                {/* Pagination Buttons */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Previous
+                    </button>
+                    
+                    <div className="flex gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum: number;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-1 border rounded text-sm ${
+                              currentPage === pageNum
+                                ? 'bg-primary text-white border-primary'
+                                : 'border-gray-300 hover:bg-gray-100'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Next
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    >
+                      Last
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -458,7 +559,7 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                     value: result.columns,
                     label: result.columns,
                     badge: `${result.uniqueness_score.toFixed(1)}% unique`,
-                    description: `${result.count_a.toLocaleString()} records in Side A`
+                    description: `${result.total_rows.toLocaleString()} total rows`
                   }))}
                   size="md"
                   searchable={true}
@@ -467,7 +568,7 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                 />
               </div>
               {selectedComboColumns && (
-                <ComparisonViewer runId={runId} columns={selectedComboColumns} />
+                <UnifiedComparisonViewer runId={runId} columns={selectedComboColumns} />
               )}
             </div>
           )}

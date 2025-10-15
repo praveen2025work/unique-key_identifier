@@ -523,7 +523,7 @@ async def get_job_status(run_id: int):
     """Get current job status for polling"""
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT status, current_stage, progress_percent, error_message, file_a, file_b, num_columns, environment
+        SELECT status, current_stage, progress_percent, error_message, file_a, file_b, num_columns, environment, started_at, completed_at
         FROM runs WHERE run_id = ?
     ''', (run_id,))
     run_info = cursor.fetchone()
@@ -550,6 +550,8 @@ async def get_job_status(run_id: int):
         "file_b": run_info[5],
         "num_columns": run_info[6],
         "environment": run_info[7],
+        "started_at": run_info[8],
+        "completed_at": run_info[9],
         "stages": [
             {
                 "name": s[0],
