@@ -259,22 +259,78 @@ export default function ComparisonViewer({ runId, columns }: ComparisonViewerPro
         )}
       </div>
 
-      {/* Footer */}
-      <div className="mt-4 text-sm text-gray-600 flex justify-between items-center">
-        <span>
-          Showing {currentData.length} of {
-            activeTab === 'matched' ? summary.matched_count :
+      {/* Pagination Footer */}
+      <div className="mt-6 border-t border-gray-200 pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-semibold">{currentData.length.toLocaleString()}</span> of{' '}
+            <span className="font-semibold">
+              {(activeTab === 'matched' ? summary.matched_count :
+                activeTab === 'only_a' ? summary.only_a_count :
+                summary.only_b_count).toLocaleString()}
+            </span> records
+            {currentData.length < (activeTab === 'matched' ? summary.matched_count :
+              activeTab === 'only_a' ? summary.only_a_count :
+              summary.only_b_count) && (
+              <span className="ml-2 text-orange-600">
+                • Use pagination below to load more
+              </span>
+            )}
+          </div>
+          
+          {/* Pagination Controls */}
+          {(activeTab === 'matched' ? summary.matched_count :
             activeTab === 'only_a' ? summary.only_a_count :
-            summary.only_b_count
-          } records
-        </span>
-        {hasMore[activeTab] && !currentLoading && (
-          <button
-            onClick={() => loadData(activeTab, true)}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
-          >
-            Load More
-          </button>
+            summary.only_b_count) > 100 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setData(prev => ({ ...prev, [activeTab]: [] }));
+                  setOffset(prev => ({ ...prev, [activeTab]: 0 }));
+                  setHasMore(prev => ({ ...prev, [activeTab]: true }));
+                  loadData(activeTab, false);
+                }}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50"
+                disabled={offset[activeTab] === 0}
+              >
+                Reset
+              </button>
+              
+              <span className="text-sm text-gray-600">
+                Page: {Math.floor(offset[activeTab] / 100) + 1}
+              </span>
+              
+              {hasMore[activeTab] && !currentLoading && (
+                <button
+                  onClick={() => loadData(activeTab, true)}
+                  className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors text-sm font-medium"
+                >
+                  Load Next 100 →
+                </button>
+              )}
+              
+              {!hasMore[activeTab] && offset[activeTab] > 0 && (
+                <span className="text-sm text-green-600 font-medium">
+                  ✓ All loaded
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* Performance Tip */}
+        {(activeTab === 'matched' ? summary.matched_count :
+          activeTab === 'only_a' ? summary.only_a_count :
+          summary.only_b_count) > 10000 && currentData.length < 1000 && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>💡 Tip:</strong> For {((activeTab === 'matched' ? summary.matched_count :
+                activeTab === 'only_a' ? summary.only_a_count :
+                summary.only_b_count) / 1000).toFixed(0)}K+ records, 
+              consider using the <strong>Enterprise Row-by-Row Exports</strong> below to download 
+              complete CSV files for external analysis.
+            </p>
+          </div>
         )}
       </div>
     </div>

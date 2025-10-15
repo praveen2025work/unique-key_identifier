@@ -79,6 +79,11 @@ export default function ResultsViewer({ runId }: ResultsViewerProps) {
     );
   }
 
+  // Sort by column name in ascending order
+  filteredResults = [...filteredResults].sort((a, b) => 
+    a.columns.localeCompare(b.columns)
+  );
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       {/* Header */}

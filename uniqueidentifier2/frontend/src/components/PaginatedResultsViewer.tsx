@@ -119,6 +119,11 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
       );
     }
 
+    // Sort by column name in ascending order
+    filtered = [...filtered].sort((a, b) => 
+      a.columns.localeCompare(b.columns)
+    );
+
     return filtered;
   }, [results, uniqueFilter, searchTerm]);
 

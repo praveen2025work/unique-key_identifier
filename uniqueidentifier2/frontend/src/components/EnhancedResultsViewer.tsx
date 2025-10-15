@@ -153,6 +153,11 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
     );
   }
 
+  // Sort by column name in ascending order
+  filteredResults = [...filteredResults].sort((a, b) => 
+    a.columns.localeCompare(b.columns)
+  );
+
   // Calculate pagination
   const totalPages = Math.ceil(filteredResults.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -359,22 +364,29 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
 
               {/* Results Table */}
               <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+                <table className="w-full border-collapse table-fixed">
+                  <colgroup>
+                    <col style={{width: '50%'}} /> {/* Columns - 50% width */}
+                    <col style={{width: '10%'}} /> {/* Total */}
+                    <col style={{width: '10%'}} /> {/* Unique */}
+                    <col style={{width: '10%'}} /> {/* Duplicates */}
+                    <col style={{width: '12%'}} /> {/* Score */}
+                    <col style={{width: '8%'}} /> {/* Actions */}
+                  </colgroup>
                   <thead>
                     <tr className="bg-gray-100 border-b-2 border-gray-300">
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Columns</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Total Rows</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Total</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Unique</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Duplicates</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Score</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Status</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Dups</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Uniqueness Score</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedResults.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                           No results match your filters
                         </td>
                       </tr>
@@ -386,51 +398,65 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                             result.is_unique_key ? 'bg-green-50' : ''
                           }`}
                         >
-                          <td className="px-4 py-3 font-mono text-sm">{result.columns}</td>
-                          <td className="px-4 py-3 text-center">{result.total_rows.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-center text-green-600 font-semibold">
+                          {/* Column names - wrapping text */}
+                          <td className="px-4 py-3">
+                            <div className="font-mono text-sm break-words">
+                              {result.columns}
+                            </div>
+                            {result.is_unique_key && (
+                              <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                                ✓ Unique Key
+                              </span>
+                            )}
+                          </td>
+                          
+                          <td className="px-4 py-3 text-center text-sm">
+                            {result.total_rows.toLocaleString()}
+                          </td>
+                          
+                          <td className="px-4 py-3 text-center text-sm text-green-600 font-semibold">
                             {result.unique_rows.toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-center text-red-600">
+                          
+                          <td className="px-4 py-3 text-center text-sm text-red-600 font-semibold">
                             {result.duplicate_count.toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex items-center justify-center">
-                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                          
+                          {/* Colored progress bar for score */}
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                                 <div
-                                  className={`h-2 rounded-full ${
+                                  className={`h-full transition-all duration-300 ${
                                     result.uniqueness_score === 100
-                                      ? 'bg-green-500'
+                                      ? 'bg-gradient-to-r from-green-500 to-green-600'
                                       : result.uniqueness_score >= 90
-                                      ? 'bg-blue-500'
+                                      ? 'bg-gradient-to-r from-blue-500 to-blue-600'
                                       : result.uniqueness_score >= 70
-                                      ? 'bg-yellow-500'
-                                      : 'bg-red-500'
+                                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
+                                      : 'bg-gradient-to-r from-red-500 to-red-600'
                                   }`}
                                   style={{ width: `${result.uniqueness_score}%` }}
                                 ></div>
                               </div>
-                              <span className="font-semibold">{result.uniqueness_score.toFixed(2)}%</span>
+                              <span className={`text-xs font-bold ${
+                                result.uniqueness_score === 100 ? 'text-green-600' :
+                                result.uniqueness_score >= 90 ? 'text-blue-600' :
+                                result.uniqueness_score >= 70 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {result.uniqueness_score.toFixed(1)}%
+                              </span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            {result.is_unique_key ? (
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-                                ✓ Unique Key
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                Has Duplicates
-                              </span>
-                            )}
-                          </td>
+                          
                           <td className="px-4 py-3 text-center">
                             <button
                               onClick={() => {
                                 setSelectedComboColumns(result.columns);
                                 setActiveTab('comparison');
                               }}
-                              className="px-3 py-1 bg-primary text-white rounded text-xs hover:bg-primary-dark transition-colors"
+                              className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark transition-colors font-medium"
                             >
                               Compare
                             </button>
@@ -555,12 +581,14 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
                   label="Select columns to compare:"
                   value={selectedComboColumns}
                   onChange={(value) => setSelectedComboColumns(value as string)}
-                  options={details.results_a.map((result) => ({
-                    value: result.columns,
-                    label: result.columns,
-                    badge: `${result.uniqueness_score.toFixed(1)}% unique`,
-                    description: `${result.total_rows.toLocaleString()} total rows`
-                  }))}
+                  options={[...details.results_a]
+                    .sort((a, b) => a.columns.localeCompare(b.columns))
+                    .map((result) => ({
+                      value: result.columns,
+                      label: result.columns,
+                      badge: `${result.uniqueness_score.toFixed(1)}% unique`,
+                      description: `${result.total_rows.toLocaleString()} total rows`
+                    }))}
                   size="md"
                   searchable={true}
                   clearable={true}
