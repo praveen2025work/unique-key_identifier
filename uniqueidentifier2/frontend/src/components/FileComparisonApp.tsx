@@ -932,7 +932,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
           <div className="p-3 space-y-2 animate-fade-in">
             
             {/* Compact Results Header */}
-            <div className="glass-card p-3 shadow-soft animate-slide-in">
+            <div className="glass-card p-3 shadow-soft animate-slide-in" style={{ position: 'relative', zIndex: 10 }}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <button 
@@ -958,7 +958,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       {results.timestamp}
                     </p>
                   </div>
-                  <div className="min-w-[220px]" style={{ position: 'relative', zIndex: 100 }}>
+                  <div className="min-w-[220px]" style={{ position: 'relative', zIndex: 1000 }}>
                     <ModernDropdown
                       value={results.run_id}
                       onChange={(value) => handleViewResults(parseInt(value as string))}
@@ -1019,7 +1019,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
             </div>
 
             {/* Compact Tabs */}
-            <div className="glass-card p-2 shadow-soft">
+            <div className="glass-card p-2 shadow-soft" style={{ position: 'relative', zIndex: 1 }}>
               {/* Main Tabs Row */}
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button 
@@ -1114,14 +1114,14 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 
                 {comparisonView === 'sidebyside' && (
                   <table className="w-full text-xs table-fixed">
-                    <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 10 }}>
+                    <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 5 }}>
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 11 }}>Combination</th>
+                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 6 }}>Combination</th>
                         <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]" style={{ width: '22.5%' }}>File A</th>
                         <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700" style={{ width: '22.5%' }}>File B</th>
                       </tr>
-                      <tr className="bg-slate-600" style={{ zIndex: 10 }}>
-                        <th className="px-3 py-1.5 sticky left-0 bg-slate-600" style={{ zIndex: 11 }}></th>
+                      <tr className="bg-slate-600" style={{ zIndex: 5 }}>
+                        <th className="px-3 py-1.5 sticky left-0 bg-slate-600" style={{ zIndex: 6 }}></th>
                         <th className="px-2 py-1.5 text-xs border-l border-[#337ab7]">Unique</th>
                         <th className="px-2 py-1.5 text-xs">Dups</th>
                         <th className="px-2 py-1.5 text-xs border-r border-[#337ab7]">Score</th>
@@ -1144,7 +1144,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                           <tr key={i} className="hover:bg-slate-50">
                             <td 
                               className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white group cursor-pointer hover:bg-primary-50 transition-colors"
-                              style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 9 }}
+                              style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 4 }}
                               onClick={() => copyToClipboard(combo)}
                               title="Click to copy combination"
                             >
