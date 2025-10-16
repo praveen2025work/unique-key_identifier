@@ -152,6 +152,13 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
     columns = df.columns.tolist()
     total_rows = len(df)
     
+    # Debug logging for input validation
+    if specified_combinations:
+        print(f"📊 Analyzing {len(specified_combinations)} specified combinations")
+        # Validate structure
+        for i, combo in enumerate(specified_combinations[:3]):  # Check first 3
+            print(f"   Combo {i+1} type: {type(combo)}, content: {combo}")
+    
     # Memory optimization: Convert to categorical if beneficial
     for col in columns:
         if df[col].dtype == 'object':
@@ -170,8 +177,25 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
         combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations, use_intelligent_discovery=use_intelligent_discovery)
     
     for combo in combos_to_analyze:
-        combo_str = ','.join(combo)
-        combo_list = list(combo)
+        try:
+            # Handle nested tuples - flatten if needed
+            if combo and isinstance(combo[0], (tuple, list)):
+                # If first element is tuple/list, flatten it
+                combo = combo[0] if len(combo) == 1 else combo
+            
+            # Ensure combo is a sequence of strings
+            combo = tuple(str(c) for c in combo) if combo else ()
+            
+            if not combo:
+                continue
+                
+            combo_str = ','.join(combo)
+            combo_list = list(combo)
+        except (TypeError, AttributeError, IndexError) as e:
+            print(f"⚠️ Skipping invalid combination: {combo}")
+            print(f"   Error: {e}")
+            print(f"   Type: {type(combo)}")
+            continue
         
         # OPTIMIZATION 1: Use value_counts instead of groupby for better performance
         # This is faster for counting occurrences
