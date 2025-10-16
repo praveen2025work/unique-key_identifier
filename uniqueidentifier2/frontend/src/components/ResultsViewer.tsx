@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState } from 'react';
 import apiService from '../services/api';
 import type { RunDetails, AnalysisResult } from '../types';
@@ -277,4 +279,3 @@ export default function ResultsViewer({ runId }: ResultsViewerProps) {
     </div>
   );
 }
-

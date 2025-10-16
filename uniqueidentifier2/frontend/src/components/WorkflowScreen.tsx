@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import WorkflowView from './WorkflowView';
@@ -14,7 +16,7 @@ interface WorkflowScreenProps {
 export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, onBack, onViewResults, onAnalysisCompleted }: WorkflowScreenProps) {
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const apiEndpoint = apiEndpointProp || localStorage.getItem('apiEndpoint') || 'http://localhost:8000';
+  const apiEndpoint = apiEndpointProp || (typeof window !== 'undefined' ? localStorage.getItem('apiEndpoint') : null) || 'http://localhost:8000';
 
   useEffect(() => {
     if (!runId) return;

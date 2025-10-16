@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronDownIcon, 
@@ -378,4 +380,3 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
 };
 
 export default ModernDropdown;
-

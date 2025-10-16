@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState } from 'react';
 import apiService from '../services/api';
 import type { DataQualityReport } from '../types';
@@ -442,5 +444,3 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
     </div>
   );
 }
-
-

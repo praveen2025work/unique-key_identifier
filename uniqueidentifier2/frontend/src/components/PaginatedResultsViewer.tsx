@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useCallback } from 'react';
 import apiService from '../services/api';
 import type { RunDetails, AnalysisResult } from '../types';
@@ -451,4 +453,3 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
     </div>
   );
 }
-

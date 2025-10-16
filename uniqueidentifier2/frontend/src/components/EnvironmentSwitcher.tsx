@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import apiService from '../services/api';
@@ -218,4 +220,3 @@ function AddEnvironmentDialog({ onClose, onAdd }: { onClose: () => void; onAdd: 
     </div>
   );
 }
-

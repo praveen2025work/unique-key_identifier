@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { CogIcon, MagnifyingGlassIcon, DocumentTextIcon, ChartBarIcon } from '@heroicons/react/24/outline';

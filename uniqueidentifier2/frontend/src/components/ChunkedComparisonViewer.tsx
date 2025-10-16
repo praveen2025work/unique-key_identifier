@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Chunked Comparison Viewer Component
  * Enterprise-level component for viewing row-by-row, column-by-column comparison results
@@ -601,4 +603,3 @@ const ChunkedComparisonViewer: React.FC<ChunkedComparisonViewerProps> = ({ runId
 };
 
 export default ChunkedComparisonViewer;
-

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react';
 import { CpuChipIcon, ClockIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
@@ -192,4 +194,3 @@ export function useRenderTime(componentName: string) {
     };
   });
 }
-

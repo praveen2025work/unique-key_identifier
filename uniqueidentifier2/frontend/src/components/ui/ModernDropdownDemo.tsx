@@ -1,3 +1,5 @@
+'use client'
+
 import { useState } from 'react';
 import ModernDropdown from './ModernDropdown';
 import { 
@@ -276,4 +278,3 @@ const ModernDropdownDemo = () => {
 };
 
 export default ModernDropdownDemo;
-

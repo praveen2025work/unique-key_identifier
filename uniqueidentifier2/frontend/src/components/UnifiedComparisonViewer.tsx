@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Unified Comparison Viewer
  * Shows BOTH column combination analysis results AND row-by-row file comparison
@@ -513,4 +515,3 @@ export default function UnifiedComparisonViewer({ runId, columns, onClose }: Uni
     </div>
   );
 }
-

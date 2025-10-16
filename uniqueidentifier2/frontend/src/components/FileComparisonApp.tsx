@@ -1,7 +1,9 @@
+'use client'
+
 import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import ModernDropdown from './ui/ModernDropdown';
-import ChunkedFileListViewer from './ChunkedFileListViewer';
+import ChunkedFileListViewer, { Category } from './ChunkedFileListViewer';
 
 interface FileInfo {
   columns: string[];
@@ -59,7 +61,9 @@ interface FileComparisonAppProps {
 }
 
 export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: FileComparisonAppProps) {
-  const [apiEndpoint, setApiEndpoint] = useState(() => localStorage.getItem('apiEndpoint') || 'http://localhost:8000');
+  const [apiEndpoint, setApiEndpoint] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('apiEndpoint') || 'http://localhost:8000' : 'http://localhost:8000'
+  );
   const [showSettings, setShowSettings] = useState(false);
   const [tempEndpoint, setTempEndpoint] = useState(apiEndpoint);
   const [backendHealthy, setBackendHealthy] = useState(false);
@@ -70,7 +74,8 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const [numColumns, setNumColumns] = useState(2);
   const [maxRows, setMaxRows] = useState(0);
   const [dataQualityCheck, setDataQualityCheck] = useState(false);
-  const [generateComparisons, setGenerateComparisons] = useState(true);
+  const [generateColumnCombinations, setGenerateColumnCombinations] = useState(true);
+  const [generateFileComparison, setGenerateFileComparison] = useState(true);
   
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [includedCombinations, setIncludedCombinations] = useState<string[]>([]);
@@ -96,8 +101,13 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const [comparisonSummary, setComparisonSummary] = useState<any>(null);
   const [comparisonData, setComparisonData] = useState<any>({ matched: [], only_a: [], only_b: [] });
   const [comparisonCategory, setComparisonCategory] = useState<'matched' | 'only_a' | 'only_b'>('matched');
+  const [chunkHeaderData, setChunkHeaderData] = useState<{matched: number, only_a: number, only_b: number, totalChunks: number} | null>(null);
   const [dataQualityReport, setDataQualityReport] = useState<any>(null);
   const [jobStatus, setJobStatus] = useState<any>(null);
+  
+  // State for Column Combination Results tab header
+  const [comparisonHeaderData, setComparisonHeaderData] = useState<{ matched: number; only_a: number; only_b: number; totalChunks: number }>({ matched: 0, only_a: 0, only_b: 0, totalChunks: 0 });
+  const [comparisonActiveCategory, setComparisonActiveCategory] = useState<Category>('matched');
 
   useEffect(() => {
     if (initialRunId) {
@@ -412,7 +422,8 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
       formData.append('excluded_combinations', excludedCombinations.join('\n'));
       formData.append('working_directory', workingDir);
       formData.append('data_quality_check', dataQualityCheck.toString());
-      formData.append('generate_comparisons', generateComparisons.toString());
+      formData.append('generate_column_combinations', generateColumnCombinations.toString());
+      formData.append('generate_file_comparison', generateFileComparison.toString());
       formData.append('environment', 'default');
       const response = await fetch(`${apiEndpoint}/compare`, { method: 'POST', body: formData });
       if (!response.ok) {
@@ -519,27 +530,38 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
     <>
       <Toaster position="top-right" toastOptions={{ style: { fontSize: '13px' } }} />
       
-      {/* Fixed Header - Compact */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 shadow-md border-b border-slate-600">
+      {/* Compact Modern Header */}
+      <div className="sticky top-0 z-50 glass-card-dark border-b border-white/10 shadow-hard backdrop-blur-xl">
         <div className="px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <svg className="w-7 h-7 text-[#337ab7]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12.65 10C11.7 7.31 8.9 5.5 5.77 6.12c-2.29.46-4.15 2.29-4.63 4.58C.32 14.57 3.26 18 7 18c2.61 0 4.83-1.67 5.65-4H17v2c0 1.1.9 2 2 2s2-.9 2-2v-2c1.1 0 2-.9 2-2s-.9-2-2-2h-8.35zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
-            </svg>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary-500 blur-sm opacity-50 rounded-full"></div>
+              <svg className="w-6 h-6 text-primary-400 relative" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.65 10C11.7 7.31 8.9 5.5 5.77 6.12c-2.29.46-4.15 2.29-4.63 4.58C.32 14.57 3.26 18 7 18c2.61 0 4.83-1.67 5.65-4H17v2c0 1.1.9 2 2 2s2-.9 2-2v-2c1.1 0 2-.9 2-2s-.9-2-2-2h-8.35zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+              </svg>
+            </div>
             <div>
-              <h1 className="text-sm font-semibold text-white">Unique Key Identifier</h1>
-              <p className="text-xs text-slate-300">Enterprise Edition v2.0</p>
+              <h1 className="text-base font-bold text-white tracking-tight">Unique Key Identifier</h1>
+              <p className="text-[10px] font-medium text-gray-400">Enterprise Edition v2.0</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <div className={`flex items-center space-x-1.5 px-2 py-1 rounded ${backendHealthy ? 'bg-green-900/40' : 'bg-red-900/40'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${backendHealthy ? 'bg-green-400' : 'bg-red-400'}`}></div>
-              <span className={`text-xs font-medium ${backendHealthy ? 'text-green-300' : 'text-red-300'}`}>
-                {backendHealthy ? 'Online' : 'Offline'}
-              </span>
-            </div>
-            <button onClick={() => setShowSettings(true)} className="p-1.5 hover:bg-slate-600 rounded transition-colors">
-              <svg className="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-2">
+            {backendHealthy ? (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-success-500/20 border border-success-400/30">
+                <div className="w-1.5 h-1.5 rounded-full bg-success-400 animate-pulse"></div>
+                <span className="text-[10px] font-semibold text-success-300">Online</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/20 border border-red-400/30">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                <span className="text-[10px] font-semibold text-red-300">Offline</span>
+              </div>
+            )}
+            <button 
+              onClick={() => setShowSettings(true)} 
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-all duration-200 group"
+            >
+              <svg className="w-4 h-4 text-gray-300 group-hover:text-white group-hover:rotate-90 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -548,34 +570,60 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
         </div>
       </div>
 
-      {/* Settings Modal */}
+      {/* Compact Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 animate-fade-in">
+          <div className="card-modern max-w-md w-full mx-4 p-4 animate-scale-in">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-primary-100 rounded-lg">
+                  <svg className="w-4 h-4 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-base font-bold text-gray-900">Settings</h2>
+              </div>
+              <button 
+                onClick={() => setShowSettings(false)} 
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-all duration-200 group"
+              >
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:rotate-90 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Backend Endpoint</label>
-                <input type="text" value={tempEndpoint} onChange={(e) => setTempEndpoint(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#337ab7] focus:border-[#337ab7]" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Backend Endpoint</label>
+                <input 
+                  type="text" 
+                  value={tempEndpoint} 
+                  onChange={(e) => setTempEndpoint(e.target.value)}
+                  className="input-modern text-sm"
+                  placeholder="http://localhost:8000"
+                />
               </div>
-              <div className="flex space-x-2">
-                <button onClick={saveEndpoint} className="flex-1 px-4 py-2 bg-[#337ab7] text-white text-sm font-medium rounded hover:bg-[#286090] transition-colors">Save</button>
-                <button onClick={() => setShowSettings(false)} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-300">Cancel</button>
+              <div className="flex gap-2 pt-2">
+                <button 
+                  onClick={saveEndpoint} 
+                  className="btn-primary flex-1 text-sm"
+                >
+                  Save Changes
+                </button>
+                <button 
+                  onClick={() => setShowSettings(false)} 
+                  className="btn-ghost px-4 text-sm"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content - No extra padding */}
       <div className="min-h-screen bg-slate-50">
         
         {/* Dashboard View */}
@@ -644,19 +692,27 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       className="w-full h-[30px] px-2 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#337ab7] focus:border-transparent" 
                       placeholder="0 (all)" />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">✅ Quality Check</label>
-                    <label className="flex items-center h-[30px] cursor-pointer bg-[#337ab7]/10 px-3 py-1.5 rounded border border-[#337ab7]/30 hover:bg-[#337ab7]/20 transition-colors">
+                  <div className="col-span-1">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">✅ Quality</label>
+                    <label className="flex items-center h-[30px] cursor-pointer bg-[#337ab7]/10 px-2 py-1.5 rounded border border-[#337ab7]/30 hover:bg-[#337ab7]/20 transition-colors">
                       <input type="checkbox" checked={dataQualityCheck} onChange={(e) => setDataQualityCheck(e.target.checked)} 
-                        className="w-4 h-4 text-[#337ab7] border-gray-300 rounded focus:ring-[#337ab7] mr-2" />
+                        className="w-4 h-4 text-[#337ab7] border-gray-300 rounded focus:ring-[#337ab7] mr-1.5" />
+                      <span className="text-xs font-semibold text-gray-700">On</span>
+                    </label>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Column Combos</label>
+                    <label className="flex items-center h-[30px] cursor-pointer bg-primary-50 px-2 py-1.5 rounded border border-primary-300 hover:bg-primary-100 transition-colors">
+                      <input type="checkbox" checked={generateColumnCombinations} onChange={(e) => setGenerateColumnCombinations(e.target.checked)} 
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-1.5" />
                       <span className="text-xs font-semibold text-gray-700">Enable</span>
                     </label>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">📊 Comparisons</label>
-                    <label className="flex items-center h-[30px] cursor-pointer bg-green-50 px-3 py-1.5 rounded border border-green-300 hover:bg-green-100 transition-colors">
-                      <input type="checkbox" checked={generateComparisons} onChange={(e) => setGenerateComparisons(e.target.checked)} 
-                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-2" />
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">📁 File A-B Compare</label>
+                    <label className="flex items-center h-[30px] cursor-pointer bg-green-50 px-2 py-1.5 rounded border border-green-300 hover:bg-green-100 transition-colors">
+                      <input type="checkbox" checked={generateFileComparison} onChange={(e) => setGenerateFileComparison(e.target.checked)} 
+                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mr-1.5" />
                       <span className="text-xs font-semibold text-gray-700">Enable</span>
                     </label>
                   </div>
@@ -669,7 +725,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       <span>{columnsLoaded ? '✓ Loaded' : 'Load'}</span>
                     </button>
                   </div>
-                  <div className="col-span-4 flex items-end justify-end space-x-2">
+                  <div className="col-span-3 flex items-end justify-end space-x-2">
                     {selectedRunId && (
                       <>
                         <button onClick={() => handleViewResults(selectedRunId)}
@@ -868,26 +924,38 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
           </div>
         )}
 
-        {/* Results View - Compact */}
+        {/* Compact Results View */}
         {showResults && results && (
-          <div className="p-4 space-y-3">
+          <div className="p-3 space-y-2 animate-fade-in">
             
-            {/* Compact Header */}
-            <div className="bg-white rounded-lg shadow border border-slate-200 p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <button onClick={backToDashboard}
-                    className="px-3 py-1.5 bg-slate-700 text-white text-xs font-medium rounded hover:bg-slate-800 flex items-center space-x-1">
+            {/* Compact Results Header */}
+            <div className="glass-card p-3 shadow-soft animate-slide-in">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={backToDashboard}
+                    className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
+                  >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    <span>Dashboard</span>
+                    <span className="font-semibold">Dashboard</span>
                   </button>
+                  <div className="h-6 w-px bg-gray-300"></div>
                   <div>
-                    <h2 className="text-sm font-semibold text-gray-900">Analysis Results • Run #{results.run_id}</h2>
-                    <p className="text-xs text-gray-500">{results.timestamp}</p>
+                    <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse"></span>
+                      Analysis Results
+                      <span className="badge-primary text-[10px] px-1.5 py-0.5">Run #{results.run_id}</span>
+                    </h2>
+                    <p className="text-[10px] font-medium text-gray-500 mt-0.5 flex items-center gap-0.5">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {results.timestamp}
+                    </p>
                   </div>
-                  <div className="ml-4 min-w-[250px]">
+                  <div className="min-w-[220px]">
                     <ModernDropdown
                       value={results.run_id}
                       onChange={(value) => handleViewResults(parseInt(value as string))}
@@ -903,66 +971,105 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     />
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-3 text-xs">
-                    <div><span className="font-semibold text-[#337ab7]">{results.summary.total_combinations}</span> <span className="text-gray-600">total</span></div>
-                    <div><span className="font-semibold text-green-700">{results.summary.unique_keys_a}</span> <span className="text-gray-600">A</span></div>
-                    <div><span className="font-semibold text-purple-700">{results.summary.unique_keys_b}</span> <span className="text-gray-600">B</span></div>
-                    <div><span className="font-semibold text-orange-700">{Math.max(results.summary.best_score_a, results.summary.best_score_b).toFixed(1)}%</span> <span className="text-gray-600">best</span></div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center px-3 py-1.5 rounded-lg bg-gradient-to-br from-primary-50 to-primary-100 border border-primary-200 min-w-[70px]">
+                      <span className="text-lg font-bold text-primary-700">{results.summary.total_combinations}</span>
+                      <span className="text-[9px] font-semibold text-gray-600 uppercase tracking-wide">Total</span>
+                    </div>
+                    <div className="flex flex-col items-center px-3 py-1.5 rounded-lg bg-gradient-to-br from-success-50 to-success-100 border border-success-200 min-w-[70px]">
+                      <span className="text-lg font-bold text-success-700">{results.summary.unique_keys_a}</span>
+                      <span className="text-[9px] font-semibold text-gray-600 uppercase tracking-wide">File A</span>
+                    </div>
+                    <div className="flex flex-col items-center px-3 py-1.5 rounded-lg bg-gradient-to-br from-secondary-50 to-secondary-100 border border-secondary-200 min-w-[70px]">
+                      <span className="text-lg font-bold text-secondary-700">{results.summary.unique_keys_b}</span>
+                      <span className="text-[9px] font-semibold text-gray-600 uppercase tracking-wide">File B</span>
+                    </div>
+                    <div className="flex flex-col items-center px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 min-w-[70px]">
+                      <span className="text-lg font-bold text-amber-700">{Math.max(results.summary.best_score_a, results.summary.best_score_b).toFixed(1)}%</span>
+                      <span className="text-[9px] font-semibold text-gray-600 uppercase tracking-wide">Best</span>
+                    </div>
                   </div>
-                  <div className="flex space-x-1.5">
-                    <button onClick={downloadCSV} className="px-2.5 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 flex items-center space-x-1">
+                  <div className="h-10 w-px bg-gray-300"></div>
+                  <div className="flex gap-1.5">
+                    <button 
+                      onClick={downloadCSV} 
+                      className="btn-success px-3 py-1.5 text-xs flex items-center gap-1.5"
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <span>CSV</span>
+                      <span className="font-semibold">CSV</span>
                     </button>
-                    <button onClick={downloadExcel} className="px-2.5 py-1.5 bg-[#337ab7] text-white text-xs font-medium rounded hover:bg-[#286090] flex items-center space-x-1 transition-colors">
+                    <button 
+                      onClick={downloadExcel} 
+                      className="btn-primary px-3 py-1.5 text-xs flex items-center gap-1.5"
+                    >
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <span>Excel</span>
+                      <span className="font-semibold">Excel</span>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Enhanced Tabs */}
-            <div className="bg-white rounded-lg shadow border border-slate-200 p-2">
+            {/* Compact Tabs */}
+            <div className="glass-card p-2 shadow-soft">
               {/* Main Tabs Row */}
-              <div className="flex items-center space-x-1.5 flex-wrap gap-1">
-                <button onClick={() => setResultsTab('analysis')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    resultsTab === 'analysis' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button 
+                  onClick={() => setResultsTab('analysis')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    resultsTab === 'analysis' 
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105' 
+                      : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                  }`}
+                >
                   📊 Analysis
                 </button>
                 {jobStatus && (
-                  <button onClick={() => setResultsTab('workflow')}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      resultsTab === 'workflow' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}>
+                  <button 
+                    onClick={() => setResultsTab('workflow')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                      resultsTab === 'workflow' 
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105' 
+                        : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                    }`}
+                  >
                     ⚙️ Workflow
                   </button>
                 )}
-                <button onClick={() => { setResultsTab('fileComparison'); if (selectedComparisonColumn) loadFileComparisonData(selectedComparisonColumn); }}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    resultsTab === 'fileComparison' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
+                <button 
+                  onClick={() => { setResultsTab('fileComparison'); if (selectedComparisonColumn) loadFileComparisonData(selectedComparisonColumn); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    resultsTab === 'fileComparison' 
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105' 
+                      : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                  }`}
+                >
                   🔄 Column Combination Results
                 </button>
-                <button onClick={() => setResultsTab('fullFileComparison')}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                    resultsTab === 'fullFileComparison' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
+                <button 
+                  onClick={() => setResultsTab('fullFileComparison')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                    resultsTab === 'fullFileComparison' 
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105' 
+                      : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                  }`}
+                >
                   📁 Full File A-B Comparison
                 </button>
                 {dataQualityReport && (
-                  <button onClick={() => setResultsTab('dataQuality')}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      resultsTab === 'dataQuality' ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}>
+                  <button 
+                    onClick={() => setResultsTab('dataQuality')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                      resultsTab === 'dataQuality' 
+                        ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105' 
+                        : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                    }`}
+                  >
                     ✅ Data Quality
                   </button>
                 )}
@@ -1140,7 +1247,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 </div>
               )}
               
-              {/* File Comparison Tab - AUTO-SELECTS BEST KEY */}
+              {/* File Comparison Tab - Column Combination Results */}
               {resultsTab === 'fileComparison' && (() => {
                 // Auto-select best unique key (highest score)
                 const bestKey = results.results_a.reduce((best, current) => 
@@ -1154,34 +1261,33 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                     {comparisonKey ? (
                       <div className="space-y-2">
                         {/* Compact Key Selector Bar */}
-                        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded border border-slate-300">
-                          <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Matching Key:</span>
-                          <div className="flex-shrink" style={{ minWidth: '200px', maxWidth: '300px' }}>
-                            <ModernDropdown
-                              value={selectedComparisonColumn || bestKey?.columns}
-                              onChange={(value) => setSelectedComparisonColumn(value as string)}
-                              options={results.results_a.map(r => ({
-                                value: r.columns,
-                                label: r.columns,
-                                badge: r.is_unique_key ? '✓ Unique' : `${r.uniqueness_score.toFixed(1)}%`,
-                                description: `${r.unique_rows?.toLocaleString() || 0} unique`
-                              }))}
-                              size="sm"
-                              searchable={true}
-                              placeholder="Select key columns..."
-                            />
+                        <div className="glass-card px-4 py-2 shadow-soft">
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">Matching Key:</span>
+                            <div style={{ width: '50%' }}>
+                              <ModernDropdown
+                                value={selectedComparisonColumn || bestKey?.columns}
+                                onChange={(value) => setSelectedComparisonColumn(value as string)}
+                                options={results.results_a.map(r => ({
+                                  value: r.columns,
+                                  label: r.columns,
+                                  badge: r.is_unique_key ? '✓ Unique' : `${r.uniqueness_score.toFixed(1)}%`,
+                                  description: `${r.unique_rows?.toLocaleString() || 0} unique`
+                                }))}
+                                size="sm"
+                                searchable={true}
+                                placeholder="Select key columns..."
+                              />
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500 italic whitespace-nowrap">
-                            (Auto-selected best unique key)
-                          </span>
                         </div>
                         
-                        {/* Comparison Viewer */}
+                        {/* Comparison Viewer - With visible clickable category tabs */}
                         <ChunkedFileListViewer 
                           runId={currentRunId!} 
                           columns={comparisonKey}
                           apiEndpoint={apiEndpoint}
-                          onClose={() => setSelectedComparisonColumn('')}
+                          hideHeader={false}
                         />
                       </div>
                     ) : (
@@ -1210,25 +1316,12 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                     {allColumnsKey ? (
                       <div className="space-y-1">
-                        {/* Compact Info Banner */}
-                        <div className="bg-blue-50 border-l-4 border-blue-500 px-3 py-2 rounded-r flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-blue-600">📁</span>
-                            <p className="text-xs font-semibold text-blue-900">
-                              Full File A-B Comparison
-                            </p>
-                            <span className="text-gray-400">|</span>
-                            <p className="text-xs text-blue-700">
-                              ALL rows with ALL columns • Key: <span className="font-mono bg-blue-100 px-1 rounded">{allColumnsKey}</span>
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {/* Full File Comparison Viewer */}
+                        {/* Full File Comparison Viewer - Clean view without extra info text */}
                         <ChunkedFileListViewer 
                           runId={currentRunId!} 
                           columns={allColumnsKey}
                           apiEndpoint={apiEndpoint}
+                          hideHeader={false}
                         />
                       </div>
                     ) : (

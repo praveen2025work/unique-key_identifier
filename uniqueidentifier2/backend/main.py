@@ -80,8 +80,15 @@ job_lock = threading.Lock()
 
 def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, 
                          specified_combinations=None, excluded_combinations=None, 
-                         working_directory=None, data_quality_check=False, generate_comparisons=True):
-    """Background job to process file analysis"""
+                         working_directory=None, data_quality_check=False, 
+                         generate_column_combinations=True, generate_file_comparison=True):
+    """
+    Background job to process file analysis
+    
+    Args:
+        generate_column_combinations: Generate column combination analysis exports
+        generate_file_comparison: Generate full file A-B comparison exports
+    """
     try:
         # Pre-check file sizes
         row_count_a, size_a = get_file_stats(file_a_path)
@@ -193,7 +200,17 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, stage='analyzing_file_a', progress=35)
         update_stage_status(run_id, 'analyzing_file_a', 'in_progress', 'Processing combinations for File A')
         
-        results_a = analyze_file_combinations(df_a, num_columns, specified_combinations, excluded_combinations)
+        # Add all-columns combination if File A-B comparison is enabled
+        analysis_combinations_a = specified_combinations
+        if generate_file_comparison:
+            all_columns_tuple = tuple(validated_columns)
+            # Add to specified combinations if not already there
+            if analysis_combinations_a is None:
+                analysis_combinations_a = [all_columns_tuple]
+            elif all_columns_tuple not in analysis_combinations_a:
+                analysis_combinations_a = list(analysis_combinations_a) + [all_columns_tuple]
+        
+        results_a = analyze_file_combinations(df_a, num_columns, analysis_combinations_a, excluded_combinations)
         
         update_stage_status(run_id, 'analyzing_file_a', 'completed', f'Analyzed {len(results_a)} combinations')
         update_job_status(run_id, progress=55)
@@ -202,7 +219,17 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, stage='analyzing_file_b', progress=60)
         update_stage_status(run_id, 'analyzing_file_b', 'in_progress', 'Processing combinations for File B')
         
-        results_b = analyze_file_combinations(df_b, num_columns, specified_combinations, excluded_combinations)
+        # Add all-columns combination if File A-B comparison is enabled
+        analysis_combinations_b = specified_combinations
+        if generate_file_comparison:
+            all_columns_tuple = tuple(validated_columns)
+            # Add to specified combinations if not already there
+            if analysis_combinations_b is None:
+                analysis_combinations_b = [all_columns_tuple]
+            elif all_columns_tuple not in analysis_combinations_b:
+                analysis_combinations_b = list(analysis_combinations_b) + [all_columns_tuple]
+        
+        results_b = analyze_file_combinations(df_b, num_columns, analysis_combinations_b, excluded_combinations)
         
         update_stage_status(run_id, 'analyzing_file_b', 'completed', f'Analyzed {len(results_b)} combinations')
         update_job_status(run_id, progress=80)
@@ -275,25 +302,32 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             update_stage_status(run_id, 'generating_comparison_cache', 'error', 
                               f'Cache generation failed: {str(cache_error)}')
         
-        # NEW: Generate full chunked comparison exports (optional)
-        if generate_comparisons:
+        # NEW: Generate comparison exports based on user selection
+        if generate_column_combinations or generate_file_comparison:
             try:
-                update_job_status(run_id, stage='generating_full_comparisons', progress=95)
-                update_stage_status(run_id, 'generating_full_comparisons', 'in_progress', 
-                                  'Generating full comparison exports (matched, only_a, only_b)')
+                update_job_status(run_id, stage='generating_comparisons', progress=95)
+                update_stage_status(run_id, 'generating_comparisons', 'in_progress', 
+                                  'Generating comparison exports')
                 
                 # Create ChunkedFileExporter with correct delimiters
                 exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
                 
                 # Build list of combinations to generate
-                combinations_to_generate = list(analyzed_combinations)
+                combinations_to_generate = []
                 
-                # Add "all columns" combination for file-file comparison if not already included
-                all_columns = validated_columns  # All columns from the files
-                all_columns_str = ','.join(all_columns)
-                if all_columns_str not in [str(c) if isinstance(c, str) else ','.join(c) for c in analyzed_combinations]:
-                    print(f"   Adding full file-file comparison with ALL columns: {all_columns_str}")
-                    combinations_to_generate.append(all_columns)
+                # Add column combinations if enabled
+                if generate_column_combinations:
+                    combinations_to_generate.extend(list(analyzed_combinations))
+                    print(f"   📊 Column Combination Analysis: {len(analyzed_combinations)} combinations")
+                
+                # Add "all columns" for file-file comparison if enabled
+                if generate_file_comparison:
+                    all_columns = validated_columns  # All columns from the files
+                    all_columns_str = ','.join(all_columns)
+                    # Only add if not already in list
+                    if all_columns_str not in [str(c) if isinstance(c, str) else ','.join(c) for c in combinations_to_generate]:
+                        combinations_to_generate.append(all_columns)
+                        print(f"   📁 File A-B Comparison: ALL columns ({len(all_columns)} columns)")
                 
                 # Generate full exports for each combination
                 generated_count = 0
@@ -318,17 +352,24 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                         print(f"   ⚠️  Warning: Failed to generate comparison for {combination}: {combo_error}")
                         continue
                 
-                update_stage_status(run_id, 'generating_full_comparisons', 'completed', 
-                                  f'Generated {generated_count} full comparison exports (includes file-file)')
-                print(f"✅ Generated {generated_count} full comparison exports for run {run_id}")
+                comparison_types = []
+                if generate_column_combinations:
+                    combination_count = generated_count - (1 if generate_file_comparison else 0)
+                    comparison_types.append(f'{combination_count} column combinations')
+                if generate_file_comparison:
+                    comparison_types.append('file A-B comparison')
+                
+                details = f'Generated {" + ".join(comparison_types)}'
+                update_stage_status(run_id, 'generating_comparisons', 'completed', details)
+                print(f"✅ {details} for run {run_id}")
                 
             except Exception as export_error:
                 # Don't fail the whole job if export generation fails
-                print(f"⚠️  Warning: Failed to generate full comparison exports: {export_error}")
-                update_stage_status(run_id, 'generating_full_comparisons', 'error', 
+                print(f"⚠️  Warning: Failed to generate comparison exports: {export_error}")
+                update_stage_status(run_id, 'generating_comparisons', 'error', 
                                   f'Export generation failed: {str(export_error)}')
         else:
-            print(f"⏭️  Skipping full comparison generation (generate_comparisons=False)")
+            print(f"⏭️  Skipping comparison generation (both options disabled)")
         
         update_job_status(run_id, status='completed', stage='completed', progress=100)
         
@@ -476,10 +517,17 @@ async def compare_files(
     excluded_combinations: str = Form(""),
     working_directory: str = Form(""),
     data_quality_check: bool = Form(False),
-    generate_comparisons: bool = Form(True),
+    generate_column_combinations: bool = Form(True),
+    generate_file_comparison: bool = Form(True),
     environment: str = Form("default")
 ):
-    """Start async analysis job and return run_id"""
+    """
+    Start async analysis job and return run_id
+    
+    Comparison Options:
+    - generate_column_combinations: Generate exports for each column combination (for uniqueness/duplicate analysis)
+    - generate_file_comparison: Generate full File A vs File B comparison (all columns)
+    """
     try:
         file_a_name = file_a.strip()
         file_b_name = file_b.strip()
@@ -515,7 +563,7 @@ async def compare_files(
         cursor.execute('''
             INSERT OR REPLACE INTO run_parameters (run_id, max_rows, expected_combinations, excluded_combinations, working_directory, data_quality_check, generate_comparisons, environment)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or '', 1 if data_quality_check else 0, 1 if generate_comparisons else 0, environment))
+        ''', (run_id, max_rows, expected_combos or '', excluded_combos or '', work_dir or '', 1 if data_quality_check else 0, 1 if (generate_column_combinations or generate_file_comparison) else 0, environment))
         conn.commit()
         
         # Create job stages - conditionally include data quality check
@@ -537,9 +585,9 @@ async def compare_files(
             ('generating_comparison_cache', 6 + stage_offset, 'pending'),
         ])
         
-        # Add full comparison generation stage if enabled
-        if generate_comparisons:
-            stages.append(('generating_full_comparisons', 7 + stage_offset, 'pending'))
+        # Add comparison generation stage if enabled
+        if generate_column_combinations or generate_file_comparison:
+            stages.append(('generating_comparisons', 7 + stage_offset, 'pending'))
         
         for stage_name, order, status in stages:
             cursor.execute('''
@@ -588,7 +636,7 @@ async def compare_files(
         
         # Start background processing
         thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check, generate_comparisons))
+                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check, generate_column_combinations, generate_file_comparison))
         thread.daemon = True
         thread.start()
         
@@ -1787,20 +1835,24 @@ async def get_chunk_file_data(
     run_id: int,
     columns: str = Query(..., description="Column combination"),
     category: str = Query(..., description="matched, only_a, or only_b"),
-    chunk_index: int = Query(1, ge=1, description="Chunk file index")
+    chunk_index: int = Query(1, ge=1, description="Chunk file index"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    limit: int = Query(1000, ge=1, le=10000, description="Records per page (default 1000, max 10000)")
 ):
     """
-    Get data from a specific chunk file.
-    Returns entire chunk file contents (max 10k records).
+    Get paginated data from a specific chunk file.
+    Returns paginated chunk file contents (default 1k records per page).
     
     Args:
         run_id: Run ID
         columns: Column combination used for comparison
         category: Data category ('matched', 'only_a', 'only_b')
         chunk_index: Chunk file index (1-based)
+        offset: Pagination offset (default 0)
+        limit: Records per page (default 1000, max 10000)
         
     Returns:
-        Chunk file data with metadata
+        Paginated chunk file data with metadata
     """
     try:
         # Validate category
@@ -1836,9 +1888,43 @@ async def get_chunk_file_data(
                 "message": "Chunk file has been deleted or moved"
             }, status_code=404)
         
-        # Read entire chunk file
+        # Read chunk file with pagination (memory efficient)
         try:
-            df = pd.read_csv(target_file['file_path'], low_memory=False)
+            # Read only the required slice using skiprows and nrows for efficiency
+            total_rows = target_file['row_count']
+            
+            if offset >= total_rows:
+                return JSONResponse({
+                    "run_id": run_id,
+                    "columns": columns,
+                    "category": category,
+                    "chunk_index": chunk_index,
+                    "chunk_name": target_file['chunk_name'],
+                    "records": [],
+                    "record_count": 0,
+                    "pagination": {
+                        "offset": offset,
+                        "limit": limit,
+                        "total_records": total_rows,
+                        "total_pages": (total_rows + limit - 1) // limit,
+                        "current_page": (offset // limit) + 1,
+                        "has_more": False
+                    },
+                    "file_info": {
+                        "file_size_mb": target_file['file_size_mb'],
+                        "row_count": target_file['row_count'],
+                        "created_at": target_file['created_at']
+                    }
+                })
+            
+            # For efficiency, read only the required rows
+            if offset > 0:
+                # Skip offset rows after header
+                df = pd.read_csv(target_file['file_path'], skiprows=range(1, offset + 1), nrows=limit, low_memory=False)
+            else:
+                # Read from beginning
+                df = pd.read_csv(target_file['file_path'], nrows=limit, low_memory=False)
+            
             records = df.to_dict('records')
             
             # Handle NaN values
@@ -1855,6 +1941,14 @@ async def get_chunk_file_data(
                 "chunk_name": target_file['chunk_name'],
                 "records": records,
                 "record_count": len(records),
+                "pagination": {
+                    "offset": offset,
+                    "limit": limit,
+                    "total_records": total_rows,
+                    "total_pages": (total_rows + limit - 1) // limit,
+                    "current_page": (offset // limit) + 1,
+                    "has_more": offset + len(records) < total_rows
+                },
                 "file_info": {
                     "file_size_mb": target_file['file_size_mb'],
                     "row_count": target_file['row_count'],

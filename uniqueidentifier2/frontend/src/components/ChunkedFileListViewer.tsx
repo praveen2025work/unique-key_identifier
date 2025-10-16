@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Chunked File List Viewer
  * Shows list of pre-generated chunk files (10k records each)
@@ -11,6 +13,10 @@ interface ChunkedFileListViewerProps {
   columns: string;
   apiEndpoint?: string;
   onClose?: () => void;
+  hideHeader?: boolean;
+  onHeaderDataChange?: (data: { matched: number; only_a: number; only_b: number; totalChunks: number }) => void;
+  externalCategory?: Category;
+  onCategoryChange?: (category: Category) => void;
 }
 
 interface ChunkFile {
@@ -32,9 +38,9 @@ interface ChunkFilesByCategory {
   only_b: ChunkFile[];
 }
 
-type Category = 'matched' | 'only_a' | 'only_b';
+export type Category = 'matched' | 'only_a' | 'only_b';
 
-export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onClose }: ChunkedFileListViewerProps) {
+export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onClose, hideHeader, onHeaderDataChange, externalCategory, onCategoryChange }: ChunkedFileListViewerProps) {
   const apiBaseUrl = apiEndpoint || 'http://localhost:8000';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,14 +49,44 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
     only_a: [],
     only_b: []
   });
-  const [activeCategory, setActiveCategory] = useState<Category>('matched');
+  const [internalCategory, setInternalCategory] = useState<Category>('matched');
+  const activeCategory = externalCategory !== undefined ? externalCategory : internalCategory;
+  const setActiveCategory = (category: Category) => {
+    if (onCategoryChange) {
+      onCategoryChange(category);
+    } else {
+      setInternalCategory(category);
+    }
+  };
   const [selectedChunk, setSelectedChunk] = useState<ChunkFile | null>(null);
   const [chunkData, setChunkData] = useState<any[]>([]);
   const [loadingChunk, setLoadingChunk] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<{
+    offset: number;
+    limit: number;
+    total_records: number;
+    total_pages: number;
+    current_page: number;
+    has_more: boolean;
+  } | null>(null);
 
   useEffect(() => {
     loadChunkFiles();
   }, [runId, columns]);
+
+  // Notify parent about header data changes
+  useEffect(() => {
+    if (onHeaderDataChange) {
+      const totalChunks = chunkFiles.matched.length + chunkFiles.only_a.length + chunkFiles.only_b.length;
+      onHeaderDataChange({
+        matched: chunkFiles.matched.length,
+        only_a: chunkFiles.only_a.length,
+        only_b: chunkFiles.only_b.length,
+        totalChunks
+      });
+    }
+  }, [chunkFiles, onHeaderDataChange]);
 
   const loadChunkFiles = async () => {
     try {
@@ -96,16 +132,22 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
     }
   };
 
-  const loadChunkData = async (chunk: ChunkFile) => {
+  const loadChunkData = async (chunk: ChunkFile, page: number = 1) => {
     try {
       setLoadingChunk(true);
       setSelectedChunk(chunk);
+      setCurrentPage(page);
+      
+      const limit = 1000; // 1k records per page
+      const offset = (page - 1) * limit;
       
       const response = await fetch(
         `${apiBaseUrl}/api/comparison-export/${runId}/chunk-file?` +
         `columns=${encodeURIComponent(columns)}&` +
         `category=${chunk.category}&` +
-        `chunk_index=${chunk.chunk_index}`
+        `chunk_index=${chunk.chunk_index}&` +
+        `offset=${offset}&` +
+        `limit=${limit}`
       );
       
       if (!response.ok) {
@@ -114,12 +156,35 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
 
       const data = await response.json();
       setChunkData(data.records || []);
-      toast.success(`Loaded ${data.record_count?.toLocaleString() || 0} records from ${chunk.chunk_name}`);
+      setPagination(data.pagination || null);
+      
+      const pageInfo = data.pagination 
+        ? ` (Page ${data.pagination.current_page}/${data.pagination.total_pages})`
+        : '';
+      toast.success(`Loaded ${data.record_count?.toLocaleString() || 0} records${pageInfo} from ${chunk.chunk_name}`);
     } catch (error: any) {
       console.error('Error loading chunk data:', error);
       toast.error(error.message || 'Failed to load chunk data');
     } finally {
       setLoadingChunk(false);
+    }
+  };
+  
+  const handleNextPage = () => {
+    if (selectedChunk && pagination && pagination.has_more) {
+      loadChunkData(selectedChunk, currentPage + 1);
+    }
+  };
+  
+  const handlePrevPage = () => {
+    if (selectedChunk && currentPage > 1) {
+      loadChunkData(selectedChunk, currentPage - 1);
+    }
+  };
+  
+  const handlePageJump = (page: number) => {
+    if (selectedChunk && page >= 1 && pagination && page <= pagination.total_pages) {
+      loadChunkData(selectedChunk, page);
     }
   };
 
@@ -202,87 +267,99 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
 
   return (
     <div className="space-y-1">
-      {/* Ultra Compact Single-Row Header with Tabs and Stats */}
-      <div className="flex items-center justify-between bg-white border rounded-lg px-3 py-2 shadow-sm">
-        {/* Left: Category Tabs */}
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setActiveCategory('matched')}
-            className={`px-3 py-1 font-medium rounded transition-colors text-xs ${
-              activeCategory === 'matched'
-                ? 'bg-green-600 text-white shadow'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            ✅ Matched ({chunkFiles.matched.length})
-          </button>
-          <button
-            onClick={() => setActiveCategory('only_a')}
-            className={`px-3 py-1 font-medium rounded transition-colors text-xs ${
-              activeCategory === 'only_a'
-                ? 'bg-cyan-600 text-white shadow'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            📘 Only A ({chunkFiles.only_a.length})
-          </button>
-          <button
-            onClick={() => setActiveCategory('only_b')}
-            className={`px-3 py-1 font-medium rounded transition-colors text-xs ${
-              activeCategory === 'only_b'
-                ? 'bg-orange-600 text-white shadow'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            📙 Only B ({chunkFiles.only_b.length})
-          </button>
-        </div>
+      {/* Compact Header with Clickable Category Tabs */}
+      {!hideHeader && (
+        <div className="glass-card px-3 py-2 shadow-soft animate-fade-in">
+          <div className="flex items-center justify-between">
+            {/* Left: Clickable Category Tabs */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setActiveCategory('matched')}
+                className={`px-3 py-1.5 font-semibold rounded-lg text-xs transition-all duration-200 ${
+                  activeCategory === 'matched'
+                    ? 'bg-gradient-to-r from-success-500 to-success-600 text-white shadow-medium scale-105'
+                    : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                }`}
+              >
+                ✅ Matched ({chunkFiles.matched.length})
+              </button>
+              <button
+                onClick={() => setActiveCategory('only_a')}
+                className={`px-3 py-1.5 font-semibold rounded-lg text-xs transition-all duration-200 ${
+                  activeCategory === 'only_a'
+                    ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-105'
+                    : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                }`}
+              >
+                📘 Only A ({chunkFiles.only_a.length})
+              </button>
+              <button
+                onClick={() => setActiveCategory('only_b')}
+                className={`px-3 py-1.5 font-semibold rounded-lg text-xs transition-all duration-200 ${
+                  activeCategory === 'only_b'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-medium scale-105'
+                    : 'bg-white/80 text-gray-700 hover:bg-white hover:shadow-soft border border-gray-200'
+                }`}
+              >
+                📙 Only B ({chunkFiles.only_b.length})
+              </button>
+            </div>
 
-        {/* Right: Stats & Back Button */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-3 text-xs text-gray-600">
-            <span><strong>Total:</strong> {totalChunks} chunks</span>
-            <span className="text-gray-400">|</span>
-            <span className="text-gray-500">10k records/chunk</span>
+            {/* Right: Stats & Back Button */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600">
+                <span className="flex items-center gap-1">
+                  <span className="text-gray-500">Total:</span>
+                  <span className="badge-primary text-[9px] px-1.5 py-0.5">{totalChunks} chunks</span>
+                </span>
+                <span className="text-gray-300">•</span>
+                <span className="text-gray-500">10k records/chunk</span>
+              </div>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="btn-ghost px-2 py-1 text-xs"
+                >
+                  ← Back
+                </button>
+              )}
+            </div>
           </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs transition-colors"
-            >
-              ← Back
-            </button>
-          )}
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
         {/* Chunk Files List - Compact */}
-        <div className="lg:col-span-1 bg-white border rounded-lg p-2 max-h-[70vh] overflow-y-auto">
-          <h3 className="font-semibold text-gray-800 mb-2 text-sm px-1">Files ({currentChunks.length})</h3>
+        <div className="lg:col-span-1 card-modern p-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <h3 className="font-bold text-gray-800 mb-2 text-xs flex items-center gap-1.5">
+            <span className="text-primary-600 text-sm">📁</span>
+            Files ({currentChunks.length})
+          </h3>
           
           {currentChunks.length === 0 ? (
-            <div className="text-center py-6 text-gray-500 text-sm">
-              <p>No chunks</p>
+            <div className="text-center py-6 text-gray-400">
+              <div className="text-2xl mb-1">📂</div>
+              <p className="text-xs">No chunks available</p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {currentChunks.map((chunk) => (
                 <div
                   key={chunk.file_id}
-                  className={`border rounded p-2 cursor-pointer transition-all text-xs ${
+                  className={`rounded-lg p-2 cursor-pointer transition-all duration-200 text-xs ${
                     selectedChunk?.file_id === chunk.file_id
-                      ? 'bg-primary text-white border-primary shadow'
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-300'
+                      ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-medium scale-[1.02]'
+                      : 'bg-gradient-to-br from-white to-gray-50 hover:from-primary-50 hover:to-blue-50 border border-gray-200 hover:border-primary-200 hover:shadow-soft'
                   }`}
                   onClick={() => loadChunkData(chunk)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{chunk.chunk_name}</div>
-                      <div className={`text-xs mt-0.5 ${
-                        selectedChunk?.file_id === chunk.file_id ? 'text-white/80' : 'text-gray-600'
+                      <div className="font-semibold truncate text-[11px]">{chunk.chunk_name}</div>
+                      <div className={`text-[10px] mt-0.5 flex items-center gap-0.5 ${
+                        selectedChunk?.file_id === chunk.file_id ? 'text-white/90' : 'text-gray-500'
                       }`}>
+                        <span className="inline-block w-1 h-1 rounded-full bg-current"></span>
                         {chunk.row_count.toLocaleString()} rows
                       </div>
                     </div>
@@ -291,10 +368,10 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
                         e.stopPropagation();
                         downloadChunkFile(chunk);
                       }}
-                      className={`ml-1 px-1.5 py-0.5 rounded text-xs ${
+                      className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium transition-all duration-200 ${
                         selectedChunk?.file_id === chunk.file_id
-                          ? 'bg-white text-primary hover:bg-gray-100'
-                          : 'bg-primary text-white hover:bg-primary-dark'
+                          ? 'bg-white text-primary-600 hover:bg-gray-100'
+                          : 'bg-primary-500 text-white hover:bg-primary-600'
                       }`}
                       title="Download"
                     >
@@ -307,69 +384,149 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
           )}
         </div>
 
-        {/* Chunk Data View - More Space */}
-        <div className="lg:col-span-3 bg-white border rounded-lg p-2">
-          <div className="flex items-center justify-between mb-2 px-2">
-            <h3 className="font-semibold text-gray-800 text-sm">
+        {/* Chunk Data View - Compact */}
+        <div className="lg:col-span-3 card-modern p-2">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-bold text-gray-800 text-xs flex items-center gap-1.5">
+              <span className="text-primary-600 text-sm">📄</span>
               {selectedChunk ? selectedChunk.chunk_name : 'Select a chunk to view'}
             </h3>
-            {selectedChunk && (
-              <div className="text-xs text-gray-600">
-                {chunkData.length.toLocaleString()} records
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {pagination && (
+                <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600">
+                  <span className="badge-primary px-2 py-0.5">
+                    Page {pagination.current_page} of {pagination.total_pages}
+                  </span>
+                  <span className="text-gray-500">
+                    ({pagination.total_records.toLocaleString()} total records)
+                  </span>
+                </div>
+              )}
+              {selectedChunk && !pagination && (
+                <div className="badge-primary text-[10px] px-2 py-0.5">
+                  {chunkData.length.toLocaleString()} records
+                </div>
+              )}
+            </div>
           </div>
 
           {loadingChunk ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin h-6 w-6 border-4 border-primary border-t-transparent rounded-full"></div>
-              <span className="ml-2 text-sm text-gray-600">Loading...</span>
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="relative">
+                <div className="animate-spin h-8 w-8 border-3 border-primary-200 border-t-primary-600 rounded-full"></div>
+                <div className="absolute inset-0 animate-ping h-8 w-8 border-3 border-primary-400 rounded-full opacity-20"></div>
+              </div>
+              <span className="mt-3 text-xs font-medium text-gray-600">Loading chunk data...</span>
             </div>
           ) : chunkData.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-10 text-gray-400">
               <div className="text-4xl mb-2">📂</div>
-              <p className="text-sm">Select a chunk file to view</p>
+              <p className="text-sm font-semibold text-gray-600">Select a chunk file to view</p>
+              <p className="text-xs mt-0.5">Click on any file from the list to view its contents</p>
             </div>
           ) : (
-            <div className="overflow-auto border rounded-lg" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-              <table className="w-full border-collapse text-xs">
-                <thead className="bg-gray-100 sticky top-0">
-                  <tr>
-                    {Object.keys(chunkData[0] || {}).map((col) => (
-                      <th
-                        key={col}
-                        className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase border-b-2 border-gray-300 whitespace-nowrap"
-                      >
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {chunkData.map((record, idx) => (
-                    <tr
-                      key={idx}
-                      className="border-b hover:bg-blue-50 transition-colors"
-                    >
-                      {Object.entries(record).map(([key, value], cellIdx) => (
-                        <td
-                          key={cellIdx}
-                          className="px-3 py-1.5 text-xs cursor-pointer hover:bg-blue-100"
-                          onClick={() => copyToClipboard(String(value ?? ''))}
-                          title="Click to copy"
-                        >
-                          {value === null || value === undefined ? (
-                            <span className="text-gray-400 italic">null</span>
-                          ) : (
-                            String(value)
-                          )}
-                        </td>
+            <>
+              <div className="overflow-auto rounded-xl border border-gray-200" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+                <table className="table-modern">
+                  <thead>
+                    <tr>
+                      {Object.keys(chunkData[0] || {}).map((col) => (
+                        <th key={col} className="sticky top-0 bg-gradient-to-r from-gray-50 to-blue-50 backdrop-blur-sm">
+                          {col}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {chunkData.map((record, idx) => (
+                      <tr key={idx}>
+                        {Object.entries(record).map(([key, value], cellIdx) => (
+                          <td
+                            key={cellIdx}
+                            className="group cursor-pointer"
+                            onClick={() => copyToClipboard(String(value ?? ''))}
+                            title="Click to copy"
+                          >
+                            <div className="flex items-center gap-2">
+                              {value === null || value === undefined ? (
+                                <span className="text-gray-400 italic text-xs">null</span>
+                              ) : (
+                                <>
+                                  <span>{String(value)}</span>
+                                  <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-xs">📋</span>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Compact Pagination Controls */}
+              {pagination && pagination.total_pages > 1 && (
+                <div className="mt-2 flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={!pagination.has_more}
+                      className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-medium text-gray-600">
+                      Showing {((currentPage - 1) * pagination.limit + 1).toLocaleString()} - {Math.min(currentPage * pagination.limit, pagination.total_records).toLocaleString()} of {pagination.total_records.toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-medium text-gray-500">Jump to:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={pagination.total_pages}
+                        value={currentPage}
+                        onChange={(e) => {
+                          const page = parseInt(e.target.value);
+                          if (page && page >= 1 && page <= pagination.total_pages) {
+                            handlePageJump(page);
+                          }
+                        }}
+                        className="w-14 px-1.5 py-0.5 text-[10px] text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      />
+                      <span className="text-[10px] font-medium text-gray-500">/ {pagination.total_pages}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handlePageJump(1)}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      First
+                    </button>
+                    <button
+                      onClick={() => handlePageJump(pagination.total_pages)}
+                      disabled={currentPage === pagination.total_pages}
+                      className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

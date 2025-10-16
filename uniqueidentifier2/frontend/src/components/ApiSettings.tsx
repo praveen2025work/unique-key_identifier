@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { CogIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';

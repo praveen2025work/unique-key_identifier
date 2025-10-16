@@ -1,0 +1,29 @@
+{
+  "run_id": 3,
+  "columns": "department,email,name",
+  "generated_at": "2025-10-15T20:48:22.818273",
+  "summary": {
+    "matched_count": 10,
+    "only_a_count": 0,
+    "only_b_count": 2,
+    "total_a": 10,
+    "total_b": 12
+  },
+  "matched_sample": [
+    "Engineering||bob.johnson@email.com||Bob Johnson",
+    "Marketing||jane.smith@email.com||Jane Smith",
+    "HR||alice.brown@email.com||Alice Brown",
+    "Engineering||john.doe@email.com||John Doe",
+    "Sales||charlie.wilson@email.com||Charlie Wilson",
+    "Engineering||diana.davis@email.com||Diana Davis",
+    "Sales||frank.garcia@email.com||Frank Garcia",
+    "HR||grace.lee@email.com||Grace Lee",
+    "Marketing||eve.miller@email.com||Eve Miller",
+    "Engineering||henry.taylor@email.com||Henry Taylor"
+  ],
+  "only_a_sample": [],
+  "only_b_sample": [
+    "Marketing||isabel.martinez@email.com||Isabel Martinez",
+    "Engineering||jack.anderson@email.com||Jack Anderson"
+  ]
+}

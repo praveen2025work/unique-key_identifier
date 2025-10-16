@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import apiService from '../services/api';
 import type { ComparisonSummary, ComparisonDataResponse } from '../types';
@@ -332,4 +334,3 @@ export default function ComparisonViewer({ runId, columns }: ComparisonViewerPro
     </div>
   );
 }
-

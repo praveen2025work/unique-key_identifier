@@ -1,3 +1,5 @@
+'use client'
+
 // Simple Tabs implementation (compatible with Radix/Shadcn style)
 import React, { createContext, useContext, useState } from 'react';
 
@@ -77,4 +79,3 @@ export function TabsContent({
 
   return <div className={className}>{children}</div>;
 }
-

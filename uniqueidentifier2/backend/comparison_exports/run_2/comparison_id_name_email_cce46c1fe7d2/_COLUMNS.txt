@@ -1,0 +1,11 @@
+Run ID: 2
+Columns: id,name,email,department,salary
+Column Count: 5
+Generated: 2025-10-15 20:42:13
+
+Column List:
+  1. id
+  2. name
+  3. email
+  4. department
+  5. salary

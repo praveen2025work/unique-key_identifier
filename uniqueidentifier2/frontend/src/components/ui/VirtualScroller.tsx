@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 
 interface VirtualScrollerProps<T> {
@@ -121,4 +123,3 @@ export function VirtualScrollerSkeleton({
     </div>
   );
 }
-

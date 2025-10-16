@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Simple Comparison Viewer with Pagination - FULL FILE COMPARISON
  * Shows ALL columns from both files, not just key columns

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useState } from 'react';
 import apiService from '../services/api';
 import type { RunDetails, AnalysisResult, JobStatus } from '../types';
@@ -643,4 +645,3 @@ export default function EnhancedResultsViewer({ runId, onBack }: EnhancedResults
     </div>
   );
 }
-
