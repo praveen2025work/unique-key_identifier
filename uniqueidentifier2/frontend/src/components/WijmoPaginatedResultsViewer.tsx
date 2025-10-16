@@ -1,21 +1,19 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import apiService from '../services/api';
 import type { RunDetails, AnalysisResult } from '../types';
 import toast from 'react-hot-toast';
-import Pagination from './ui/Pagination';
-import VirtualScroller from './ui/VirtualScroller';
+import WijmoDataGrid from './WijmoDataGrid';
 import { 
   MagnifyingGlassIcon, 
   ArrowDownTrayIcon,
   FunnelIcon,
-  ChartBarIcon,
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
 
-interface PaginatedResultsViewerProps {
+interface WijmoPaginatedResultsViewerProps {
   runId: number;
   onBack?: () => void;
 }
@@ -23,7 +21,7 @@ interface PaginatedResultsViewerProps {
 type SideFilter = 'all' | 'A' | 'B';
 type UniqueFilter = 'all' | 'unique' | 'duplicates';
 
-export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResultsViewerProps) {
+export default function WijmoPaginatedResultsViewer({ runId, onBack }: WijmoPaginatedResultsViewerProps) {
   const [details, setDetails] = useState<RunDetails | null>(null);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +37,6 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
   const [sideFilter, setSideFilter] = useState<SideFilter>('all');
   const [uniqueFilter, setUniqueFilter] = useState<UniqueFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Virtual scrolling state
-  const [useVirtualScroll, setUseVirtualScroll] = useState(true);
 
   useEffect(() => {
     loadResults();
@@ -89,22 +84,16 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    // Scroll to top when page changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setCurrentPage(1); // Reset to first page
   };
 
   const handleSideFilterChange = (side: SideFilter) => {
     setSideFilter(side);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
   };
 
   // Apply client-side filters
-  const getFilteredResults = useCallback(() => {
+  const filteredResults = useMemo(() => {
     let filtered = results;
 
     // Filter by unique status
@@ -121,15 +110,8 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
       );
     }
 
-    // Sort by column name in ascending order
-    filtered = [...filtered].sort((a, b) => 
-      a.columns.localeCompare(b.columns)
-    );
-
-    return filtered;
+    return filtered.sort((a, b) => a.columns.localeCompare(b.columns));
   }, [results, uniqueFilter, searchTerm]);
-
-  const filteredResults = getFilteredResults();
 
   const handleDownloadCSV = async () => {
     try {
@@ -151,69 +133,44 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
     }
   };
 
-  // Render single result row
-  const renderResultRow = (result: AnalysisResult, index: number) => {
-    const scoreColor = result.uniqueness_score === 100
-      ? 'text-green-600'
-      : result.uniqueness_score >= 95
-      ? 'text-blue-600'
-      : result.uniqueness_score >= 80
-      ? 'text-yellow-600'
-      : 'text-red-600';
+  // Transform data for Wijmo grid
+  const gridData = useMemo(() => {
+    return filteredResults.map((result, index) => ({
+      index: index + 1,
+      columns: result.columns,
+      total_rows: result.total_rows,
+      unique_rows: result.unique_rows,
+      duplicate_count: result.duplicate_count,
+      uniqueness_score: result.uniqueness_score.toFixed(1) + '%',
+      score_value: result.uniqueness_score, // For sorting
+      is_unique_key: result.is_unique_key ? 'Yes' : 'No',
+      status_badge: result.is_unique_key,
+    }));
+  }, [filteredResults]);
 
-    return (
-      <div className="flex items-center border-b border-gray-200 hover:bg-gray-50 transition-colors px-4">
-        <div className="w-8 text-xs text-gray-500 font-medium">{index + 1}</div>
-        <div className="flex-1 min-w-0 py-3 font-mono text-sm truncate">{result.columns}</div>
-        <div className="w-24 text-center text-sm">{result.total_rows.toLocaleString()}</div>
-        <div className="w-24 text-center text-sm text-green-600 font-semibold">
-          {result.unique_rows.toLocaleString()}
-        </div>
-        <div className="w-24 text-center text-sm text-red-600">
-          {result.duplicate_count.toLocaleString()}
-        </div>
-        <div className="w-32 flex items-center justify-center">
-          <div className="w-full max-w-[80px] bg-gray-200 rounded-full h-2 mr-2">
-            <div
-              className={`h-2 rounded-full ${
-                result.uniqueness_score === 100
-                  ? 'bg-green-500'
-                  : result.uniqueness_score >= 95
-                  ? 'bg-blue-500'
-                  : result.uniqueness_score >= 80
-                  ? 'bg-yellow-500'
-                  : 'bg-red-500'
-              }`}
-              style={{ width: `${result.uniqueness_score}%` }}
-            ></div>
-          </div>
-          <span className={`font-bold text-sm ${scoreColor}`}>
-            {result.uniqueness_score.toFixed(1)}%
-          </span>
-        </div>
-        <div className="w-32 text-center">
-          {result.is_unique_key ? (
-            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
-              <CheckCircleIcon className="w-3 h-3 mr-1" />
-              Unique Key
-            </span>
-          ) : (
-            <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-              <XCircleIcon className="w-3 h-3 mr-1" />
-              Has Duplicates
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  };
+  // Define grid columns
+  const gridColumns = useMemo(() => [
+    { binding: 'index', header: '#', width: 60, isReadOnly: true },
+    { binding: 'columns', header: 'Columns', width: '*', isReadOnly: true },
+    { binding: 'total_rows', header: 'Total Rows', width: 120, align: 'center', format: 'n0', isReadOnly: true },
+    { binding: 'unique_rows', header: 'Unique', width: 120, align: 'center', format: 'n0', isReadOnly: true },
+    { binding: 'duplicate_count', header: 'Duplicates', width: 120, align: 'center', format: 'n0', isReadOnly: true },
+    { binding: 'uniqueness_score', header: 'Score', width: 120, align: 'center', isReadOnly: true },
+    { binding: 'is_unique_key', header: 'Unique Key', width: 140, align: 'center', isReadOnly: true },
+  ], []);
+
+  const handleLoadMore = useCallback((pageIndex: number) => {
+    setCurrentPage(pageIndex);
+  }, []);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12">
         <div className="animate-spin h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
         <span className="mt-4 text-lg text-gray-600 font-medium">Loading results...</span>
-        <span className="mt-1 text-sm text-gray-500">Preparing {totalResults > 0 ? totalResults.toLocaleString() : ''} results</span>
+        <span className="mt-1 text-sm text-gray-500">
+          {totalResults > 0 ? `Preparing ${totalResults.toLocaleString()} results` : 'Please wait...'}
+        </span>
       </div>
     );
   }
@@ -346,7 +303,8 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              ✓ Unique
+              <CheckCircleIcon className="w-4 h-4 inline mr-1" />
+              Unique
             </button>
             <button
               onClick={() => setUniqueFilter('duplicates')}
@@ -356,96 +314,43 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              × Duplicates
+              <XCircleIcon className="w-4 h-4 inline mr-1" />
+              Duplicates
             </button>
           </div>
-
-          {/* Virtual scroll toggle */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useVirtualScroll}
-              onChange={(e) => setUseVirtualScroll(e.target.checked)}
-              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-            />
-            <span className="text-sm font-medium text-gray-700">Virtual Scroll</span>
-          </label>
         </div>
       </div>
 
-      {/* Results Table */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Table Header */}
-        <div className="flex items-center bg-gradient-to-r from-gray-100 to-gray-50 border-b-2 border-gray-300 px-4 py-3">
-          <div className="w-8 text-xs font-bold text-gray-600">#</div>
-          <div className="flex-1 text-sm font-bold text-gray-700">Columns</div>
-          <div className="w-24 text-center text-sm font-bold text-gray-700">Total Rows</div>
-          <div className="w-24 text-center text-sm font-bold text-gray-700">Unique</div>
-          <div className="w-24 text-center text-sm font-bold text-gray-700">Duplicates</div>
-          <div className="w-32 text-center text-sm font-bold text-gray-700">Score</div>
-          <div className="w-32 text-center text-sm font-bold text-gray-700">Status</div>
-        </div>
-
-        {/* Table Body */}
-        {loadingPage ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full mx-auto"></div>
-              <p className="mt-2 text-sm text-gray-600">Loading page {currentPage}...</p>
-            </div>
-          </div>
-        ) : filteredResults.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <ChartBarIcon className="w-16 h-16 mx-auto mb-2 text-gray-400" />
-              <p className="text-lg font-medium">No results found</p>
-              <p className="text-sm mt-1">Try adjusting your filters</p>
-            </div>
-          </div>
-        ) : useVirtualScroll && filteredResults.length > 20 ? (
-          <VirtualScroller
-            items={filteredResults}
-            itemHeight={48}
-            containerHeight={600}
-            renderItem={renderResultRow}
-            overscan={10}
-            className="flex-1"
-            emptyMessage="No results to display"
-          />
-        ) : (
-          <div className="flex-1 overflow-y-auto">
-            {filteredResults.map((result, index) => renderResultRow(result, index))}
-          </div>
-        )}
-      </div>
-
-      {/* Footer with Pagination */}
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalResults={totalResults}
+      {/* Wijmo Grid */}
+      <div className="flex-1 p-6">
+        <WijmoDataGrid
+          data={gridData}
+          columns={gridColumns}
           pageSize={pageSize}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
-          disabled={loadingPage}
-          showPageSizeSelector={true}
-          pageSizeOptions={[50, 100, 200, 500]}
+          allowPaging={true}
+          allowSorting={true}
+          allowFiltering={true}
+          loading={loadingPage}
+          totalItems={totalResults}
+          onLoadMoreData={handleLoadMore}
+          height={600}
+          showRowNumbers={false}
+          className="border rounded-lg"
         />
-      )}
+      </div>
 
       {/* Info banner for large datasets */}
       {totalResults > 1000 && (
         <div className="bg-blue-50 border-t border-blue-200 px-6 py-3">
           <div className="flex items-center gap-2 text-sm text-blue-800">
-            <ChartBarIcon className="w-4 h-4" />
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
             <span className="font-medium">
               Large dataset detected ({totalResults.toLocaleString()} results).
             </span>
             <span>
-              {useVirtualScroll 
-                ? 'Virtual scrolling enabled for optimal performance.' 
-                : 'Consider enabling virtual scroll for better performance.'}
+              Wijmo FlexGrid provides optimized virtual scrolling and memory management for best performance.
             </span>
           </div>
         </div>
@@ -453,3 +358,4 @@ export default function PaginatedResultsViewer({ runId, onBack }: PaginatedResul
     </div>
   );
 }
+
