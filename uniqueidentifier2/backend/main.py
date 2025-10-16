@@ -282,43 +282,42 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         update_stage_status(run_id, 'storing_results', 'completed', f'Saved {len(results_a) + len(results_b)} results')
         
-        # NEW: Generate comparison cache for efficient retrieval
-        try:
-            update_job_status(run_id, stage='generating_comparison_cache', progress=92)
-            update_stage_status(run_id, 'generating_comparison_cache', 'in_progress', 'Creating comparison cache files')
-            
-            # Get all analyzed column combinations
-            analyzed_combinations = [r['columns'] for r in results_a]
-            
-            # Generate cache (files already loaded, so this is fast!)
-            cache_count = generate_comparison_cache(run_id, df_a, df_b, analyzed_combinations)
-            
-            update_stage_status(run_id, 'generating_comparison_cache', 'completed', 
-                              f'Generated {cache_count} comparison caches')
-            print(f"✅ Generated {cache_count} comparison caches for run {run_id}")
-        except Exception as cache_error:
-            # Don't fail the whole job if cache generation fails
-            print(f"⚠️  Warning: Failed to generate comparison cache: {cache_error}")
-            update_stage_status(run_id, 'generating_comparison_cache', 'error', 
-                              f'Cache generation failed: {str(cache_error)}')
-        
-        # NEW: Generate comparison exports based on user selection
+        # Generate comparison exports based on user selection (Column Combos and/or File A-B)
         if generate_column_combinations or generate_file_comparison:
             try:
-                update_job_status(run_id, stage='generating_comparisons', progress=95)
+                update_job_status(run_id, stage='generating_comparisons', progress=90)
+                
+                # Determine what we're generating
+                generating_what = []
+                if generate_column_combinations:
+                    generating_what.append('column combinations')
+                if generate_file_comparison:
+                    generating_what.append('file A-B comparison')
+                
                 update_stage_status(run_id, 'generating_comparisons', 'in_progress', 
-                                  'Generating comparison exports')
+                                  f'Generating {" + ".join(generating_what)} exports')
                 
                 # Create ChunkedFileExporter with correct delimiters
                 exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
+                
+                # Get all analyzed column combinations from results
+                analyzed_combinations = [r['columns'] for r in results_a]
                 
                 # Build list of combinations to generate
                 combinations_to_generate = []
                 
                 # Add column combinations if enabled
                 if generate_column_combinations:
-                    combinations_to_generate.extend(list(analyzed_combinations))
-                    print(f"   📊 Column Combination Analysis: {len(analyzed_combinations)} combinations")
+                    # Get combinations that were actually analyzed (not all-columns if it wasn't originally requested)
+                    if generate_file_comparison:
+                        # Exclude the all-columns combo as we'll add it separately below
+                        all_columns_str = ','.join(validated_columns)
+                        analyzed_combos_only = [c for c in analyzed_combinations if c != all_columns_str]
+                        combinations_to_generate.extend(analyzed_combos_only)
+                        print(f"   📊 Column Combination Analysis: {len(analyzed_combos_only)} combinations")
+                    else:
+                        combinations_to_generate.extend(analyzed_combinations)
+                        print(f"   📊 Column Combination Analysis: {len(analyzed_combinations)} combinations")
                 
                 # Add "all columns" for file-file comparison if enabled
                 if generate_file_comparison:
@@ -582,12 +581,11 @@ async def compare_files(
             ('analyzing_file_a', 3 + stage_offset, 'pending'),
             ('analyzing_file_b', 4 + stage_offset, 'pending'),
             ('storing_results', 5 + stage_offset, 'pending'),
-            ('generating_comparison_cache', 6 + stage_offset, 'pending'),
         ])
         
         # Add comparison generation stage if enabled
         if generate_column_combinations or generate_file_comparison:
-            stages.append(('generating_comparisons', 7 + stage_offset, 'pending'))
+            stages.append(('generating_comparisons', 6 + stage_offset, 'pending'))
         
         for stage_name, order, status in stages:
             cursor.execute('''

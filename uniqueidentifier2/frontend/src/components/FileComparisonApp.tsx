@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import ModernDropdown from './ui/ModernDropdown';
 import ChunkedFileListViewer, { Category } from './ChunkedFileListViewer';
+import WorkflowView from './WorkflowView';
+import type { JobStatus } from '../types';
 
 interface FileInfo {
   columns: string[];
@@ -955,7 +957,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       {results.timestamp}
                     </p>
                   </div>
-                  <div className="min-w-[220px]">
+                  <div className="min-w-[220px] relative z-[100]">
                     <ModernDropdown
                       value={results.run_id}
                       onChange={(value) => handleViewResults(parseInt(value as string))}
@@ -1181,69 +1183,10 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 </div>
               )}
               
-              {/* Workflow Tab - NEW */}
+              {/* Workflow Tab - Unified View */}
               {resultsTab === 'workflow' && jobStatus && (
                 <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                  <h3 className="text-sm font-bold mb-2">Processing Workflow</h3>
-                  
-                  <div className="mb-2">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold">Overall Progress</span>
-                      <span className="font-bold text-[#337ab7]">{jobStatus.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-full transition-all ${jobStatus.status === 'error' ? 'bg-red-600' : 'bg-[#337ab7]'}`} style={{ width: `${jobStatus.progress}%` }}></div>
-              </div>
-            </div>
-
-                  <div className="mb-2">
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${
-                      jobStatus.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      jobStatus.status === 'running' ? 'bg-[#337ab7]/10 text-[#337ab7]' :
-                      jobStatus.status === 'error' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {jobStatus.status.toUpperCase()}
-                    </span>
-          </div>
-                  
-                  {jobStatus.error && (
-                    <div className="bg-red-50 border border-red-200 rounded p-2 mb-2 text-xs text-red-700">{jobStatus.error}</div>
-                  )}
-                  
-                  <div className="space-y-1.5">
-                    {jobStatus.stages && jobStatus.stages.map((stage: any, idx: number) => (
-                      <div key={idx} className={`flex items-center space-x-2 p-2 rounded border text-xs ${
-                        stage.status === 'in_progress' ? 'border-[#337ab7]/30 bg-[#337ab7]/5' :
-                        stage.status === 'completed' ? 'border-green-300 bg-green-50' :
-                        stage.status === 'error' ? 'border-red-300 bg-red-50' :
-                        'border-gray-200 bg-gray-50'
-                      }`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                          stage.status === 'completed' ? 'bg-green-600 text-white' :
-                          stage.status === 'in_progress' ? 'bg-[#337ab7] text-white' :
-                          stage.status === 'error' ? 'bg-red-600 text-white' :
-                          'bg-gray-300 text-gray-600'
-                        }`}>
-                          {stage.status === 'completed' ? '✓' : stage.status === 'in_progress' ? '⟳' : stage.status === 'error' ? '✗' : idx + 1}
-      </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex justify-between items-center">
-                            <div className="font-semibold truncate">{stage.name.replace(/_/g, ' ').toUpperCase()}</div>
-                            <span className={`px-1.5 py-0.5 rounded text-xs flex-shrink-0 ml-2 ${
-                              stage.status === 'completed' ? 'bg-green-200 text-green-800' :
-                              stage.status === 'in_progress' ? 'bg-[#337ab7]/20 text-[#337ab7]' :
-                              stage.status === 'error' ? 'bg-red-200 text-red-800' :
-                              'bg-gray-200 text-gray-600'
-                            }`}>
-                              {stage.status === 'in_progress' ? 'Running' : stage.status === 'completed' ? 'Done' : stage.status === 'error' ? 'Failed' : 'Pending'}
-                            </span>
-                          </div>
-                          {stage.details && <div className="text-xs text-gray-600 mt-0.5 truncate">{stage.details}</div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <WorkflowView jobStatus={jobStatus} compact={true} />
                 </div>
               )}
               
