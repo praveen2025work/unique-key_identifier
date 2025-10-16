@@ -151,6 +151,8 @@ export interface DataQualityReport {
     total_columns: number;
     columns: Record<string, ColumnQuality>;
     overall_issues: Issue[];
+    column_issues?: Record<string, Issue[]>;
+    consistency_metrics?: Record<string, any>;
   };
   file2_report: {
     file_name: string;
@@ -158,6 +160,8 @@ export interface DataQualityReport {
     total_columns: number;
     columns: Record<string, ColumnQuality>;
     overall_issues: Issue[];
+    column_issues?: Record<string, Issue[]>;
+    consistency_metrics?: Record<string, any>;
   };
   discrepancies: Discrepancy[];
 }
@@ -175,16 +179,19 @@ export interface ColumnQuality {
 }
 
 export interface Issue {
-  column: string;
-  issue: string;
+  column?: string;
+  issue?: string;
+  type?: string;
+  message?: string;
   severity: 'high' | 'medium' | 'low';
 }
 
 export interface Discrepancy {
-  type: string;
+  type?: string;
   column?: string;
   severity: 'high' | 'medium' | 'low';
-  message: string;
+  message?: string;
+  issue?: string;
 }
 
 // Form and UI Types

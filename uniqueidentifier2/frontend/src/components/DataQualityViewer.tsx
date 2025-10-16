@@ -10,8 +10,8 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChartBarIcon,
-  ChevronDownIcon,
-  ChevronUpIcon
+  DocumentDuplicateIcon,
+  ClipboardDocumentIcon
 } from '@heroicons/react/24/outline';
 
 interface DataQualityViewerProps {
@@ -21,7 +21,7 @@ interface DataQualityViewerProps {
 export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
   const [report, setReport] = useState<DataQualityReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
     loadReport();
@@ -34,7 +34,6 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
       setReport(data);
     } catch (error) {
       if (error instanceof Error && error.message.includes('No quality check')) {
-        // No quality check was performed, don't show error
         setReport(null);
       } else {
         toast.error('Failed to load data quality report');
@@ -45,194 +44,273 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
     }
   };
 
+  const copyToClipboard = (text: string, label: string = 'Content') => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`, { duration: 2000 });
+  };
+
+  const copyReportAsJSON = () => {
+    if (!report) return;
+    
+    const structuredReport = {
+      metadata: {
+        title: 'Data Quality Report',
+        version: '2.0',
+        generated_at: new Date().toISOString(),
+        run_id: runId
+      },
+      summary: {
+        status: report.summary.status,
+        status_message: report.summary.status_message,
+        total_issues: report.summary.total_issues,
+        high_severity_count: report.summary.high_severity_count,
+        medium_severity_count: report.summary.medium_severity_count,
+        file1_issues: report.summary.file1_issues,
+        file2_issues: report.summary.file2_issues,
+        cross_file_issues: report.summary.cross_file_issues
+      },
+      cross_file_discrepancies: report.discrepancies || [],
+      file_a_report: report.file1_report ? {
+        file_name: report.file1_report.file_name,
+        total_rows: report.file1_report.total_rows,
+        total_columns: report.file1_report.total_columns,
+        overall_issues: report.file1_report.overall_issues,
+        column_issues: report.file1_report.column_issues || {},
+        consistency_metrics: report.file1_report.consistency_metrics || {}
+      } : null,
+      file_b_report: report.file2_report ? {
+        file_name: report.file2_report.file_name,
+        total_rows: report.file2_report.total_rows,
+        total_columns: report.file2_report.total_columns,
+        overall_issues: report.file2_report.overall_issues,
+        column_issues: report.file2_report.column_issues || {},
+        consistency_metrics: report.file2_report.consistency_metrics || {}
+      } : null
+    };
+
+    copyToClipboard(JSON.stringify(structuredReport, null, 2), 'JSON Report');
+  };
+
+  const copyReportAsCSV = () => {
+    if (!report) return;
+    
+    // CSV format for all issues
+    let csv = 'Category,File,Severity,Type,Column,Issue/Message\n';
+    
+    // Cross-file discrepancies
+    if (report.discrepancies && report.discrepancies.length > 0) {
+      report.discrepancies.forEach(disc => {
+        const type = (disc.type || 'ISSUE').replace(/,/g, ';');
+        const message = (disc.message || disc.issue || '').replace(/,/g, ';').replace(/\n/g, ' ');
+        const column = (disc.column || '').replace(/,/g, ';');
+        csv += `Cross-File,Both,${disc.severity},${type},${column},"${message}"\n`;
+      });
+    }
+    
+    // File A issues
+    if (report.file1_report && report.file1_report.overall_issues.length > 0) {
+      report.file1_report.overall_issues.forEach(issue => {
+        const type = (issue.type || 'ISSUE').replace(/,/g, ';');
+        const message = (issue.message || issue.issue || '').replace(/,/g, ';').replace(/\n/g, ' ');
+        const column = (issue.column || '').replace(/,/g, ';');
+        csv += `File-Specific,File A,${issue.severity},${type},${column},"${message}"\n`;
+      });
+    }
+    
+    // File B issues
+    if (report.file2_report && report.file2_report.overall_issues.length > 0) {
+      report.file2_report.overall_issues.forEach(issue => {
+        const type = (issue.type || 'ISSUE').replace(/,/g, ';');
+        const message = (issue.message || issue.issue || '').replace(/,/g, ';').replace(/\n/g, ' ');
+        const column = (issue.column || '').replace(/,/g, ';');
+        csv += `File-Specific,File B,${issue.severity},${type},${column},"${message}"\n`;
+      });
+    }
+
+    copyToClipboard(csv, 'CSV Report');
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl">
+      <div className="flex flex-col items-center justify-center p-16">
         <div className="relative">
-          <div className="animate-spin h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full"></div>
-          <ShieldCheckIcon className="w-8 h-8 text-indigo-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          <div className="animate-spin h-12 w-12 border-4 border-primary-200 border-t-primary-600 rounded-full"></div>
+          <ShieldCheckIcon className="w-6 h-6 text-primary-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <span className="mt-4 text-lg font-medium text-gray-700">Loading quality report...</span>
-        <span className="mt-1 text-sm text-gray-500">Analyzing data quality metrics</span>
+        <span className="mt-4 text-sm font-semibold text-gray-700">Loading Data Quality Report...</span>
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
-        <div className="flex justify-center mb-4">
-          <div className="bg-white p-4 rounded-full shadow-md">
-            <ChartBarIcon className="w-16 h-16 text-gray-400" />
-          </div>
-        </div>
-        <h3 className="text-2xl font-bold text-gray-800 mb-3">No Quality Check Available</h3>
-        <p className="text-gray-600 max-w-md mx-auto mb-6">
+      <div className="card-modern p-12 text-center">
+        <ChartBarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-bold text-gray-800 mb-2">No Quality Check Available</h3>
+        <p className="text-sm text-gray-600">
           Data quality check was not performed for this analysis run.
-          Enable it in the configuration to see quality insights.
         </p>
-        <div className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg">
-          <ShieldCheckIcon className="w-5 h-5 mr-2" />
-          <span className="text-sm font-medium">Enable quality check in settings</span>
-        </div>
       </div>
     );
   }
 
   const { summary, file1_report, file2_report, discrepancies } = report;
   
-  const statusColors = {
-    pass: { 
-      bg: 'bg-gradient-to-r from-green-50 to-emerald-50', 
-      border: 'border-green-500', 
-      text: 'text-green-800', 
-      icon: <CheckCircleIcon className="w-8 h-8 text-green-600" />,
-      badge: 'bg-green-500'
-    },
-    minor: { 
-      bg: 'bg-gradient-to-r from-blue-50 to-indigo-50', 
-      border: 'border-blue-500', 
-      text: 'text-blue-800', 
-      icon: <ShieldCheckIcon className="w-8 h-8 text-blue-600" />,
-      badge: 'bg-blue-500'
-    },
-    warning: { 
-      bg: 'bg-gradient-to-r from-yellow-50 to-amber-50', 
-      border: 'border-yellow-500', 
-      text: 'text-yellow-800', 
-      icon: <ExclamationTriangleIcon className="w-8 h-8 text-yellow-600" />,
-      badge: 'bg-yellow-500'
-    },
-    critical: { 
-      bg: 'bg-gradient-to-r from-red-50 to-rose-50', 
-      border: 'border-red-500', 
-      text: 'text-red-800', 
-      icon: <XCircleIcon className="w-8 h-8 text-red-600" />,
-      badge: 'bg-red-500'
-    },
-  };
-
-  const colors = statusColors[summary.status as keyof typeof statusColors] || statusColors.minor;
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high': return 'bg-red-50 border-red-400 text-red-800';
-      case 'medium': return 'bg-yellow-50 border-yellow-400 text-yellow-800';
-      default: return 'bg-blue-50 border-blue-400 text-blue-800';
+  const getStatusConfig = () => {
+    switch (summary.status) {
+      case 'pass':
+        return { icon: '✅', color: 'success', bg: 'bg-success-50', border: 'border-success-500', text: 'text-success-800' };
+      case 'warning':
+        return { icon: '⚠️', color: 'amber', bg: 'bg-amber-50', border: 'border-amber-500', text: 'text-amber-800' };
+      case 'critical':
+        return { icon: '❌', color: 'red', bg: 'bg-red-50', border: 'border-red-500', text: 'text-red-800' };
+      default:
+        return { icon: 'ℹ️', color: 'primary', bg: 'bg-primary-50', border: 'border-primary-500', text: 'text-primary-800' };
     }
   };
 
-  const getConsistencyColor = (consistency: number) => {
-    if (consistency >= 95) return 'text-green-600';
-    if (consistency >= 80) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  const statusConfig = getStatusConfig();
 
   return (
-    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl p-8 space-y-8 animate-fade-in border border-gray-100">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-6 border-b-2 border-gradient-to-r from-indigo-200 to-purple-200">
-        <div className="flex items-center">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl mr-4 shadow-lg transform hover:scale-105 transition-transform">
-            <ShieldCheckIcon className="w-8 h-8 text-white" />
+    <div className="max-w-7xl mx-auto p-3 space-y-3">
+      
+      {/* Ultra Compact Single-Line Header */}
+      <div className={`${statusConfig.bg} border-l-4 ${statusConfig.border} rounded-lg p-2.5 shadow-sm`}>
+        <div className="flex items-center justify-between gap-3">
+          {/* Left: Title + Icon + Status */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <ShieldCheckIcon className="w-5 h-5 text-slate-600 flex-shrink-0" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-900 whitespace-nowrap">Data Quality Report</span>
+                <span className="text-xs text-gray-500 hidden sm:inline">• v2.0</span>
+              </div>
           </div>
-          <div>
-            <h3 className="text-3xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Data Quality Report
-            </h3>
-            <p className="text-sm text-gray-600 mt-1 font-medium">Comprehensive data analysis & validation results</p>
+            <div className="flex items-center gap-2 flex-1">
+              <span className={`text-xs font-semibold ${statusConfig.text} truncate`}>{summary.status_message}</span>
+            </div>
           </div>
+          
+          {/* Center: Stats */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1 px-2 py-1 bg-white rounded border border-gray-200">
+              <span className="text-sm font-bold text-gray-800">{summary.total_issues}</span>
+              <span className="text-[10px] text-gray-600">Total</span>
         </div>
-        <div className={`px-6 py-3 ${colors.badge} rounded-full shadow-lg transform hover:scale-105 transition-transform`}>
-          <span className="text-white font-extrabold text-base uppercase tracking-wide">{summary.status}</span>
+            <div className="flex items-center gap-1 px-2 py-1 bg-red-50 rounded border border-red-300">
+              <span className="text-sm font-bold text-red-700">{summary.high_severity_count}</span>
+              <span className="text-[10px] text-red-700">High</span>
+      </div>
+            <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 rounded border border-amber-300">
+              <span className="text-sm font-bold text-amber-700">{summary.medium_severity_count}</span>
+              <span className="text-[10px] text-amber-700">Medium</span>
+            </div>
+          </div>
+          
+          {/* Right: Export Dropdown */}
+          <div className="relative flex-shrink-0">
+          <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg text-xs font-semibold hover:from-green-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg flex-shrink-0"
+            >
+              <ClipboardDocumentIcon className="w-3.5 h-3.5" />
+              <span>📋 Export</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+          </button>
+            
+            {showExportMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)}></div>
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20">
+                  <button
+                    onClick={() => { copyReportAsJSON(); setShowExportMenu(false); }}
+                    className="w-full px-3 py-2 text-left text-xs font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                      <div>Copy as JSON</div>
+                      <div className="text-[9px] text-gray-500">Structured format</div>
+              </div>
+                  </button>
+                  <button
+                    onClick={() => { copyReportAsCSV(); setShowExportMenu(false); }}
+                    className="w-full px-3 py-2 text-left text-xs font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div>
+                      <div>Copy as CSV</div>
+                      <div className="text-[9px] text-gray-500">Excel compatible</div>
+            </div>
+                  </button>
+          </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Status Summary */}
-      <div className={`${colors.bg} border-2 ${colors.border} p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}>
-        <div className="flex items-center mb-8">
-          <div className="bg-white/80 p-3 rounded-xl shadow-md mr-4">
-            {colors.icon}
-          </div>
-          <h3 className={`${colors.text} font-extrabold text-3xl`}>
-            {summary.status_message}
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg border-2 border-gray-200 hover:shadow-xl hover:border-gray-300 transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-gray-700 text-sm font-bold uppercase tracking-wide">Total Issues</div>
-              <div className={`w-4 h-4 rounded-full shadow-md ${summary.total_issues === 0 ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-            </div>
-            <div className="text-5xl font-extrabold text-gray-800 mb-2">{summary.total_issues}</div>
-            <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">Detected problems</div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg border-2 border-red-200 hover:shadow-xl hover:border-red-300 transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-gray-700 text-sm font-bold uppercase tracking-wide">High Severity</div>
-              <div className="bg-red-100 p-2 rounded-lg">
-                <ExclamationTriangleIcon className="w-5 h-5 text-red-600" />
-              </div>
-            </div>
-            <div className="text-5xl font-extrabold text-red-600 mb-2">{summary.high_severity_count}</div>
-            <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">Critical issues</div>
-          </div>
-          <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg border-2 border-yellow-200 hover:shadow-xl hover:border-yellow-300 transition-all duration-300 transform hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-gray-700 text-sm font-bold uppercase tracking-wide">Medium Severity</div>
-              <div className="bg-yellow-100 p-2 rounded-lg">
-                <ExclamationTriangleIcon className="w-5 h-5 text-yellow-600" />
-              </div>
-            </div>
-            <div className="text-5xl font-extrabold text-yellow-600 mb-2">{summary.medium_severity_count}</div>
-            <div className="text-xs text-gray-600 font-medium uppercase tracking-wide">Warning issues</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Cross-file Discrepancies */}
+      {/* Compact Cross-File Discrepancies Section */}
       {discrepancies && discrepancies.length > 0 && (
-        <div className="bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 p-8 rounded-2xl border-2 border-red-300 shadow-xl animate-fade-in">
-          <div className="flex items-center mb-6">
-            <div className="bg-gradient-to-br from-red-500 to-orange-600 p-3 rounded-2xl mr-4 shadow-lg transform hover:scale-105 transition-transform">
-              <ExclamationTriangleIcon className="w-7 h-7 text-white" />
+        <div className="bg-white rounded-lg p-3 shadow-sm border-l-4 border-red-500">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ExclamationTriangleIcon className="w-4 h-4 text-red-600" />
+              <h3 className="text-sm font-bold text-gray-900">Cross-File Issues</h3>
+              <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                {discrepancies.length}
+              </span>
             </div>
-            <h4 className="text-2xl font-extrabold text-gray-900">
-              Cross-File Discrepancies
-            </h4>
-            <span className="ml-4 px-4 py-2 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-full text-sm font-extrabold shadow-lg transform hover:scale-105 transition-transform">
-              {discrepancies.length}
-            </span>
+            <button
+              onClick={() => copyToClipboard(JSON.stringify(discrepancies, null, 2), 'All Discrepancies')}
+              className="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-100 transition-all"
+            >
+              <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+              Copy
+            </button>
           </div>
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+
+          <div className="space-y-2">
             {discrepancies.map((disc, idx) => (
               <div
                 key={idx}
-                className={`${getSeverityColor(disc.severity)} border-l-4 p-5 rounded-r-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-1`}
+                className={`p-2.5 rounded-lg border-l-2 ${
+                  disc.severity === 'high' ? 'bg-red-50 border-red-500' :
+                  disc.severity === 'medium' ? 'bg-amber-50 border-amber-500' :
+                  'bg-blue-50 border-blue-500'
+                }`}
               >
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="font-extrabold text-base uppercase tracking-wide mb-2 flex items-center">
-                      <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                      {disc.type.replace(/_/g, ' ')}
-                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        disc.severity === 'high' ? 'bg-red-600 text-white' :
+                        disc.severity === 'medium' ? 'bg-amber-600 text-white' :
+                        'bg-blue-600 text-white'
+                      }`}>
+                        {disc.severity}
+                      </span>
+                      <span className="font-bold text-xs">{(disc.type || 'ISSUE').replace(/_/g, ' ').toUpperCase()}</span>
                     {disc.column && (
-                      <div className="text-sm mt-2 flex items-center">
-                        <span className="text-gray-700 font-semibold">Column:</span>
-                        <span className="ml-2 px-3 py-1 bg-white rounded-lg font-mono text-sm font-bold shadow-sm">
+                        <span className="px-1.5 py-0.5 bg-white rounded border border-gray-300 text-[10px] font-mono">
                           {disc.column}
                         </span>
+                      )}
                       </div>
-                    )}
-                    <div className="mt-3 text-sm leading-relaxed font-medium">{disc.message}</div>
+                    <p className="text-xs text-gray-700 leading-snug">{disc.message || disc.issue}</p>
                   </div>
-                  <span className={`ml-4 px-3 py-2 rounded-lg text-xs font-extrabold uppercase shadow-md ${
-                    disc.severity === 'high' ? 'bg-red-600 text-white' :
-                    disc.severity === 'medium' ? 'bg-yellow-600 text-white' :
-                    'bg-blue-600 text-white'
-                  }`}>
-                    {disc.severity}
-                  </span>
+                  <button
+                    onClick={() => copyToClipboard(JSON.stringify(disc, null, 2), 'Discrepancy')}
+                    className="flex-shrink-0 p-1 hover:bg-white rounded transition-all"
+                    title="Copy this issue"
+                  >
+                    <DocumentDuplicateIcon className="w-4 h-4 text-gray-600 hover:text-primary-600" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -240,206 +318,158 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
         </div>
       )}
 
-      {/* File-specific Issues */}
-      {[file1_report, file2_report].map((fileReport, index) => {
-        if (!fileReport || fileReport.overall_issues.length === 0) return null;
-        
-        const fileColors = index === 0 ? 'from-blue-50 via-cyan-50 to-blue-50 border-blue-300' : 'from-purple-50 via-pink-50 to-purple-50 border-purple-300';
-        const fileIcon = index === 0 ? '📄' : '📋';
-        
+      {/* Compact File-Specific Issues */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {[
+          { report: file1_report, title: 'File A Issues', icon: '📘', color: 'blue' },
+          { report: file2_report, title: 'File B Issues', icon: '📙', color: 'purple' }
+        ].map(({ report: fileReport, title, icon, color }, index) => {
+          if (!fileReport || fileReport.overall_issues.length === 0) {
         return (
-          <div key={fileReport.file_name} className={`bg-gradient-to-br ${fileColors} p-8 rounded-2xl border-2 shadow-xl hover:shadow-2xl transition-all duration-300 animate-fade-in`}>
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
-                <div className="text-5xl mr-4 transform hover:scale-110 transition-transform">{fileIcon}</div>
-                <div>
-                  <h4 className="text-2xl font-extrabold text-gray-900">
-                    {fileReport.file_name}
-                  </h4>
-                  <p className="text-sm text-gray-700 mt-1 font-medium">
-                    {fileReport.overall_issues.length} issue{fileReport.overall_issues.length !== 1 ? 's' : ''} detected
-                  </p>
+              <div key={index} className="bg-white rounded-lg p-4 text-center shadow-sm border border-gray-200">
+                <div className="text-3xl mb-2">✅</div>
+                <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+                <p className="text-xs text-gray-600">No issues detected</p>
+              </div>
+            );
+          }
+
+          return (
+            <div key={index} className={`bg-white rounded-lg p-3 shadow-sm border-l-4 border-${color}-500`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{icon}</span>
+                  <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+                  <span className={`px-2 py-0.5 bg-${color}-100 text-${color}-700 rounded-full text-xs font-bold`}>
+                    {fileReport.overall_issues.length}
+                  </span>
                 </div>
-              </div>
-              <div className="px-5 py-3 bg-white rounded-2xl shadow-lg border-2 border-orange-200">
-                <span className="text-orange-600 font-extrabold text-2xl">{fileReport.overall_issues.length}</span>
-              </div>
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(fileReport, null, 2), title)}
+                  className={`flex items-center gap-1.5 px-3 py-1 bg-${color}-50 text-${color}-700 rounded-lg text-xs font-semibold hover:bg-${color}-100 transition-all`}
+                >
+                  <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                  Copy
+                </button>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl mb-6 shadow-lg border border-gray-200">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div className="flex items-center bg-gradient-to-br from-indigo-50 to-blue-50 p-3 rounded-xl">
-                  <div className="bg-indigo-100 p-2 rounded-lg mr-3">
-                    <ChartBarIcon className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <div className="text-indigo-600 text-xs font-semibold uppercase">Total Rows</div>
-                    <div className="font-extrabold text-gray-900 text-lg">{fileReport.total_rows.toLocaleString()}</div>
-                  </div>
-                </div>
-                <div className="flex items-center bg-gradient-to-br from-purple-50 to-pink-50 p-3 rounded-xl">
-                  <div className="bg-purple-100 p-2 rounded-lg mr-3">
-                    <ChartBarIcon className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="text-purple-600 text-xs font-semibold uppercase">Total Columns</div>
-                    <div className="font-extrabold text-gray-900 text-lg">{fileReport.total_columns}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+              {/* Overall Issues - Compact */}
+              <div className="space-y-1.5 mb-3">
               {fileReport.overall_issues.map((issue, idx) => (
                 <div
                   key={idx}
-                  className={`${getSeverityColor(issue.severity)} border-l-4 p-5 rounded-r-2xl shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-x-1`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="font-extrabold text-sm mb-2 flex items-center">
-                        <span className="w-2 h-2 rounded-full bg-current mr-2"></span>
-                        <span className="px-3 py-1 bg-white rounded-lg font-mono text-sm shadow-sm">
+                    className={`p-2 rounded-lg border-l-2 ${
+                      issue.severity === 'high' ? 'bg-red-50 border-red-500' :
+                      issue.severity === 'medium' ? 'bg-amber-50 border-amber-500' :
+                      'bg-blue-50 border-blue-500'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase flex-shrink-0 ${
+                            issue.severity === 'high' ? 'bg-red-600 text-white' :
+                            issue.severity === 'medium' ? 'bg-amber-600 text-white' :
+                            'bg-blue-600 text-white'
+                          }`}>
+                            {issue.severity}
+                          </span>
+                          {issue.column && (
+                            <span className="px-1.5 py-0.5 bg-white rounded border border-gray-300 text-[9px] font-mono truncate">
                           {issue.column}
                         </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-700 leading-tight">{issue.message || issue.issue}</p>
                       </div>
-                      <div className="text-sm leading-relaxed mt-3 font-medium">{issue.issue}</div>
-                    </div>
-                    <span className={`ml-4 px-3 py-2 rounded-lg text-xs font-extrabold uppercase shadow-md ${
-                      issue.severity === 'high' ? 'bg-red-600 text-white' :
-                      issue.severity === 'medium' ? 'bg-yellow-600 text-white' :
-                      'bg-blue-600 text-white'
-                    }`}>
-                      {issue.severity}
-                    </span>
+                      <button
+                        onClick={() => copyToClipboard(JSON.stringify(issue, null, 2), 'Issue')}
+                        className="flex-shrink-0 p-1 hover:bg-white rounded transition-all"
+                        title="Copy"
+                      >
+                        <DocumentDuplicateIcon className="w-3.5 h-3.5 text-gray-600 hover:text-primary-600" />
+                      </button>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        );
-      })}
 
-      {/* Detailed Column Analysis (Expandable) */}
-      <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-2xl border-2 border-indigo-300 overflow-hidden shadow-xl hover:shadow-2xl transition-shadow">
+              {/* Column-Specific Issues - Compact Collapsible */}
+              {fileReport.column_issues && Object.keys(fileReport.column_issues).length > 0 && (
+                <details className="mt-2 pt-2 border-t border-gray-200">
+                  <summary className="cursor-pointer text-xs font-bold text-gray-800 hover:text-primary-600 flex items-center gap-1.5">
+                    <span>Column Details ({Object.keys(fileReport.column_issues).length})</span>
         <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="flex items-center justify-between w-full text-xl font-bold hover:bg-white/60 transition-all p-6 group"
-        >
-          <div className="flex items-center">
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl mr-4 shadow-lg group-hover:scale-110 transition-transform">
-              <ChartBarIcon className="w-6 h-6 text-white" />
-            </div>
-            <span className="bg-gradient-to-r from-indigo-700 to-purple-700 bg-clip-text text-transparent font-extrabold">
-              Detailed Column Analysis
-            </span>
-          </div>
-          {showDetails ? (
-            <ChevronUpIcon className="w-7 h-7 text-indigo-600 transition-transform group-hover:-translate-y-1" />
-          ) : (
-            <ChevronDownIcon className="w-7 h-7 text-indigo-600 transition-transform group-hover:translate-y-1" />
-          )}
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(fileReport.column_issues, null, 2), 'Column Issues'); }}
+                      className="text-xs text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-0.5"
+                    >
+                      <DocumentDuplicateIcon className="w-3 h-3" />
         </button>
-
-        {showDetails && (
-          <div className="p-6 bg-white/60 backdrop-blur space-y-6 animate-fade-in">
-            {[file1_report, file2_report].map((fileReport, fileIndex) => {
-              if (!fileReport) return null;
-              
-              const fileGradient = fileIndex === 0 ? 'from-blue-500 to-cyan-500' : 'from-purple-500 to-pink-500';
-              
-              return (
-                <div key={fileReport.file_name} className="space-y-3">
-                  <div className={`bg-gradient-to-r ${fileGradient} p-4 rounded-lg shadow-md`}>
-                    <h5 className="text-lg font-bold text-white flex items-center">
-                      <span className="mr-2">{fileIndex === 0 ? '📄' : '📋'}</span>
-                      {fileReport.file_name}
-                    </h5>
-                    <p className="text-white/80 text-sm mt-1">
-                      {Object.keys(fileReport.columns).length} columns analyzed
-                    </p>
-                  </div>
-                  
-                  <div className="grid gap-4">
-                    {Object.entries(fileReport.columns).map(([colName, colData]) => (
-                      <div key={colName} className="bg-white p-6 rounded-2xl border-2 border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 hover:border-indigo-400 transform hover:-translate-y-1">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="font-extrabold text-lg text-gray-900 flex items-center">
-                            <span className="w-3 h-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full mr-3 shadow-md"></span>
-                            {colName}
-                          </div>
-                          <span className="px-4 py-2 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-800 rounded-full text-sm font-extrabold shadow-md">
-                            {colData.pattern_type}
-                          </span>
+                  </summary>
+                  <div className="space-y-1.5 mt-2">
+                    {Object.entries(fileReport.column_issues).map(([column, issues]: [string, any[]]) => (
+                      <div key={column} className="bg-gray-50 rounded p-2 border border-gray-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-mono text-[10px] font-bold text-gray-800 truncate">{column}</span>
+                          <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full text-[9px] font-bold">
+                              {issues.length}
+                            </span>
                         </div>
-                        
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-lg border border-green-200">
-                            <div className="text-green-600 text-xs font-medium mb-1">Consistency</div>
-                            <div className={`font-bold text-lg ${getConsistencyColor(colData.consistency)}`}>
-                              {colData.consistency}%
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                              <div 
-                                className={`h-1.5 rounded-full ${getConsistencyColor(colData.consistency).replace('text-', 'bg-')}`}
-                                style={{ width: `${colData.consistency}%` }}
-                              ></div>
-                            </div>
+                        {issues.slice(0, 3).map((iss, i) => (
+                          <div key={i} className="text-[9px] text-gray-600 ml-1 leading-tight">
+                            • {iss.message || iss.issue}
                           </div>
-                          
-                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
-                            <div className="text-blue-600 text-xs font-medium mb-1">Null Values</div>
-                            <div className="font-bold text-lg text-gray-800">{colData.null_percentage}%</div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {colData.non_null_values.toLocaleString()} valid
-                            </div>
-                          </div>
-                          
-                          <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-200">
-                            <div className="text-purple-600 text-xs font-medium mb-1">Total Values</div>
-                            <div className="font-bold text-lg text-gray-800">
-                              {colData.non_null_values.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">non-null</div>
-                          </div>
-                          
-                          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-3 rounded-lg border border-orange-200">
-                            <div className="text-orange-600 text-xs font-medium mb-1">Data Type</div>
-                            <div className="font-bold text-sm text-gray-800 truncate">
-                              {colData.pattern_type}
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {colData.issues.length > 0 && (
-                          <div className="mt-5 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-500 rounded-r-2xl shadow-md">
-                            <div className="flex items-center mb-3">
-                              <div className="bg-red-100 p-2 rounded-lg mr-2">
-                                <ExclamationTriangleIcon className="w-5 h-5 text-red-600" />
-                              </div>
-                              <span className="text-red-900 font-extrabold text-base">Issues Found</span>
-                              <span className="ml-2 px-2 py-1 bg-red-600 text-white rounded-full text-xs font-bold">
-                                {colData.issues.length}
-                              </span>
-                            </div>
-                            <div className="space-y-2">
-                              {colData.issues.map((issue, idx) => (
-                                <div key={idx} className="text-sm text-red-800 flex items-start font-medium bg-white/60 p-2 rounded-lg">
-                                  <span className="text-red-600 font-bold mr-2">•</span>
-                                  <span>{issue}</span>
+                        ))}
+                        {issues.length > 3 && (
+                          <div className="text-[9px] text-gray-500 ml-1 mt-0.5">+{issues.length - 3} more</div>
+                        )}
                                 </div>
                               ))}
                             </div>
-                          </div>
+                </details>
                         )}
+
+              {/* Consistency Metrics - Compact */}
+              {fileReport.consistency_metrics && (
+                <details className="mt-2 pt-2 border-t border-gray-200">
+                  <summary className="cursor-pointer text-xs font-bold text-gray-800 hover:text-primary-600 flex items-center gap-1.5">
+                    <span>Metrics ({Object.keys(fileReport.consistency_metrics).length})</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(JSON.stringify(fileReport.consistency_metrics, null, 2), 'Metrics'); }}
+                      className="text-xs text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-0.5"
+                    >
+                      <DocumentDuplicateIcon className="w-3 h-3" />
+                    </button>
+                  </summary>
+                  <div className="grid grid-cols-2 gap-1.5 mt-2">
+                    {Object.entries(fileReport.consistency_metrics).map(([key, value]) => (
+                      <div key={key} className="bg-white rounded p-1.5 border border-gray-200">
+                        <div className="text-[9px] text-gray-600 uppercase font-semibold truncate">
+                          {key.replace(/_/g, ' ')}
+                        </div>
+                        <div className={`text-sm font-bold ${
+                          typeof value === 'number' && value >= 95 ? 'text-success-700' :
+                          typeof value === 'number' && value >= 80 ? 'text-amber-700' :
+                          typeof value === 'number' ? 'text-red-700' :
+                          'text-gray-700'
+                        }`}>
+                          {typeof value === 'number' ? `${value.toFixed(1)}%` : value}
+                        </div>
                       </div>
                     ))}
                   </div>
+                </details>
+              )}
                 </div>
               );
             })}
           </div>
-        )}
+
+      {/* Compact Report Footer */}
+      <div className="bg-slate-50 rounded-lg p-2 border border-slate-200 text-center">
+        <p className="text-xs text-gray-600">
+          End of Report • Run #{runId}
+        </p>
       </div>
     </div>
   );

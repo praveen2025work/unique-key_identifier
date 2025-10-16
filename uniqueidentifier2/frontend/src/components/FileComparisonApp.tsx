@@ -5,6 +5,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import ModernDropdown from './ui/ModernDropdown';
 import ChunkedFileListViewer, { Category } from './ChunkedFileListViewer';
 import WorkflowView from './WorkflowView';
+import DataQualityViewer from './DataQualityViewer';
 import type { JobStatus } from '../types';
 
 interface FileInfo {
@@ -1115,7 +1116,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                   <table className="w-full text-xs table-fixed">
                     <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 10 }}>
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', zIndex: 11 }}>Combination</th>
+                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 11 }}>Combination</th>
                         <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]" style={{ width: '22.5%' }}>File A</th>
                         <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700" style={{ width: '22.5%' }}>File B</th>
                       </tr>
@@ -1143,13 +1144,13 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                           <tr key={i} className="hover:bg-slate-50">
                             <td 
                               className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white group cursor-pointer hover:bg-primary-50 transition-colors"
-                              style={{ zIndex: 9 }}
+                              style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 9 }}
                               onClick={() => copyToClipboard(combo)}
                               title="Click to copy combination"
                             >
-                              <div className="flex items-center gap-2">
-                                <span className="truncate">{combo}</span>
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-[10px] flex-shrink-0">📋</span>
+                              <div className="flex items-start gap-2">
+                                <span className="break-words whitespace-normal leading-relaxed">{combo}</span>
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-[10px] flex-shrink-0 mt-0.5">📋</span>
                               </div>
                             </td>
                             <td className={`px-2 py-2 text-center border-l border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
@@ -1294,101 +1295,10 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 );
               })()}
               
-              {/* Data Quality Tab - NEW - ENHANCED WITH FULL DETAILS */}
-              {resultsTab === 'dataQuality' && dataQualityReport && (
-                <div className="p-3 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-                  <h3 className="text-sm font-bold mb-2">📋 Data Quality Check - Detailed Report</h3>
-                  
-                  {/* Status Summary */}
-                  <div className={`p-2 rounded border-l-4 mb-2 ${
-                    dataQualityReport.summary.status === 'pass' ? 'bg-green-50 border-green-500' :
-                    dataQualityReport.summary.status === 'warning' ? 'bg-yellow-50 border-yellow-500' :
-                    'bg-red-50 border-red-500'
-                  }`}>
-                    <h4 className="font-bold text-xs mb-1">{dataQualityReport.summary.status_message}</h4>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      <div className="bg-white p-1.5 rounded shadow-sm">
-                        <div className="text-xs text-gray-600">Total Issues</div>
-                        <div className="text-lg font-bold">{dataQualityReport.summary.total_issues}</div>
-                      </div>
-                      <div className="bg-white p-1.5 rounded shadow-sm">
-                        <div className="text-xs text-gray-600">High Severity</div>
-                        <div className="text-lg font-bold text-red-600">{dataQualityReport.summary.high_severity_count}</div>
-                      </div>
-                      <div className="bg-white p-1.5 rounded shadow-sm">
-                        <div className="text-xs text-gray-600">Medium Severity</div>
-                        <div className="text-lg font-bold text-yellow-600">{dataQualityReport.summary.medium_severity_count}</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Cross-File Discrepancies */}
-                  {dataQualityReport.discrepancies && dataQualityReport.discrepancies.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="font-bold text-sm mb-2 text-red-700">🚨 Cross-File Issues ({dataQualityReport.discrepancies.length})</h4>
-                      <div className="space-y-2 max-h-60 overflow-auto">
-                        {dataQualityReport.discrepancies.map((disc: any, i: number) => (
-                          <div key={i} className={`p-3 rounded-lg border-l-4 text-xs shadow-sm ${
-                            disc.severity === 'high' ? 'bg-red-50 border-red-500' : 'bg-yellow-50 border-yellow-500'
-                          }`}>
-                            <div className="flex items-start justify-between mb-1">
-                              <div className="font-bold text-sm">{disc.type.replace(/_/g, ' ').toUpperCase()}</div>
-                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                                disc.severity === 'high' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800'
-                              }`}>{disc.severity.toUpperCase()}</span>
-                            </div>
-                            {disc.column && (
-                              <div className="text-gray-700 font-semibold text-xs mb-1">
-                                📊 Column: <span className="font-bold text-[#337ab7]">{disc.column}</span>
-                              </div>
-                            )}
-                            <div className="text-gray-700 mt-1 leading-relaxed">{disc.message}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* File-Specific Issues */}
-                  {[dataQualityReport.file1_report, dataQualityReport.file2_report].map((fileReport: any) => {
-                    if (!fileReport || !fileReport.overall_issues || fileReport.overall_issues.length === 0) return null;
-                    
-                    return (
-                      <div key={fileReport.file_name} className="mb-3">
-                        <h4 className="font-bold text-sm mb-2 text-orange-700">
-                          ⚠️ {fileReport.file_name} - {fileReport.overall_issues.length} Issues
-                        </h4>
-                        <div className="bg-gray-50 p-2 rounded mb-2 text-xs">
-                          <span className="font-semibold">Rows:</span> {fileReport.total_rows.toLocaleString()} | 
-                          <span className="font-semibold ml-2">Columns:</span> {fileReport.total_columns}
-                        </div>
-                        <div className="space-y-1.5 max-h-60 overflow-auto">
-                          {fileReport.overall_issues.map((issue: any, idx: number) => (
-                            <div key={idx} className={`p-2 rounded border-l-4 text-xs shadow-sm ${
-                              issue.severity === 'high' ? 'bg-red-50 border-red-500' : 'bg-yellow-50 border-yellow-500'
-                            }`}>
-                              <div className="flex items-start justify-between mb-1">
-                                <div className="font-semibold text-[#337ab7]">{issue.column}</div>
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                                  issue.severity === 'high' ? 'bg-red-200 text-red-800' : 'bg-yellow-200 text-yellow-800'
-                                }`}>{issue.severity.toUpperCase()}</span>
-                              </div>
-                              <div className="text-gray-700">{issue.issue}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {(!dataQualityReport.discrepancies || dataQualityReport.discrepancies.length === 0) && 
-                   dataQualityReport.summary.total_issues === 0 && (
-                    <div className="text-center p-8 text-green-600">
-                      <div className="text-5xl mb-3">✅</div>
-                      <p className="text-sm font-bold">Perfect! No quality issues found!</p>
-                      <p className="text-xs text-gray-600 mt-1">Both files have consistent data patterns</p>
-                    </div>
-                  )}
+              {/* Data Quality Tab - Using Full DataQualityViewer Component */}
+              {resultsTab === 'dataQuality' && currentRunId && (
+                <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                  <DataQualityViewer runId={currentRunId} />
                 </div>
               )}
             </div>
