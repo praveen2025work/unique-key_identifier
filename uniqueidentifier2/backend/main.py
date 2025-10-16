@@ -353,7 +353,11 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                               f"{result['only_a_count']:,} only_a, {result['only_b_count']:,} only_b")
                         
                     except Exception as combo_error:
-                        print(f"   ⚠️  Warning: Failed to generate comparison for {combination}: {combo_error}")
+                        import traceback
+                        combo_name = ', '.join(column_list) if 'column_list' in locals() else str(combination)
+                        print(f"   ⚠️  Warning: Failed to generate comparison for columns: {combo_name}")
+                        print(f"   Error: {str(combo_error)}")
+                        print(f"   Traceback: {traceback.format_exc()}")
                         continue
                 
                 comparison_types = []

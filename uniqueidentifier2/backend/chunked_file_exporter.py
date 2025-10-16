@@ -206,13 +206,35 @@ class ChunkedFileExporter:
                 
                 # Validate columns exist (only on first chunk)
                 if chunk_num == 1:
-                    missing_cols = [col for col in columns if col not in chunk.columns]
+                    # Create mapping for case-insensitive and whitespace-tolerant matching
+                    chunk_cols_lower = {col.strip().lower(): col for col in chunk.columns}
+                    
+                    # Map requested columns to actual column names
+                    mapped_columns = []
+                    missing_cols = []
+                    
+                    for col in columns:
+                        col_normalized = col.strip().lower()
+                        if col in chunk.columns:
+                            # Exact match - use as is
+                            mapped_columns.append(col)
+                        elif col_normalized in chunk_cols_lower:
+                            # Case-insensitive/whitespace match - use actual column name
+                            actual_col = chunk_cols_lower[col_normalized]
+                            mapped_columns.append(actual_col)
+                            print(f"   📝 Mapped column '{col}' to '{actual_col}'")
+                        else:
+                            missing_cols.append(col)
+                    
                     if missing_cols:
                         available = ', '.join(chunk.columns.tolist())
                         raise ValueError(
                             f"Column(s) {', '.join(missing_cols)} not found in {label}. "
                             f"Available columns: {available}"
                         )
+                    
+                    # Update columns list with mapped values
+                    columns = mapped_columns
                 
                 # Apply user's max rows limit if specified
                 if self.max_rows_limit > 0 and total_rows >= self.max_rows_limit:
@@ -289,6 +311,24 @@ class ChunkedFileExporter:
         for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
                                 encoding='utf-8', on_bad_lines='skip', low_memory=False):
             chunk_num += 1
+            
+            # Map columns on first chunk (same logic as _extract_unique_keys_chunked)
+            if chunk_num == 1:
+                chunk_cols_lower = {col.strip().lower(): col for col in chunk.columns}
+                mapped_columns = []
+                
+                for col in key_columns:
+                    col_normalized = col.strip().lower()
+                    if col in chunk.columns:
+                        mapped_columns.append(col)
+                    elif col_normalized in chunk_cols_lower:
+                        actual_col = chunk_cols_lower[col_normalized]
+                        mapped_columns.append(actual_col)
+                        print(f"   📝 Mapped export column '{col}' to '{actual_col}'")
+                    else:
+                        raise ValueError(f"Column '{col}' not found in {label}")
+                
+                key_columns = mapped_columns
             
             # Apply user's max rows limit if specified
             if self.max_rows_limit > 0 and total_rows_processed >= self.max_rows_limit:
