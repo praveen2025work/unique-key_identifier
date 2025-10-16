@@ -51,3 +51,12 @@ COMPARISON_DB_BATCH_SIZE = 10000  # Insert results to DB in batches of 10K
 MAX_COMPARISON_MEMORY_ROWS = 100000  # Max rows to keep in memory at once
 COMPARISON_ENABLE_PROGRESS = True  # Show progress during chunked comparison
 
+# Intelligent Key Discovery Settings (NEW - prevents combinatorial explosion)
+# For datasets with many columns (e.g., 300 columns × 7M records)
+INTELLIGENT_DISCOVERY_ENABLED = True  # Enable intelligent discovery algorithm
+INTELLIGENT_DISCOVERY_THRESHOLD = 50  # Use intelligent discovery when columns > threshold
+INTELLIGENT_DISCOVERY_SAMPLE_SIZE = 1000000  # Sample size for initial analysis (1M rows)
+INTELLIGENT_DISCOVERY_MAX_SEED_COLUMNS = 30  # Maximum seed columns to consider
+INTELLIGENT_DISCOVERY_MAX_RESULTS = 50  # Maximum combinations to return
+INTELLIGENT_DISCOVERY_MIN_UNIQUENESS = 50  # Minimum uniqueness % to keep combination
+

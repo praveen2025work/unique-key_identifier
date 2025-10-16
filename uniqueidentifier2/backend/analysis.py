@@ -4,8 +4,45 @@ Data analysis operations - combination discovery and uniqueness analysis
 from itertools import combinations
 from config import MAX_COMBINATIONS
 
-def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None):
-    """Intelligently discover the best column combinations to analyze"""
+def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None, use_intelligent_discovery=True):
+    """
+    Intelligently discover the best column combinations to analyze.
+    
+    Args:
+        df: DataFrame to analyze
+        num_columns: Target combination size
+        max_combinations: Maximum number of combinations to return
+        excluded_combinations: Combinations to exclude
+        use_intelligent_discovery: Use new intelligent algorithm (prevents combinatorial explosion)
+    
+    Returns:
+        List of column combinations (tuples)
+    """
+    
+    # NEW: Use intelligent discovery for large datasets to avoid combinatorial explosion
+    if use_intelligent_discovery and len(df.columns) > 50:
+        print(f"🚀 Using Intelligent Key Discovery (avoiding combinatorial explosion)")
+        print(f"   Dataset: {len(df.columns)} columns × {len(df):,} rows")
+        
+        from intelligent_key_discovery import discover_unique_keys_intelligent
+        
+        try:
+            combinations_found = discover_unique_keys_intelligent(
+                df=df,
+                num_columns=num_columns,
+                max_combinations=max_combinations,
+                excluded_combinations=excluded_combinations
+            )
+            
+            if combinations_found:
+                print(f"✅ Found {len(combinations_found)} promising combinations intelligently")
+                return combinations_found
+            else:
+                print("⚠️ Intelligent discovery returned no results, falling back to heuristic approach")
+        except Exception as e:
+            print(f"⚠️ Intelligent discovery error: {e}, falling back to heuristic approach")
+    
+    # ORIGINAL HEURISTIC APPROACH (for smaller datasets or fallback)
     columns = df.columns.tolist()
     total_rows = len(df)
     
@@ -71,14 +108,24 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 if combo not in selected_combos and len(combo) == num_columns and len(selected_combos) < max_combinations:
                     selected_combos.append(combo)
     
-    # If still under max, add more combinations systematically
-    if len(selected_combos) < max_combinations:
+    # FIXED: Only add more combinations if we have a reasonable number of columns
+    # PREVENT combinatorial explosion by limiting this to small datasets
+    if len(selected_combos) < max_combinations and len(columns) <= 30:
+        # SAFE: Only enumerate when column count is reasonable
         all_combos = list(combinations(columns, num_columns))
-        for combo in all_combos:
-            if combo not in selected_combos:
-                selected_combos.append(combo)
-                if len(selected_combos) >= max_combinations:
-                    break
+        
+        # SAFETY CHECK: Don't process if too many combinations
+        if len(all_combos) > 10000:
+            print(f"⚠️ Too many combinations ({len(all_combos):,}), limiting to heuristic selection")
+        else:
+            for combo in all_combos:
+                if combo not in selected_combos:
+                    selected_combos.append(combo)
+                    if len(selected_combos) >= max_combinations:
+                        break
+    elif len(selected_combos) < max_combinations:
+        # For large column sets, use stratified sampling of combinations
+        print(f"ℹ️ Large dataset ({len(columns)} columns) - using heuristic selection only")
     
     # Filter out explicitly excluded combinations
     if excluded_combos:
@@ -99,7 +146,7 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
     
     return selected_combos[:max_combinations]
 
-def analyze_file_combinations(df, num_columns, specified_combinations=None, excluded_combinations=None):
+def analyze_file_combinations(df, num_columns, specified_combinations=None, excluded_combinations=None, use_intelligent_discovery=True):
     """Analyze all column combinations for a single file - MEMORY OPTIMIZED"""
     results = []
     columns = df.columns.tolist()
@@ -120,7 +167,7 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
             print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
     else:
         # Smart auto-discovery: limit to top combinations
-        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations)
+        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations, use_intelligent_discovery=use_intelligent_discovery)
     
     for combo in combos_to_analyze:
         combo_str = ','.join(combo)

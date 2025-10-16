@@ -130,11 +130,9 @@ const MainAnalysis: React.FC<MainAnalysisProps> = ({ environment, onAnalysisStar
       // Load cloned data into column builder
       columnBuilder.loadState({
         includedCombinations: data.expected_combinations ? 
-          data.expected_combinations.split('
-').filter((line: string) => line.trim()) : [],
+          data.expected_combinations.split('\n').filter((line: string) => line.trim()) : [],
         excludedCombinations: data.excluded_combinations ? 
-          data.excluded_combinations.split('
-').filter((line: string) => line.trim()) : [],
+          data.excluded_combinations.split('\n').filter((line: string) => line.trim()) : [],
       });
       
       toast.success(`Settings cloned from Run #${runId}!`, { id: 'clone-run' });
@@ -161,12 +159,11 @@ const MainAnalysis: React.FC<MainAnalysisProps> = ({ environment, onAnalysisStar
       formDataToSend.append('file_b', formData.fileB);
       formDataToSend.append('num_columns', formData.numColumns.toString());
       formDataToSend.append('max_rows', (formData.maxRows || 0).toString());
-      formDataToSend.append('expected_combinations', columnBuilder.includedCombinations.join('
-'));
-      formDataToSend.append('excluded_combinations', columnBuilder.excludedCombinations.join('
-'));
+      formDataToSend.append('expected_combinations', columnBuilder.includedCombinations.join('\n'));
+      formDataToSend.append('excluded_combinations', columnBuilder.excludedCombinations.join('\n'));
       formDataToSend.append('working_directory', formData.workingDirectory || '');
       formDataToSend.append('data_quality_check', formData.dataQualityCheck.toString());
+      formDataToSend.append('use_intelligent_discovery', formData.useIntelligentDiscovery.toString());
       formDataToSend.append('environment', environment);
 
       const response = await api.post('/compare', formDataToSend, {

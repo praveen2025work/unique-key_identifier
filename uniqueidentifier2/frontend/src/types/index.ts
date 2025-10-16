@@ -202,6 +202,7 @@ export interface FormData {
   numColumns: number;
   maxRows: number;
   dataQualityCheck: boolean;
+  useIntelligentDiscovery: boolean;
 }
 
 export interface Run {

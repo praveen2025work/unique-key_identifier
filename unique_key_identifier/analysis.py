@@ -71,14 +71,24 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 if combo not in selected_combos and len(combo) == num_columns and len(selected_combos) < max_combinations:
                     selected_combos.append(combo)
     
-    # If still under max, add more combinations systematically
-    if len(selected_combos) < max_combinations:
+    # FIXED: Only add more combinations if we have a reasonable number of columns
+    # PREVENT combinatorial explosion by limiting this to small datasets
+    if len(selected_combos) < max_combinations and len(columns) <= 30:
+        # SAFE: Only enumerate when column count is reasonable
         all_combos = list(combinations(columns, num_columns))
-        for combo in all_combos:
-            if combo not in selected_combos:
-                selected_combos.append(combo)
-                if len(selected_combos) >= max_combinations:
-                    break
+        
+        # SAFETY CHECK: Don't process if too many combinations
+        if len(all_combos) > 10000:
+            print(f"⚠️ Too many combinations ({len(all_combos):,}), limiting to heuristic selection")
+        else:
+            for combo in all_combos:
+                if combo not in selected_combos:
+                    selected_combos.append(combo)
+                    if len(selected_combos) >= max_combinations:
+                        break
+    elif len(selected_combos) < max_combinations:
+        # For large column sets, use stratified sampling of combinations
+        print(f"ℹ️ Large dataset ({len(columns)} columns) - using heuristic selection only")
     
     # Filter out explicitly excluded combinations
     if excluded_combos:

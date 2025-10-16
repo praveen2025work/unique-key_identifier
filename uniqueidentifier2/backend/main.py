@@ -81,15 +81,20 @@ job_lock = threading.Lock()
 def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, 
                          specified_combinations=None, excluded_combinations=None, 
                          working_directory=None, data_quality_check=False, 
-                         generate_column_combinations=True, generate_file_comparison=True):
+                         generate_column_combinations=True, generate_file_comparison=True,
+                         use_intelligent_discovery=True):
     """
     Background job to process file analysis
     
     Args:
         generate_column_combinations: Generate column combination analysis exports
         generate_file_comparison: Generate full file A-B comparison exports
+        use_intelligent_discovery: Use intelligent algorithm for finding combinations (prevents combinatorial explosion)
     """
     try:
+        # Set database busy timeout to prevent locking issues
+        conn.execute("PRAGMA busy_timeout = 30000")  # 30 seconds
+        
         # Pre-check file sizes
         row_count_a, size_a = get_file_stats(file_a_path)
         row_count_b, size_b = get_file_stats(file_b_path)
@@ -210,7 +215,7 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             elif all_columns_tuple not in analysis_combinations_a:
                 analysis_combinations_a = list(analysis_combinations_a) + [all_columns_tuple]
         
-        results_a = analyze_file_combinations(df_a, num_columns, analysis_combinations_a, excluded_combinations)
+        results_a = analyze_file_combinations(df_a, num_columns, analysis_combinations_a, excluded_combinations, use_intelligent_discovery)
         
         update_stage_status(run_id, 'analyzing_file_a', 'completed', f'Analyzed {len(results_a)} combinations')
         update_job_status(run_id, progress=55)
@@ -229,7 +234,7 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             elif all_columns_tuple not in analysis_combinations_b:
                 analysis_combinations_b = list(analysis_combinations_b) + [all_columns_tuple]
         
-        results_b = analyze_file_combinations(df_b, num_columns, analysis_combinations_b, excluded_combinations)
+        results_b = analyze_file_combinations(df_b, num_columns, analysis_combinations_b, excluded_combinations, use_intelligent_discovery)
         
         update_stage_status(run_id, 'analyzing_file_b', 'completed', f'Analyzed {len(results_b)} combinations')
         update_job_status(run_id, progress=80)
@@ -518,6 +523,7 @@ async def compare_files(
     data_quality_check: bool = Form(False),
     generate_column_combinations: bool = Form(True),
     generate_file_comparison: bool = Form(True),
+    use_intelligent_discovery: bool = Form(True),  # NEW: Intelligent key discovery toggle
     environment: str = Form("default")
 ):
     """
@@ -526,6 +532,7 @@ async def compare_files(
     Comparison Options:
     - generate_column_combinations: Generate exports for each column combination (for uniqueness/duplicate analysis)
     - generate_file_comparison: Generate full File A vs File B comparison (all columns)
+    - use_intelligent_discovery: Use intelligent algorithm to find combinations (prevents combinatorial explosion)
     """
     try:
         file_a_name = file_a.strip()
@@ -632,9 +639,26 @@ async def compare_files(
             except:
                 pass
         
-        # Start background processing
-        thread = threading.Thread(target=process_analysis_job, 
-                                 args=(run_id, file_a_path, file_b_path, num_columns, max_rows, parsed_combinations, parsed_exclusions, work_dir, data_quality_check, generate_column_combinations, generate_file_comparison))
+        # Start background processing with error recovery wrapper
+        def safe_process_job():
+            """Wrapper to catch all exceptions and prevent silent crashes"""
+            try:
+                process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows, 
+                                   parsed_combinations, parsed_exclusions, work_dir, data_quality_check, 
+                                   generate_column_combinations, generate_file_comparison, use_intelligent_discovery)
+            except Exception as thread_error:
+                # Ensure errors are logged even if the thread crashes
+                print(f"❌ CRITICAL ERROR in background job {run_id}:")
+                import traceback
+                traceback.print_exc()
+                try:
+                    # Try to update database with error
+                    update_job_status(run_id, status='error', error=f"Background job crashed: {str(thread_error)}")
+                except:
+                    # If database update fails, at least we logged the error
+                    pass
+        
+        thread = threading.Thread(target=safe_process_job)
         thread.daemon = True
         thread.start()
         
@@ -1033,6 +1057,41 @@ async def clone_run(run_id: int):
         "working_directory": params[3] if params and params[3] else "",
         "data_quality_check": params[4] if params and len(params) > 4 else 0
     })
+
+
+@app.get("/api/run/{run_id}/status")
+async def get_run_status(run_id: int):
+    """Get run status and progress information"""
+    try:
+        cursor = conn.cursor()
+        
+        # Get run status information
+        cursor.execute('''
+            SELECT status, current_stage, progress_percent, started_at, completed_at, error_message
+            FROM runs WHERE run_id = ?
+        ''', (run_id,))
+        run_status = cursor.fetchone()
+        
+        if not run_status:
+            raise HTTPException(status_code=404, detail="Run not found")
+        
+        status, current_stage, progress_percent, started_at, completed_at, error_message = run_status
+        
+        return JSONResponse({
+            "run_id": run_id,
+            "status": status or "pending",
+            "current_stage": current_stage or "initializing",
+            "progress_percent": progress_percent or 0,
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "error_message": error_message
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error retrieving run status: {str(e)}")
 
 
 @app.get("/api/download/{run_id}/csv")
