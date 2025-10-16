@@ -290,8 +290,8 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
         {/* Dropdown Menu */}
         {isOpen && (
           <div 
-            className="absolute z-[9999] w-full mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-xl overflow-hidden animate-fade-in"
-            style={{ maxHeight }}
+            className="absolute w-full mt-2 bg-white border-2 border-gray-300 rounded-lg shadow-xl overflow-hidden animate-fade-in"
+            style={{ maxHeight, zIndex: 99999 }}
           >
             {searchable && (
               <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">

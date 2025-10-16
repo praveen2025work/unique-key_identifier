@@ -957,7 +957,7 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       {results.timestamp}
                     </p>
                   </div>
-                  <div className="min-w-[220px] relative z-[100]">
+                  <div className="min-w-[220px]" style={{ position: 'relative', zIndex: 100 }}>
                     <ModernDropdown
                       value={results.run_id}
                       onChange={(value) => handleViewResults(parseInt(value as string))}
@@ -1112,15 +1112,15 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
               <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                 
                 {comparisonView === 'sidebyside' && (
-                  <table className="w-full text-xs">
-                    <thead className="bg-slate-700 text-white sticky top-0">
+                  <table className="w-full text-xs table-fixed">
+                    <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 10 }}>
                       <tr>
-                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700 z-10">Combination</th>
-                        <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]">File A</th>
-                        <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700">File B</th>
+                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', zIndex: 11 }}>Combination</th>
+                        <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]" style={{ width: '22.5%' }}>File A</th>
+                        <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700" style={{ width: '22.5%' }}>File B</th>
                       </tr>
-                      <tr className="bg-slate-600">
-                        <th className="px-3 py-1.5 sticky left-0 bg-slate-600 z-10"></th>
+                      <tr className="bg-slate-600" style={{ zIndex: 10 }}>
+                        <th className="px-3 py-1.5 sticky left-0 bg-slate-600" style={{ zIndex: 11 }}></th>
                         <th className="px-2 py-1.5 text-xs border-l border-[#337ab7]">Unique</th>
                         <th className="px-2 py-1.5 text-xs">Dups</th>
                         <th className="px-2 py-1.5 text-xs border-r border-[#337ab7]">Score</th>
@@ -1133,9 +1133,25 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                       {Array.from(new Set([...results.results_a.map(r => r.columns), ...results.results_b.map(r => r.columns)])).map((combo, i) => {
                         const resultA = results.results_a.find(r => r.columns === combo);
                         const resultB = results.results_b.find(r => r.columns === combo);
+                        
+                        const copyToClipboard = (text: string) => {
+                          navigator.clipboard.writeText(text);
+                          toast.success('Combination copied to clipboard!');
+                        };
+                        
                         return (
                           <tr key={i} className="hover:bg-slate-50">
-                            <td className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white">{combo}</td>
+                            <td 
+                              className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white group cursor-pointer hover:bg-primary-50 transition-colors"
+                              style={{ zIndex: 9 }}
+                              onClick={() => copyToClipboard(combo)}
+                              title="Click to copy combination"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="truncate">{combo}</span>
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-[10px] flex-shrink-0">📋</span>
+                              </div>
+                            </td>
                             <td className={`px-2 py-2 text-center border-l border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
                               {resultA?.unique_rows.toLocaleString() || '-'}
                             </td>
