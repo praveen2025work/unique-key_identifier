@@ -297,8 +297,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                 update_stage_status(run_id, 'generating_comparisons', 'in_progress', 
                                   f'Generating {" + ".join(generating_what)} exports')
                 
-                # Create ChunkedFileExporter with correct delimiters
-                exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
+                # Create ChunkedFileExporter with correct delimiters and user's max rows limit
+                exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b, max_rows_limit)
                 
                 # Get all analyzed column combinations from results
                 analyzed_combinations = [r['columns'] for r in results_a]
@@ -1681,7 +1681,7 @@ async def generate_comparison_export(
         cursor = conn.cursor()
         cursor.execute('''
             SELECT r.file_a, r.file_b, rp.working_directory, r.file_a_rows, r.file_b_rows,
-                   rp.file_a_delimiter, rp.file_b_delimiter
+                   rp.file_a_delimiter, rp.file_b_delimiter, rp.max_rows
             FROM runs r
             LEFT JOIN run_parameters rp ON r.run_id = rp.run_id
             WHERE r.run_id = ?
@@ -1691,7 +1691,8 @@ async def generate_comparison_export(
         if not run_info:
             raise HTTPException(status_code=404, detail="Run not found")
         
-        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows, delim_a, delim_b = run_info
+        file_a_name, file_b_name, work_dir, file_a_rows, file_b_rows, delim_a, delim_b, max_rows_limit = run_info
+        max_rows_limit = max_rows_limit or 0  # Default to 0 if None
         
         # Default to comma if delimiters not stored (backward compatibility)
         if delim_a is None:
@@ -1721,7 +1722,8 @@ async def generate_comparison_export(
         # Note: Validation happens inside ChunkedFileExporter during processing
         # The analysis already validated these columns exist in both files
         print(f"🔍 Using delimiters: File A='{delim_a}', File B='{delim_b}'")
-        exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b)
+        print(f"🔢 Max rows limit from run: {max_rows_limit if max_rows_limit > 0 else 'No limit'}")
+        exporter = ChunkedFileExporter(run_id, file_a_path, file_b_path, delim_a, delim_b, max_rows_limit)
         
         # Run comparison and export
         result = exporter.compare_and_export(
@@ -1807,6 +1809,100 @@ async def get_comparison_export_status(run_id: int, columns: str = Query(None)):
         
     except Exception as e:
         return JSONResponse({"error": f"Error checking status: {str(e)}"}, status_code=500)
+
+
+@app.get("/api/comparison-export/{run_id}/available-chunks")
+async def get_available_chunks(
+    run_id: int, 
+    columns: str = Query(...),
+    last_chunk_id: int = Query(0, description="Last chunk ID seen by client (for incremental updates)")
+):
+    """
+    Get list of available chunks for progressive loading.
+    Returns only NEW chunks since last_chunk_id, enabling real-time updates.
+    
+    This endpoint is optimized for polling - UI can call it repeatedly to get new chunks
+    as they're created during processing.
+    
+    Args:
+        run_id: Run ID
+        columns: Column combination
+        last_chunk_id: Last file_id the client has seen (returns only newer chunks)
+        
+    Returns:
+        List of new chunks available since last poll
+    """
+    try:
+        cursor = conn.cursor()
+        
+        # Get chunks created after last_chunk_id
+        cursor.execute('''
+            SELECT file_id, category, file_path, file_size, row_count, chunk_index, status, created_at
+            FROM comparison_export_files
+            WHERE run_id = ? 
+              AND column_combination = ?
+              AND file_id > ?
+            ORDER BY chunk_index ASC
+        ''', (run_id, columns, last_chunk_id))
+        
+        new_chunks = []
+        for row in cursor.fetchall():
+            file_id, category, file_path, file_size, row_count, chunk_index, status, created_at = row
+            new_chunks.append({
+                'file_id': file_id,
+                'category': category,
+                'chunk_index': chunk_index,
+                'row_count': row_count,
+                'file_size': file_size,
+                'status': status,
+                'created_at': created_at,
+                'file_path': file_path
+            })
+        
+        # Get comparison job status
+        cursor.execute('''
+            SELECT status, current_stage, progress_percent
+            FROM runs
+            WHERE run_id = ?
+        ''', (run_id,))
+        run_status = cursor.fetchone()
+        
+        job_status = 'unknown'
+        job_stage = 'unknown'
+        job_progress = 0
+        if run_status:
+            job_status, job_stage, job_progress = run_status
+        
+        # Check if comparison is still running
+        is_processing = job_status in ('running', 'pending') or job_stage == 'generating_comparisons'
+        
+        # Group chunks by category for easier UI handling
+        chunks_by_category = {
+            'matched': [c for c in new_chunks if c['category'] == 'matched'],
+            'only_a': [c for c in new_chunks if c['category'] == 'only_a'],
+            'only_b': [c for c in new_chunks if c['category'] == 'only_b']
+        }
+        
+        return JSONResponse({
+            'run_id': run_id,
+            'columns': columns,
+            'new_chunks': new_chunks,
+            'chunks_by_category': chunks_by_category,
+            'total_new_chunks': len(new_chunks),
+            'processing_status': {
+                'is_processing': is_processing,
+                'job_status': job_status,
+                'job_stage': job_stage,
+                'progress_percent': job_progress
+            },
+            'last_chunk_id': max([c['file_id'] for c in new_chunks]) if new_chunks else last_chunk_id,
+            'poll_again': is_processing  # Hint to UI whether to keep polling
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({'error': str(e)}, status_code=500)
 
 
 @app.get("/api/comparison-export/{run_id}/summary")

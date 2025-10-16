@@ -1,9 +1,10 @@
 'use client'
 
 /**
- * Chunked File List Viewer
- * Shows list of pre-generated chunk files (10k records each)
+ * Chunked File List Viewer with Progressive Loading
+ * Shows list of pre-generated chunk files (200k records each)
  * Lets users click to view specific chunk files
+ * Supports real-time polling to show new chunks as they're created during processing
  */
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -70,10 +71,34 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
     current_page: number;
     has_more: boolean;
   } | null>(null);
+  
+  // Progressive loading state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [lastChunkId, setLastChunkId] = useState(0);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadChunkFiles();
   }, [runId, columns]);
+  
+  // Poll for new chunks when processing
+  useEffect(() => {
+    if (isProcessing) {
+      const interval = setInterval(() => {
+        pollForNewChunks();
+      }, 2000); // Poll every 2 seconds
+      setPollingInterval(interval);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+    }
+  }, [isProcessing, lastChunkId]);
 
   // Notify parent about header data changes
   useEffect(() => {
@@ -87,6 +112,46 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
       });
     }
   }, [chunkFiles, onHeaderDataChange]);
+
+  const pollForNewChunks = async () => {
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/comparison-export/${runId}/available-chunks?` +
+        `columns=${encodeURIComponent(columns)}&` +
+        `last_chunk_id=${lastChunkId}`
+      );
+      
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      console.log('New chunks poll:', data);
+      
+      if (data.new_chunks && data.new_chunks.length > 0) {
+        // Update chunk files with new chunks
+        setChunkFiles(prev => ({
+          matched: [...prev.matched, ...data.chunks_by_category.matched],
+          only_a: [...prev.only_a, ...data.chunks_by_category.only_a],
+          only_b: [...prev.only_b, ...data.chunks_by_category.only_b]
+        }));
+        
+        // Update last chunk ID
+        setLastChunkId(data.last_chunk_id);
+        
+        // Show toast notification
+        toast.success(`${data.total_new_chunks} new chunk(s) available!`, {
+          icon: '🎉',
+          duration: 2000
+        });
+      }
+      
+      // Update processing status
+      if (data.processing_status) {
+        setIsProcessing(data.processing_status.is_processing);
+      }
+    } catch (error: any) {
+      console.error('Error polling for new chunks:', error);
+    }
+  };
 
   const loadChunkFiles = async () => {
     try {
@@ -110,6 +175,29 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
       if (data.exports_available && data.files_by_category) {
         setChunkFiles(data.files_by_category);
         
+        // Track the highest chunk ID for polling
+        const allFiles = [...data.files_by_category.matched, ...data.files_by_category.only_a, ...data.files_by_category.only_b];
+        if (allFiles.length > 0) {
+          const maxId = Math.max(...allFiles.map((f: ChunkFile) => f.file_id));
+          setLastChunkId(maxId);
+        }
+        
+        // Start polling if processing
+        // Check job status to determine if still processing
+        const statusResponse = await fetch(`${apiBaseUrl}/api/run/${runId}/status`);
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          const isStillProcessing = statusData.status === 'running' || statusData.current_stage === 'generating_comparisons';
+          setIsProcessing(isStillProcessing);
+          
+          if (isStillProcessing) {
+            toast.success('Processing in progress - new chunks will appear automatically', {
+              icon: '⚡',
+              duration: 3000
+            });
+          }
+        }
+        
         // Auto-select first chunk of matched if available
         if (data.files_by_category.matched && data.files_by_category.matched.length > 0) {
           loadChunkData(data.files_by_category.matched[0]);
@@ -121,7 +209,14 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
           loadChunkData(data.files_by_category.only_b[0]);
         }
       } else {
-        setError('No chunk files available. Make sure "Generate Comparisons" was enabled when running the analysis.');
+        setError('No chunk files available yet. Make sure "Generate Comparisons" was enabled. Processing may still be in progress...');
+        // Check if processing
+        const statusResponse = await fetch(`${apiBaseUrl}/api/run/${runId}/status`);
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          const isStillProcessing = statusData.status === 'running' || statusData.current_stage === 'generating_comparisons';
+          setIsProcessing(isStillProcessing);
+        }
       }
     } catch (error: any) {
       console.error('Error loading chunk files:', error);
@@ -307,13 +402,19 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
 
             {/* Right: Stats & Back Button */}
             <div className="flex items-center gap-2">
+              {isProcessing && (
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                  <span className="text-[10px] font-semibold text-blue-700">Processing... New chunks appearing</span>
+                </div>
+              )}
               <div className="flex items-center gap-2 text-[10px] font-medium text-gray-600">
                 <span className="flex items-center gap-1">
                   <span className="text-gray-500">Total:</span>
                   <span className="badge-primary text-[9px] px-1.5 py-0.5">{totalChunks} chunks</span>
                 </span>
                 <span className="text-gray-300">•</span>
-                <span className="text-gray-500">10k records/chunk</span>
+                <span className="text-gray-500">200k records/chunk</span>
               </div>
               {onClose && (
                 <button

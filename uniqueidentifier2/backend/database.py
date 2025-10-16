@@ -210,6 +210,7 @@ def create_tables():
             row_count INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             chunk_index INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'completed',
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         )
     ''')
@@ -217,6 +218,13 @@ def create_tables():
     # Add chunk_index column if it doesn't exist (migration)
     try:
         cursor.execute("ALTER TABLE comparison_export_files ADD COLUMN chunk_index INTEGER DEFAULT 1")
+        conn.commit()
+    except:
+        pass  # Column already exists
+    
+    # Add status column if it doesn't exist (migration)
+    try:
+        cursor.execute("ALTER TABLE comparison_export_files ADD COLUMN status TEXT DEFAULT 'completed'")
         conn.commit()
     except:
         pass  # Column already exists

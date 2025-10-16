@@ -30,13 +30,15 @@ class ChunkedFileExporter:
     """
     
     def __init__(self, run_id: int, file_a_path: str, file_b_path: str, 
-                 file_a_delimiter: str = ',', file_b_delimiter: str = ','):
+                 file_a_delimiter: str = ',', file_b_delimiter: str = ',',
+                 max_rows_limit: int = 0):
         self.run_id = run_id
         self.file_a_path = file_a_path
         self.file_b_path = file_b_path
         self.file_a_delimiter = file_a_delimiter
         self.file_b_delimiter = file_b_delimiter
         self.chunk_size = COMPARISON_CHUNK_SIZE
+        self.max_rows_limit = max_rows_limit  # User-specified row limit (0 = no limit)
         
         # Create run-specific directory
         self.run_export_dir = os.path.join(EXPORT_BASE_DIR, f"run_{run_id}")
@@ -68,6 +70,7 @@ class ChunkedFileExporter:
         
         # Create column combination identifier
         column_str = ','.join(columns)
+        self._current_columns = column_str  # Store for chunk registration
         comparison_dir = self._get_comparison_dir(column_str)
         os.makedirs(comparison_dir, exist_ok=True)
         
@@ -104,13 +107,13 @@ class ChunkedFileExporter:
         
         print(f"✅ Matched: {len(matched_keys):,} | A-only: {len(only_a_keys):,} | B-only: {len(only_b_keys):,}")
         
-        # PHASE 3: Export full row data for each category (10k records per file)
-        print(f"📊 Phase 3/3: Exporting full row data to chunked CSV files (10k per file)...")
+        # PHASE 3: Export full row data for each category (200k records per file for better performance)
+        print(f"📊 Phase 3/3: Exporting full row data to chunked CSV files (200k per file)...")
         export_paths = {}
         all_chunk_files = []
         
-        # Determine max rows per file
-        rows_per_file = max_export_rows if max_export_rows else 10000
+        # Determine max rows per file - Default to 200k for optimal performance with pagination
+        rows_per_file = max_export_rows if max_export_rows else 200000
         
         # Export matched records
         if matched_keys:
@@ -200,7 +203,6 @@ class ChunkedFileExporter:
             for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
                                     encoding='utf-8', on_bad_lines='skip', low_memory=False):
                 chunk_num += 1
-                total_rows += len(chunk)
                 
                 # Validate columns exist (only on first chunk)
                 if chunk_num == 1:
@@ -211,6 +213,19 @@ class ChunkedFileExporter:
                             f"Column(s) {', '.join(missing_cols)} not found in {label}. "
                             f"Available columns: {available}"
                         )
+                
+                # Apply user's max rows limit if specified
+                if self.max_rows_limit > 0 and total_rows >= self.max_rows_limit:
+                    print(f"   {label}: Reached user-specified limit of {self.max_rows_limit:,} rows")
+                    break
+                
+                # If this chunk would exceed limit, truncate it
+                if self.max_rows_limit > 0 and (total_rows + len(chunk)) > self.max_rows_limit:
+                    rows_to_take = self.max_rows_limit - total_rows
+                    chunk = chunk.head(rows_to_take)
+                    print(f"   {label}: Taking only {rows_to_take:,} rows from this chunk to reach limit")
+                
+                total_rows += len(chunk)
                 
                 # Create composite keys
                 if len(columns) == 1:
@@ -227,6 +242,9 @@ class ChunkedFileExporter:
                 raise  # Re-raise our formatted error
             # Generic error with helpful context
             raise ValueError(f"Error reading {label} from {os.path.basename(file_path)}: {str(e)}")
+        
+        if self.max_rows_limit > 0:
+            print(f"   {label}: Limited to {total_rows:,} rows (user limit: {self.max_rows_limit:,})")
         
         return unique_keys, total_rows
     
@@ -266,10 +284,24 @@ class ChunkedFileExporter:
         chunk_file_paths = []
         current_chunk_records = []
         target_keys_set = target_keys
+        total_rows_processed = 0
         
         for chunk in pd.read_csv(file_path, sep=delimiter, chunksize=self.chunk_size, 
                                 encoding='utf-8', on_bad_lines='skip', low_memory=False):
             chunk_num += 1
+            
+            # Apply user's max rows limit if specified
+            if self.max_rows_limit > 0 and total_rows_processed >= self.max_rows_limit:
+                print(f"   {label}: Reached user-specified limit of {self.max_rows_limit:,} rows during export")
+                break
+            
+            # If this chunk would exceed limit, truncate it
+            if self.max_rows_limit > 0 and (total_rows_processed + len(chunk)) > self.max_rows_limit:
+                rows_to_take = self.max_rows_limit - total_rows_processed
+                chunk = chunk.head(rows_to_take)
+                print(f"   {label}: Taking only {rows_to_take:,} rows from this chunk to reach export limit")
+            
+            total_rows_processed += len(chunk)
             
             # Create composite key for this chunk
             if len(key_columns) == 1:
@@ -296,12 +328,15 @@ class ChunkedFileExporter:
                     chunk_file_paths.append(chunk_file_path)
                     print(f"   ✅ Created chunk file {file_chunk_num}: {len(combined_df):,} records")
                     
+                    # Register chunk in database immediately for progressive loading
+                    self._register_chunk(chunk_file_path, category, file_chunk_num, len(combined_df))
+                    
                     # Reset for next chunk
                     current_chunk_records = []
                     file_chunk_num += 1
             
             if chunk_num % 10 == 0:
-                print(f"   {label}: Processed {chunk_num * self.chunk_size:,} rows, exported {exported_count:,} so far...")
+                print(f"   {label}: Processed {total_rows_processed:,} rows, exported {exported_count:,} so far...")
         
         # Write remaining records
         if current_chunk_records:
@@ -310,6 +345,9 @@ class ChunkedFileExporter:
             combined_df.to_csv(chunk_file_path, index=False)
             chunk_file_paths.append(chunk_file_path)
             print(f"   ✅ Created chunk file {file_chunk_num}: {len(combined_df):,} records")
+            
+            # Register final chunk in database immediately for progressive loading
+            self._register_chunk(chunk_file_path, category, file_chunk_num, len(combined_df))
         
         print(f"   ✅ Exported {exported_count:,} {label} records to {len(chunk_file_paths)} chunk files")
         return exported_count, chunk_file_paths
@@ -330,6 +368,39 @@ class ChunkedFileExporter:
         safe_name = f"{prefix}_{column_hash}"
         
         return os.path.join(self.run_export_dir, f"comparison_{safe_name}")
+    
+    def _register_chunk(self, chunk_file_path: str, category: str, chunk_index: int, row_count: int):
+        """
+        Register a chunk file in database immediately after creation.
+        This enables progressive loading - UI can fetch chunks as they're created.
+        """
+        from database import conn
+        cursor = conn.cursor()
+        
+        # Get file size
+        file_size = os.path.getsize(chunk_file_path) if os.path.exists(chunk_file_path) else 0
+        
+        # Get column combination from the current comparison directory
+        # Extract from file path (it's stored in the compare_and_export method)
+        column_combination = getattr(self, '_current_columns', 'unknown')
+        
+        cursor.execute('''
+            INSERT INTO comparison_export_files 
+            (run_id, column_combination, category, file_path, file_size, row_count, chunk_index, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            self.run_id,
+            column_combination,
+            category,
+            chunk_file_path,
+            file_size,
+            row_count,
+            chunk_index,
+            'completed',
+            datetime.now().isoformat()
+        ))
+        conn.commit()
+        print(f"   📝 Registered chunk {chunk_index} in database for progressive loading")
     
     def _store_comparison_metadata(self, summary: Dict):
         """Store comparison metadata in database including all chunk files"""
