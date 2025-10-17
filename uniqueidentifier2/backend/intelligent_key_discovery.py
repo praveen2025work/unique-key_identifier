@@ -54,6 +54,9 @@ class IntelligentKeyDiscovery:
         # Pre-compute column statistics
         self.column_stats = self._compute_column_statistics()
         
+        # MEMORY OPTIMIZATION: Clear sample_df reference if not needed anymore
+        # (will be recreated if needed in validation)
+        
     def _compute_column_statistics(self) -> Dict:
         """Compute statistics for each column to guide search."""
         stats = {}
@@ -328,6 +331,11 @@ class IntelligentKeyDiscovery:
         
         # Sort by uniqueness score (descending)
         results.sort(key=lambda x: -x[1])
+        
+        # MEMORY OPTIMIZATION: Clear large temporary lists
+        import gc
+        del combinations
+        gc.collect()
         
         return results
     

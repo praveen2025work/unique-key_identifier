@@ -1,0 +1,8 @@
+Run ID: 4
+Columns: id,department
+Column Count: 2
+Generated: 2025-10-17 11:28:52
+
+Column List:
+  1. id
+  2. department

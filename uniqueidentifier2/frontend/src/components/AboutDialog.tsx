@@ -235,8 +235,8 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                     <p className="font-semibold text-gray-800 mb-1">🤖 Smart Keys (Recommended for 300+ columns):</p>
                     <ul className="space-y-1 ml-4">
                       <li>• <strong>Without combinations:</strong> Auto discovers 2-10 column keys (100-150 total)</li>
-                      <li>• <strong>With base hint:</strong> First combination used as business base, system adds 2-10 columns</li>
-                      <li>• <strong>Multiple combinations:</strong> First enhanced with AI, rest analyzed individually</li>
+                      <li>• <strong>With base hint:</strong> Each combination used as business base, system adds 2-10 columns</li>
+                      <li>• <strong>Multiple combinations:</strong> ALL enhanced with AI (each gets ~100-150 variations)</li>
                     </ul>
                   </div>
                   <div>
@@ -294,7 +294,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                   <li>
                     <strong className="text-gray-800">Unique Key:</strong> A combination of columns that uniquely identifies records
                     <br/>
-                    <span className="text-xs text-gray-500">Example: "desk + book + trade_date" might be a unique key for trading data</span>
+                      <span className="text-xs text-gray-500">Example: &quot;desk + book + trade_date&quot; might be a unique key for trading data</span>
                   </li>
                   <li>
                     <strong className="text-gray-800">Match Percentage:</strong> How many records match between the two files

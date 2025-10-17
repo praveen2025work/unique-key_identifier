@@ -63,6 +63,7 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
   const [chunkData, setChunkData] = useState<any[]>([]);
   const [loadingChunk, setLoadingChunk] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100); // Reduced from 1000 to 100 for better memory management
   const [pagination, setPagination] = useState<{
     offset: number;
     limit: number;
@@ -79,6 +80,14 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
 
   useEffect(() => {
     loadChunkFiles();
+    
+    // MEMORY FIX: Cleanup on unmount
+    return () => {
+      setChunkData([]); // Clear data when component unmounts
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
   }, [runId, columns]);
   
   // Poll for new chunks when processing
@@ -230,10 +239,15 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
   const loadChunkData = async (chunk: ChunkFile, page: number = 1) => {
     try {
       setLoadingChunk(true);
+      
+      // MEMORY FIX: Clear previous data immediately to free memory
+      setChunkData([]);
+      
       setSelectedChunk(chunk);
       setCurrentPage(page);
       
-      const limit = 1000; // 1k records per page
+      // MEMORY FIX: Reduced from 1000 to 100 for better memory management
+      const limit = pageSize; // Use configurable page size (default: 100)
       const offset = (page - 1) * limit;
       
       const response = await fetch(
@@ -250,6 +264,8 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
       }
 
       const data = await response.json();
+      
+      // MEMORY FIX: Only set new data after clearing old
       setChunkData(data.records || []);
       setPagination(data.pagination || null);
       
@@ -260,6 +276,7 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
     } catch (error: any) {
       console.error('Error loading chunk data:', error);
       toast.error(error.message || 'Failed to load chunk data');
+      setChunkData([]); // Clear on error
     } finally {
       setLoadingChunk(false);
     }
@@ -539,11 +556,12 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
                     </tr>
                   </thead>
                   <tbody>
-                    {chunkData.map((record, idx) => (
-                      <tr key={idx}>
+                    {/* MEMORY FIX: Only render current page data, use stable keys */}
+                    {chunkData.slice(0, pageSize).map((record, idx) => (
+                      <tr key={`row-${currentPage}-${idx}`}>
                         {Object.entries(record).map(([key, value], cellIdx) => (
                           <td
-                            key={cellIdx}
+                            key={`${key}-${cellIdx}`}
                             className="group cursor-pointer"
                             onClick={() => copyToClipboard(String(value ?? ''))}
                             title="Click to copy"
@@ -553,7 +571,7 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
                                 <span className="text-gray-400 italic text-xs">null</span>
                               ) : (
                                 <>
-                                  <span>{String(value)}</span>
+                                  <span>{String(value).substring(0, 200)}</span>
                                   <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-xs">📋</span>
                                 </>
                               )}
@@ -568,62 +586,87 @@ export default function ChunkedFileListViewer({ runId, columns, apiEndpoint, onC
               
               {/* Compact Pagination Controls */}
               {pagination && pagination.total_pages > 1 && (
-                <div className="mt-2 flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                <div className="mt-2 space-y-2">
+                  {/* Page Size Selector - MEMORY FIX */}
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                    <span className="text-xs font-medium text-gray-700">Rows per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const newSize = Number(e.target.value);
+                        setPageSize(newSize);
+                        // Reload current chunk with new page size
+                        if (selectedChunk) {
+                          loadChunkData(selectedChunk, 1);
+                        }
+                      }}
+                      className="text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
-                      ← Prev
-                    </button>
-                    <button
-                      onClick={handleNextPage}
-                      disabled={!pagination.has_more}
-                      className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      Next →
-                    </button>
+                      <option value={50}>50 (Fastest)</option>
+                      <option value={100}>100 (Recommended)</option>
+                      <option value={250}>250</option>
+                      <option value={500}>500</option>
+                      <option value={1000}>1000 (Slower)</option>
+                    </select>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-gray-600">
-                      Showing {((currentPage - 1) * pagination.limit + 1).toLocaleString()} - {Math.min(currentPage * pagination.limit, pagination.total_records).toLocaleString()} of {pagination.total_records.toLocaleString()}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-medium text-gray-500">Jump to:</span>
-                      <input
-                        type="number"
-                        min="1"
-                        max={pagination.total_pages}
-                        value={currentPage}
-                        onChange={(e) => {
-                          const page = parseInt(e.target.value);
-                          if (page && page >= 1 && page <= pagination.total_pages) {
-                            handlePageJump(page);
-                          }
-                        }}
-                        className="w-14 px-1.5 py-0.5 text-[10px] text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-                      />
-                      <span className="text-[10px] font-medium text-gray-500">/ {pagination.total_pages}</span>
+                  <div className="flex items-center justify-between px-2 py-1.5 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        ← Prev
+                      </button>
+                      <button
+                        onClick={handleNextPage}
+                        disabled={!pagination.has_more}
+                        className="px-2 py-1 text-xs font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        Next →
+                      </button>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handlePageJump(1)}
-                      disabled={currentPage === 1}
-                      className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      First
-                    </button>
-                    <button
-                      onClick={() => handlePageJump(pagination.total_pages)}
-                      disabled={currentPage === pagination.total_pages}
-                      className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      Last
-                    </button>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-medium text-gray-600">
+                        Showing {((currentPage - 1) * pageSize + 1).toLocaleString()} - {Math.min(currentPage * pageSize, pagination.total_records).toLocaleString()} of {pagination.total_records.toLocaleString()}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-medium text-gray-500">Jump to:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={pagination.total_pages}
+                          value={currentPage}
+                          onChange={(e) => {
+                            const page = parseInt(e.target.value);
+                            if (page && page >= 1 && page <= pagination.total_pages) {
+                              handlePageJump(page);
+                            }
+                          }}
+                          className="w-14 px-1.5 py-0.5 text-[10px] text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+                        />
+                        <span className="text-[10px] font-medium text-gray-500">/ {pagination.total_pages}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handlePageJump(1)}
+                        disabled={currentPage === 1}
+                        className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        First
+                      </button>
+                      <button
+                        onClick={() => handlePageJump(pagination.total_pages)}
+                        disabled={currentPage === pagination.total_pages}
+                        className="px-2 py-1 text-[10px] font-semibold rounded bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        Last
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

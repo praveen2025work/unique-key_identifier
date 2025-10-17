@@ -69,6 +69,17 @@ const WijmoDataGrid: React.FC<WijmoDataGridProps> = ({
 
   // Create CollectionView with pagination
   useEffect(() => {
+    // MEMORY FIX: Clear previous view before creating new one
+    if (view) {
+      try {
+        view.sourceCollection = [];
+        view.clearChanges();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      setView(null);
+    }
+    
     if (data && data.length > 0) {
       try {
         const cv = new CollectionView(data, {
@@ -91,10 +102,15 @@ const WijmoDataGrid: React.FC<WijmoDataGridProps> = ({
       setView(null);
     }
 
-    // Cleanup
+    // Cleanup on unmount
     return () => {
       if (view) {
-        view.sourceCollection = [];
+        try {
+          view.sourceCollection = [];
+          view.clearChanges();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
       }
     };
   }, [data, pageSize, allowPaging]);
@@ -103,9 +119,10 @@ const WijmoDataGrid: React.FC<WijmoDataGridProps> = ({
   const handleInitialized = (grid: wjGrid.FlexGrid) => {
     if (!grid) return;
 
-    // Configure grid for optimal performance
+    // Configure grid for optimal performance and memory management
     grid.deferResizing = true; // Improves performance during resizing
     grid.quickAutoSize = true; // Faster auto-sizing
+    grid.lazyRender = true; // MEMORY FIX: Only render visible rows
     grid.alternatingRowStep = alternatingRowStep;
     grid.headersVisibility = headersVisibility;
     grid.isReadOnly = isReadOnly;

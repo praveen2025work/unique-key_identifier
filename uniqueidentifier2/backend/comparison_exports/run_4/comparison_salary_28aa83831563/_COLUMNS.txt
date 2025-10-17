@@ -1,0 +1,7 @@
+Run ID: 4
+Columns: salary
+Column Count: 1
+Generated: 2025-10-17 11:28:51
+
+Column List:
+  1. salary

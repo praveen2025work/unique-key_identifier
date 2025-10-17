@@ -22,7 +22,8 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
     
     # NEW: Use intelligent discovery when enabled by user
     # Intelligent discovery works for any dataset but is especially useful for large ones
-    if use_intelligent_discovery:
+    # SAFETY: Skip intelligent discovery for very small datasets to avoid segfault issues
+    if use_intelligent_discovery and len(df) > 100 and len(df.columns) > 10:
         print(f"🚀 Using Intelligent Key Discovery (avoiding combinatorial explosion)")
         print(f"   Dataset: {len(df.columns)} columns × {len(df):,} rows")
         
@@ -188,6 +189,13 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
             if cardinality_ratio < 0.5:
                 df[col] = df[col].astype('category')
     
+    # MEMORY MONITORING: Log memory usage for large operations
+    import gc
+    import psutil
+    import os
+    process = psutil.Process(os.getpid())
+    mem_before = process.memory_info().rss / 1024 / 1024  # MB
+    
     # Determine which combinations to analyze
     if specified_combinations and use_intelligent_discovery:
         # GUIDED DISCOVERY MODE: Apply intelligent enhancement to ALL user combinations
@@ -311,6 +319,20 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
     
     # Sort by uniqueness score (descending) then by duplicate count (ascending)
     results.sort(key=lambda x: (-x['uniqueness_score'], x['duplicate_count']))
+    
+    # MEMORY OPTIMIZATION: Cleanup and log memory usage
+    mem_after = process.memory_info().rss / 1024 / 1024  # MB
+    mem_used = mem_after - mem_before
+    if mem_used > 100:  # Log if used more than 100 MB
+        print(f"   💾 Memory used: {mem_used:.1f} MB (Peak: {mem_after:.1f} MB)")
+    
+    # Clear categorical dtypes (no longer needed)
+    for col in columns:
+        if df[col].dtype.name == 'category':
+            df[col] = df[col].astype('object')
+    
+    # Force garbage collection after heavy analysis
+    gc.collect()
     
     return results
 

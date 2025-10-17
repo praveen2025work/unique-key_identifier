@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
-import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import ModernDropdown from './ui/ModernDropdown';
 import ChunkedFileListViewer, { Category } from './ChunkedFileListViewer';
 import WorkflowView from './WorkflowView';
@@ -65,7 +65,42 @@ interface FileComparisonAppProps {
   initialRunId?: number;
 }
 
+// Utility function to identify base columns from grouped results
+function findBaseColumns(combinations: string[]): Map<string, string[]> {
+  if (combinations.length === 0) return new Map();
+  
+  const groups = new Map<string, string[]>();
+  
+  // Find combinations that share common base columns
+  for (const combo of combinations) {
+    const cols = combo.split(',').map(c => c.trim());
+    let foundGroup = false;
+    
+    // Try to find existing group that shares columns
+    for (const [base, members] of groups.entries()) {
+      const baseCols = base.split(',').map(c => c.trim());
+      // Check if all base columns are in this combination
+      if (baseCols.every(bc => cols.includes(bc))) {
+        members.push(combo);
+        foundGroup = true;
+        break;
+      }
+    }
+    
+    // Create new group if not found
+    if (!foundGroup) {
+      // Use first 2-3 columns as base for grouping
+      const baseSize = Math.min(3, cols.length);
+      const base = cols.slice(0, baseSize).join(', ');
+      groups.set(base, [combo]);
+    }
+  }
+  
+  return groups;
+}
+
 export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: FileComparisonAppProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [apiEndpoint, setApiEndpoint] = useState(() => 
     typeof window !== 'undefined' ? localStorage.getItem('apiEndpoint') || 'http://localhost:8000' : 'http://localhost:8000'
   );
@@ -1380,97 +1415,189 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
             {/* All Tab Content */}
             <div className="bg-white rounded-lg shadow border border-slate-200 overflow-hidden" style={{ maxHeight: 'calc(100vh - 200px)' }}>
               
-              {/* Analysis Tab - Existing Table */}
-              {resultsTab === 'analysis' && (
-              <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+              {/* Analysis Tab - Enhanced with Grouping */}
+              {resultsTab === 'analysis' && (() => {
+                // Group results by base columns
+                const allCombos = Array.from(new Set([...results.results_a.map(r => r.columns), ...results.results_b.map(r => r.columns)]));
+                const groupedCombos = findBaseColumns(allCombos);
+                const groupCount = groupedCombos.size;
+                const totalCombos = allCombos.length;
+                const avgPerBase = groupCount > 0 ? Math.round(totalCombos / groupCount) : 0;
                 
-                {comparisonView === 'sidebyside' && (
-                  <table className="w-full text-xs table-fixed">
-                    <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 5 }}>
-                      <tr>
-                        <th className="px-3 py-2 text-left font-semibold sticky left-0 bg-slate-700" style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 6 }}>Combination</th>
-                        <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]" style={{ width: '22.5%' }}>File A</th>
-                        <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700" style={{ width: '22.5%' }}>File B</th>
-                      </tr>
-                      <tr className="bg-slate-600" style={{ zIndex: 5 }}>
-                        <th className="px-3 py-1.5 sticky left-0 bg-slate-600" style={{ zIndex: 6 }}></th>
-                        <th className="px-2 py-1.5 text-xs border-l border-[#337ab7]">Unique</th>
-                        <th className="px-2 py-1.5 text-xs">Dups</th>
-                        <th className="px-2 py-1.5 text-xs border-r border-[#337ab7]">Score</th>
-                        <th className="px-2 py-1.5 text-xs">Unique</th>
-                        <th className="px-2 py-1.5 text-xs">Dups</th>
-                        <th className="px-2 py-1.5 text-xs">Score</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {Array.from(new Set([...results.results_a.map(r => r.columns), ...results.results_b.map(r => r.columns)])).map((combo, i) => {
-                        const resultA = results.results_a.find(r => r.columns === combo);
-                        const resultB = results.results_b.find(r => r.columns === combo);
-                        
-                        const copyToClipboard = (text: string) => {
-                          navigator.clipboard.writeText(text);
-                          toast.success('Combination copied to clipboard!');
-                        };
-                        
-                        return (
-                          <tr key={i} className="hover:bg-slate-50">
-                            <td 
-                              className="px-3 py-2 font-mono text-xs font-medium sticky left-0 bg-white group cursor-pointer hover:bg-primary-50 transition-colors"
-                              style={{ width: '55%', minWidth: '55%', maxWidth: '55%', zIndex: 4 }}
-                              onClick={() => copyToClipboard(combo)}
-                              title="Click to copy combination"
-                            >
-                              <div className="flex items-start gap-2">
-                                <span className="break-words whitespace-normal leading-relaxed">{combo}</span>
-                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-[10px] flex-shrink-0 mt-0.5">📋</span>
-                              </div>
-                            </td>
-                            <td className={`px-2 py-2 text-center border-l border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
-                              {resultA?.unique_rows.toLocaleString() || '-'}
-                            </td>
-                            <td className={`px-2 py-2 text-center text-red-600 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
-                              {resultA?.duplicate_count.toLocaleString() || '-'}
-                            </td>
-                            <td className={`px-2 py-2 text-center border-r border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
-                              {resultA?.uniqueness_score.toFixed(1) || '-'}%
-                            </td>
-                            <td className={`px-2 py-2 text-center ${resultB?.is_unique_key ? 'bg-purple-50 font-semibold text-purple-700' : ''}`}>
-                              {resultB?.unique_rows.toLocaleString() || '-'}
-                            </td>
-                            <td className={`px-2 py-2 text-center text-red-600 ${resultB?.is_unique_key ? 'bg-purple-50' : ''}`}>
-                              {resultB?.duplicate_count.toLocaleString() || '-'}
-                            </td>
-                            <td className={`px-2 py-2 text-center ${resultB?.is_unique_key ? 'bg-purple-50' : ''}`}>
-                              {resultB?.uniqueness_score.toFixed(1) || '-'}%
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-
-                {comparisonView !== 'sidebyside' && (
-                  <div className="p-4">
-                    <div className="flex flex-wrap gap-1.5">
-                        {comparisonView === 'matched' && keyComparisonData.matched.map((combo, i) => (
-                        <div key={i} className="px-2 py-1 bg-green-100 border border-green-400 text-green-900 rounded text-xs font-mono">{combo}</div>
-                      ))}
-                        {comparisonView === 'only_a' && keyComparisonData.onlyA.map((combo, i) => (
-                        <div key={i} className="px-2 py-1 bg-[#337ab7]/10 border border-[#337ab7] text-[#337ab7] rounded text-xs font-mono">{combo}</div>
-                      ))}
-                        {comparisonView === 'only_b' && keyComparisonData.onlyB.map((combo, i) => (
-                        <div key={i} className="px-2 py-1 bg-purple-100 border border-purple-400 text-purple-900 rounded text-xs font-mono">{combo}</div>
-                      ))}
-                        {comparisonView === 'neither' && keyComparisonData.neither.map((combo, i) => (
-                        <div key={i} className="px-2 py-1 bg-gray-100 border border-gray-300 text-gray-700 rounded text-xs font-mono">{combo}</div>
-                      ))}
+                return (
+                  <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                    
+                    {/* Summary Banner */}
+                    <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-50 to-blue-50 border-b-2 border-indigo-200 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">
+                            Total: <span className="text-indigo-600">{totalCombos}</span> combinations
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {groupCount} base {groupCount === 1 ? 'combination' : 'combinations'} × ~{avgPerBase} variations each
+                          </p>
+                        </div>
+                        <div className="text-xs text-gray-500 bg-white px-3 py-2 rounded-lg border border-gray-300">
+                          <div className="font-semibold text-gray-700 mb-1">Breakdown:</div>
+                          {Array.from(groupedCombos.entries()).slice(0, 3).map(([base, members], idx) => (
+                            <div key={idx}>Base {idx + 1}: {base} ({members.length} variations)</div>
+                          ))}
+                          {groupCount > 3 && <div className="text-gray-400 italic">... and {groupCount - 3} more</div>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                </div>
-              )}
+                    
+                    {comparisonView === 'sidebyside' && (
+                      <div className="p-4">
+                        {/* Group by base columns with collapsible sections */}
+                        {Array.from(groupedCombos.entries()).map(([base, members], groupIdx) => {
+                          const isExpanded = expandedGroups.has(base);
+                          const toggleGroup = () => {
+                            const newExpanded = new Set(expandedGroups);
+                            if (isExpanded) {
+                              newExpanded.delete(base);
+                            } else {
+                              newExpanded.add(base);
+                            }
+                            setExpandedGroups(newExpanded);
+                          };
+                          
+                          return (
+                            <div key={groupIdx} className="mb-4 border border-gray-300 rounded-lg overflow-hidden">
+                              {/* Group Header */}
+                              <div 
+                                className="flex items-center justify-between bg-gradient-to-r from-slate-100 to-gray-100 px-4 py-3 cursor-pointer hover:from-slate-200 hover:to-gray-200 transition-colors"
+                                onClick={toggleGroup}
+                              >
+                                <div className="flex items-center gap-3">
+                                  {isExpanded ? (
+                                    <ChevronDownIcon className="w-5 h-5 text-gray-600" />
+                                  ) : (
+                                    <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+                                  )}
+                                  <div>
+                                    <div className="font-bold text-gray-900 text-sm">
+                                      Base {groupIdx + 1}: <span className="text-indigo-600 font-mono">{base}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-600 mt-0.5">
+                                      {members.length} variations
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-xs bg-white px-3 py-1 rounded-full border border-gray-300 font-semibold text-gray-700">
+                                  {members.length} combos
+                                </div>
+                              </div>
+                              
+                              {/* Collapsible Content */}
+                              {isExpanded && (
+                                <table className="w-full text-xs table-fixed">
+                                  <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 4 }}>
+                                    <tr>
+                                      <th className="px-3 py-2 text-left font-semibold" style={{ width: '55%' }}>Additional Columns</th>
+                                      <th colSpan={3} className="px-3 py-2 text-center font-semibold border-x border-[#337ab7] bg-[#337ab7]" style={{ width: '22.5%' }}>File A</th>
+                                      <th colSpan={3} className="px-3 py-2 text-center font-semibold bg-purple-700" style={{ width: '22.5%' }}>File B</th>
+                                    </tr>
+                                    <tr className="bg-slate-600">
+                                      <th className="px-3 py-1.5"></th>
+                                      <th className="px-2 py-1.5 text-xs border-l border-[#337ab7]">Unique</th>
+                                      <th className="px-2 py-1.5 text-xs">Dups</th>
+                                      <th className="px-2 py-1.5 text-xs border-r border-[#337ab7]">Score</th>
+                                      <th className="px-2 py-1.5 text-xs">Unique</th>
+                                      <th className="px-2 py-1.5 text-xs">Dups</th>
+                                      <th className="px-2 py-1.5 text-xs">Score</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {members.map((combo, i) => {
+                                        const resultA = results.results_a.find(r => r.columns === combo);
+                                        const resultB = results.results_b.find(r => r.columns === combo);
+                                        
+                                        const copyToClipboard = (text: string) => {
+                                          navigator.clipboard.writeText(text);
+                                          toast.success('Combination copied to clipboard!');
+                                        };
+                                        
+                                        // Extract additional columns (not in base)
+                                        const allCols = combo.split(',').map(c => c.trim());
+                                        const baseCols = base.split(',').map(c => c.trim());
+                                        const additionalCols = allCols.filter(c => !baseCols.includes(c));
+                                        
+                                        return (
+                                          <tr key={i} className="hover:bg-slate-50">
+                                            <td 
+                                              className="px-3 py-2 font-mono text-xs group cursor-pointer hover:bg-primary-50 transition-colors"
+                                              style={{ width: '55%' }}
+                                              onClick={() => copyToClipboard(combo)}
+                                              title="Click to copy full combination"
+                                            >
+                                              <div className="flex items-start gap-2">
+                                                <div className="break-words whitespace-normal leading-relaxed">
+                                                  {/* Show base in bold */}
+                                                  <span className="font-bold text-indigo-700">{base}</span>
+                                                  {additionalCols.length > 0 && (
+                                                    <>
+                                                      <span className="text-gray-400 mx-1">+</span>
+                                                      <span className="text-gray-700">{additionalCols.join(', ')}</span>
+                                                    </>
+                                                  )}
+                                                </div>
+                                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary-500 text-[10px] flex-shrink-0 mt-0.5">📋</span>
+                                              </div>
+                                            </td>
+                                            <td className={`px-2 py-2 text-center border-l border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
+                                              {resultA?.unique_rows.toLocaleString() || '-'}
+                                            </td>
+                                            <td className={`px-2 py-2 text-center text-red-600 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
+                                              {resultA?.duplicate_count.toLocaleString() || '-'}
+                                            </td>
+                                            <td className={`px-2 py-2 text-center border-r border-[#337ab7]/20 ${resultA?.is_unique_key ? 'bg-green-50' : ''}`}>
+                                              {resultA?.uniqueness_score.toFixed(1) || '-'}%
+                                            </td>
+                                            <td className={`px-2 py-2 text-center ${resultB?.is_unique_key ? 'bg-purple-50 font-semibold text-purple-700' : ''}`}>
+                                              {resultB?.unique_rows.toLocaleString() || '-'}
+                                            </td>
+                                            <td className={`px-2 py-2 text-center text-red-600 ${resultB?.is_unique_key ? 'bg-purple-50' : ''}`}>
+                                              {resultB?.duplicate_count.toLocaleString() || '-'}
+                                            </td>
+                                            <td className={`px-2 py-2 text-center ${resultB?.is_unique_key ? 'bg-purple-50' : ''}`}>
+                                              {resultB?.uniqueness_score.toFixed(1) || '-'}%
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    
+                      {comparisonView !== 'sidebyside' && (
+                        <div className="p-4">
+                          <div className="flex flex-wrap gap-1.5">
+                            {comparisonView === 'matched' && keyComparisonData.matched.map((combo, i) => (
+                              <div key={i} className="px-2 py-1 bg-green-100 border border-green-400 text-green-900 rounded text-xs font-mono">{combo}</div>
+                            ))}
+                            {comparisonView === 'only_a' && keyComparisonData.onlyA.map((combo, i) => (
+                              <div key={i} className="px-2 py-1 bg-[#337ab7]/10 border border-[#337ab7] text-[#337ab7] rounded text-xs font-mono">{combo}</div>
+                            ))}
+                            {comparisonView === 'only_b' && keyComparisonData.onlyB.map((combo, i) => (
+                              <div key={i} className="px-2 py-1 bg-purple-100 border border-purple-400 text-purple-900 rounded text-xs font-mono">{combo}</div>
+                            ))}
+                            {comparisonView === 'neither' && keyComparisonData.neither.map((combo, i) => (
+                              <div key={i} className="px-2 py-1 bg-gray-100 border border-gray-300 text-gray-700 rounded text-xs font-mono">{combo}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()
+              }
               
               {/* Workflow Tab - Unified View */}
               {resultsTab === 'workflow' && jobStatus && (

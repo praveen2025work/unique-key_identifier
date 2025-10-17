@@ -245,11 +245,23 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         
         cursor = conn.cursor()
         
-        # Update run with row counts
+        # Update run with row counts (save before clearing DataFrames)
         cursor.execute('''
             UPDATE runs SET file_a_rows = ?, file_b_rows = ?
             WHERE run_id = ?
         ''', (len(df_a), len(df_b), run_id))
+        
+        # MEMORY OPTIMIZATION: Clear DataFrames after saving row counts
+        import gc
+        try:
+            del df_a
+        except:
+            pass  # df_a might have been cleared already or not assigned
+        try:
+            del df_b
+        except:
+            pass  # df_b might have been cleared already or not assigned
+        gc.collect()
         
         # Store results for File A
         for result in results_a:
