@@ -83,15 +83,23 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Automatically discovers <strong>optimal unique key combinations</strong></span>
+                    <span><strong>Smart Keys AI:</strong> Discovers 2-10 column combinations (100-150 total) for optimal key discovery</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Identifies matching, unique, and duplicate records</span>
+                    <span><strong>Guided Discovery:</strong> Provide business hints - system enhances with intelligent variations</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Comprehensive comparison exports with data quality metrics</span>
+                    <span>Optimized for <strong>300+ column datasets</strong> with combinatorial explosion prevention</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span>Identifies matching, unique, and duplicate records with full row-by-row comparison</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <span>Comprehensive exports with data quality metrics and progressive loading</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -99,7 +107,7 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircleIcon className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <span>Smart sampling strategies for files &gt;1M rows</span>
+                    <span>Smart sampling strategies for files &gt;1M rows with adaptive thresholds</span>
                   </li>
                 </ul>
               </div>
@@ -139,12 +147,13 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                   </div>
 
                   <div>
-                    <p className="font-semibold text-sm text-gray-700 mb-1">Advanced Features:</p>
+                    <p className="font-semibold text-sm text-gray-700 mb-1">AI & Advanced Features:</p>
                     <ul className="text-sm text-gray-600 space-y-1 ml-4">
+                      <li>• <strong>Intelligent Key Discovery</strong> - AI-powered 2-10 column search</li>
+                      <li>• <strong>Guided Discovery</strong> - Business hint enhancement</li>
                       <li>• Background job processing with threading</li>
                       <li>• Chunked comparison engine for large files</li>
-                      <li>• Parallel processing for multi-file operations</li>
-                      <li>• Smart caching system for comparison results</li>
+                      <li>• Smart caching & progressive loading</li>
                       <li>• Audit logging & notification system</li>
                     </ul>
                   </div>
@@ -221,14 +230,32 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                   <span className="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
                   Configure Analysis
                 </h4>
-                <p className="text-gray-600 text-sm ml-8 mb-2">
-                  Select the number of columns to analyze (1-5 columns). The system will find all possible combinations.
-                </p>
-                <ul className="text-gray-600 text-sm ml-8 space-y-1">
-                  <li>• <strong>Max Rows Limit:</strong> Optionally limit the number of rows to process</li>
-                  <li>• <strong>Data Quality Check:</strong> Enable to get comprehensive data quality metrics</li>
-                  <li>• <strong>Column Combinations:</strong> Manually specify or exclude specific combinations</li>
-                </ul>
+                <div className="ml-8 space-y-3 text-sm text-gray-600">
+                  <div>
+                    <p className="font-semibold text-gray-800 mb-1">🤖 Smart Keys (Recommended for 300+ columns):</p>
+                    <ul className="space-y-1 ml-4">
+                      <li>• <strong>Without combinations:</strong> Auto discovers 2-10 column keys (100-150 total)</li>
+                      <li>• <strong>With base hint:</strong> First combination used as business base, system adds 2-10 columns</li>
+                      <li>• <strong>Multiple combinations:</strong> First enhanced with AI, rest analyzed individually</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800 mb-1">⚙️ Manual Mode (Smart Keys OFF):</p>
+                    <ul className="space-y-1 ml-4">
+                      <li>• Specify exact column combinations to analyze</li>
+                      <li>• Number of Columns field controls combination size</li>
+                      <li>• No AI enhancement - analyzes only what you specify</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800 mb-1">🔧 Other Options:</p>
+                    <ul className="space-y-1 ml-4">
+                      <li>• <strong>Max Rows Limit:</strong> Optionally limit rows to process</li>
+                      <li>• <strong>Data Quality Check:</strong> Comprehensive data quality metrics</li>
+                      <li>• <strong>Exclude Combinations:</strong> Skip specific column combinations</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
               <div className="bg-white p-5 rounded-lg border border-green-100">
@@ -281,6 +308,82 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
                     <strong className="text-gray-800">Duplicate Records:</strong> Records that appear multiple times in a single file
                   </li>
                 </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Smart Keys Feature Section - NEW */}
+          <section className="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-lg border border-indigo-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CpuChipIcon className="w-6 h-6 text-indigo-600" />
+              Smart Keys - AI-Powered Key Discovery
+            </h3>
+
+            <div className="space-y-4">
+              <div className="bg-white p-5 rounded-lg border border-indigo-100">
+                <h4 className="font-bold text-indigo-900 mb-3">🚀 Auto Discovery Mode</h4>
+                <p className="text-gray-700 text-sm mb-2">
+                  <strong>When to use:</strong> Don't know which columns form unique key
+                </p>
+                <p className="text-gray-600 text-sm mb-2">
+                  <strong>How to use:</strong> Leave "Expected Combinations" empty + Enable Smart Keys
+                </p>
+                <div className="bg-indigo-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-700 mb-1"><strong>Result:</strong></p>
+                  <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                    <li>• Searches 2, 3, 4, 5, 6, 7, 8, 9, 10 column combinations</li>
+                    <li>• Gets 100-150 combinations (150 for 200+ columns)</li>
+                    <li>• Balanced: ~12-16 combinations per size</li>
+                    <li>• Example: 2-col(16) 3-col(16) 4-col(15) ... 10-col(13)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-lg border border-indigo-100">
+                <h4 className="font-bold text-indigo-900 mb-3">🎯 Guided Discovery Mode</h4>
+                <p className="text-gray-700 text-sm mb-2">
+                  <strong>When to use:</strong> Know partial business key, want system to enhance it
+                </p>
+                <p className="text-gray-600 text-sm mb-2">
+                  <strong>How to use:</strong> Enter base combination (e.g., "customer_id, fiscal_year") + Enable Smart Keys
+                </p>
+                <div className="bg-indigo-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-700 mb-1"><strong>Result:</strong></p>
+                  <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                    <li>• First combination becomes base (your business domain knowledge)</li>
+                    <li>• System tries adding 2, 3, 4... up to 10 additional columns</li>
+                    <li>• Gets 100-150 enhanced combinations all including your base</li>
+                    <li>• Example: base + product_id, base + product_id + warehouse...</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-lg border border-indigo-100">
+                <h4 className="font-bold text-indigo-900 mb-3">📋 Multiple Combinations Support</h4>
+                <p className="text-gray-700 text-sm mb-2">
+                  <strong>When to use:</strong> Have primary key + other specific keys to validate
+                </p>
+                <p className="text-gray-600 text-sm mb-2">
+                  <strong>How to use:</strong> Enter multiple combinations (one per line) + Enable Smart Keys
+                </p>
+                <div className="bg-indigo-50 p-3 rounded-md">
+                  <p className="text-sm text-gray-700 mb-1"><strong>Behavior:</strong></p>
+                  <ul className="text-xs text-gray-600 space-y-1 ml-4">
+                    <li>• <strong>First combination:</strong> Enhanced with guided discovery (~100 variations)</li>
+                    <li>• <strong>Remaining combinations:</strong> Analyzed individually (no enhancement)</li>
+                    <li>• Can add unlimited combinations for validation</li>
+                    <li>• Total results: ~100 + N (where N = remaining combinations)</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border-2 border-yellow-300">
+                <p className="text-sm font-semibold text-yellow-900 mb-2">💡 Pro Tip:</p>
+                <p className="text-xs text-yellow-800">
+                  For 300+ column datasets, always use Smart Keys to avoid combinatorial explosion. 
+                  The "Number of Columns" field is ignored when Smart Keys is enabled - the system automatically 
+                  searches 2-10 column combinations for comprehensive coverage.
+                </p>
               </div>
             </div>
           </section>

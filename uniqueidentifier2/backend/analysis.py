@@ -190,24 +190,41 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
     
     # Determine which combinations to analyze
     if specified_combinations and use_intelligent_discovery:
-        # GUIDED DISCOVERY MODE: Use first combination as base, then enhance with intelligent discovery
-        print(f"🎯 Guided Discovery: Using {len(specified_combinations)} specified combination(s) as base")
-        combos_to_analyze = smart_discover_combinations(
+        # GUIDED DISCOVERY MODE: Use FIRST combination as base, keep others separate
+        print(f"🎯 Guided Discovery: Using FIRST of {len(specified_combinations)} combination(s) as base")
+        print(f"   First combo will be enhanced with intelligent discovery (base + 2-10 additional columns)")
+        if len(specified_combinations) > 1:
+            print(f"   Remaining {len(specified_combinations) - 1} combination(s) will be analyzed individually")
+        
+        # Get intelligent combinations using first as base
+        guided_combos = smart_discover_combinations(
             df, 
             num_columns, 
             max_combinations=MAX_COMBINATIONS, 
             excluded_combinations=excluded_combinations, 
             use_intelligent_discovery=True,
-            specified_combinations=specified_combinations
+            specified_combinations=[specified_combinations[0]]  # Only pass first combo as base
         )
+        
+        # Add remaining specified combinations (if any) for individual analysis
+        if len(specified_combinations) > 1:
+            remaining_combos = specified_combinations[1:]
+            print(f"   Adding {len(remaining_combos)} additional user-specified combinations")
+            combos_to_analyze = guided_combos + remaining_combos
+        else:
+            combos_to_analyze = guided_combos
+            
     elif specified_combinations:
-        # Use ONLY user-specified combinations (intelligent discovery disabled)
-        print(f"📊 Using {len(specified_combinations)} user-specified combination(s) only")
+        # MANUAL MODE: Use ONLY user-specified combinations (Smart Keys OFF)
+        print(f"📊 Manual Mode: Analyzing {len(specified_combinations)} user-specified combination(s) only")
+        print(f"   No intelligent enhancement (Smart Keys disabled)")
         combos_to_analyze = specified_combinations[:MAX_COMBINATIONS]
         if len(specified_combinations) > MAX_COMBINATIONS:
             print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
     else:
-        # Smart auto-discovery without base hint
+        # AUTO DISCOVERY MODE: No combinations specified, use Smart Keys
+        if use_intelligent_discovery:
+            print(f"🚀 Auto Discovery Mode: Smart Keys enabled, no base combination")
         combos_to_analyze = smart_discover_combinations(
             df, 
             num_columns, 
