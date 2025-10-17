@@ -446,13 +446,18 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
         print(f"🔍 Searching for combinations from {min_columns or 2} to {max_size} columns")
         all_combinations = []
         start_size = min_columns if min_columns else 2  # Skip single columns by default
-        size_range = range(start_size, max_size + 1)
-        num_sizes = len(list(size_range))
+        size_range = list(range(start_size, max_size + 1))
+        num_sizes = len(size_range)
         
-        # Distribute combinations across sizes
-        # Allocate more combinations to smaller sizes (they're more common)
-        # But ensure we get some from each size
-        combos_per_size = max(10, max_combinations // (num_sizes * 2))  # At least 10 per size
+        # Enhanced distribution for large datasets (300+ columns)
+        # Get balanced representation across all sizes
+        if max_combinations >= 100:
+            # For 100-150 target: ~10-15 combinations per size
+            combos_per_size = max(12, max_combinations // num_sizes)
+        else:
+            combos_per_size = max(8, max_combinations // num_sizes)
+        
+        print(f"   Strategy: ~{combos_per_size} combinations per size for balanced coverage")
         
         for size in size_range:
             print(f"\n📊 Searching {size}-column combinations...")
@@ -469,26 +474,41 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
             # Add combinations
             all_combinations.extend(combos)
             
-            print(f"   Found {len(combos)} promising {size}-column combinations")
-            print(f"   Total so far: {len(all_combinations)} combinations")
+            print(f"   ✅ Found {len(combos)} promising {size}-column combinations")
+            print(f"   📊 Total so far: {len(all_combinations)} combinations")
         
-        # If we have too few, try to get more from smaller sizes
-        if len(all_combinations) < max_combinations:
-            print(f"\n⚡ Need more combinations, getting additional from smaller sizes...")
-            for size in range(start_size, min(start_size + 3, max_size + 1)):
+        # If we have too few, get more from smaller sizes (easier to find)
+        if len(all_combinations) < max_combinations * 0.8:  # If we have less than 80% of target
+            print(f"\n⚡ Enhancing coverage - getting more from smaller sizes...")
+            for size in size_range[:min(3, num_sizes)]:  # Focus on 2-4 column combos
                 if len(all_combinations) >= max_combinations:
                     break
-                needed = max_combinations - len(all_combinations)
+                needed = min(20, max_combinations - len(all_combinations))
                 discoverer.max_results = needed
                 additional = discoverer._discover_keys_of_size(size)
                 # Only add if not already present
+                added_count = 0
                 for combo in additional:
                     if combo not in all_combinations:
                         all_combinations.append(combo)
+                        added_count += 1
                         if len(all_combinations) >= max_combinations:
                             break
+                if added_count > 0:
+                    print(f"   Added {added_count} more {size}-column combinations")
         
-        print(f"\n✅ Total: {len(all_combinations)} combinations across {num_sizes} size ranges")
+        # Summary with size distribution
+        size_dist = {}
+        for combo in all_combinations:
+            size = len(combo)
+            size_dist[size] = size_dist.get(size, 0) + 1
+        
+        print(f"\n✅ Total: {len(all_combinations)} combinations")
+        print(f"   Distribution: ", end="")
+        for size in sorted(size_dist.keys()):
+            print(f"{size}-col({size_dist[size]}) ", end="")
+        print()
+        
         return all_combinations[:max_combinations]
     else:
         # Search specific size only
@@ -558,85 +578,83 @@ def _discover_from_base_combination(df: pd.DataFrame,
     # Prioritize columns not already in base
     seed_columns = [col for col in seed_columns if col in remaining_cols][:50]
     
-    # Strategy 1: Add one more column to base
-    if base_size < max_columns:
-        print(f"\n📊 Building {base_size + 1}-column combinations from base...")
-        one_more = []
-        for col in seed_columns[:30]:  # Try top 30 columns
-            new_combo = tuple(sorted(base_cols + [col]))
-            one_more.append(new_combo)
+    # NEW STRATEGY: Add multiple columns (2-10) directly to base
+    # This gives better coverage for business-relevant base combinations
+    
+    # For each target size from base+2 to max_columns
+    for additional_cols in range(2, min(11, max_columns - base_size + 1)):
+        target_size = base_size + additional_cols
         
-        # Validate and score
-        if one_more:
-            validated = discoverer._validate_combinations(one_more[:50])
-            # Keep combinations with good improvement
-            for combo, score in validated[:20]:
-                if combo not in results:
-                    results.append(combo)
-                    if score >= 99.9:
-                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
-    
-    # Strategy 2: Add two more columns to base
-    if base_size + 1 < max_columns and len(results) < max_combinations:
-        print(f"\n📊 Building {base_size + 2}-column combinations from base...")
-        two_more = []
-        for i, col1 in enumerate(seed_columns[:20]):
-            for col2 in seed_columns[i+1:25]:
-                if col1 != col2:
-                    new_combo = tuple(sorted(base_cols + [col1, col2]))
-                    if new_combo not in two_more and new_combo not in results:
-                        two_more.append(new_combo)
-                        if len(two_more) >= 50:
-                            break
-            if len(two_more) >= 50:
-                break
-        
-        # Validate and score
-        if two_more:
-            validated = discoverer._validate_combinations(two_more)
-            for combo, score in validated[:15]:
-                if combo not in results:
-                    results.append(combo)
-                    if len(results) >= max_combinations:
-                        break
-                    if score >= 99.9:
-                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
-    
-    # Strategy 3: Incrementally add more columns up to max_columns
-    current_combos = results[:10]  # Use best combinations so far as seeds
-    
-    for size in range(base_size + 3, max_columns + 1):
-        if len(results) >= max_combinations:
+        if target_size > max_columns or len(results) >= max_combinations:
             break
-            
-        print(f"\n📊 Building {size}-column combinations from base...")
-        next_combos = []
         
-        for combo in current_combos[:8]:
-            for col in seed_columns[:30]:
-                if col not in combo:
-                    new_combo = tuple(sorted(list(combo) + [col]))
-                    if new_combo not in next_combos and new_combo not in results:
-                        next_combos.append(new_combo)
-                        if len(next_combos) >= 40:
-                            break
-            if len(next_combos) >= 40:
-                break
+        print(f"\n📊 Building base + {additional_cols} columns (total {target_size} columns)...")
         
-        if next_combos:
-            validated = discoverer._validate_combinations(next_combos[:40])
-            best_from_size = []
-            for combo, score in validated[:10]:
+        # Generate combinations by adding multiple columns at once
+        new_combos = []
+        
+        if additional_cols == 2:
+            # Add pairs of columns
+            for i, col1 in enumerate(seed_columns[:25]):
+                for col2 in seed_columns[i+1:30]:
+                    if col1 != col2:
+                        new_combo = tuple(sorted(base_cols + [col1, col2]))
+                        if new_combo not in new_combos and new_combo not in results:
+                            new_combos.append(new_combo)
+                            if len(new_combos) >= 30:
+                                break
+                if len(new_combos) >= 30:
+                    break
+        
+        elif additional_cols == 3:
+            # Add triplets of columns
+            for i, col1 in enumerate(seed_columns[:20]):
+                for j, col2 in enumerate(seed_columns[i+1:25]):
+                    for col3 in seed_columns[j+2:30]:
+                        if len({col1, col2, col3}) == 3:
+                            new_combo = tuple(sorted(base_cols + [col1, col2, col3]))
+                            if new_combo not in new_combos and new_combo not in results:
+                                new_combos.append(new_combo)
+                                if len(new_combos) >= 25:
+                                    break
+                    if len(new_combos) >= 25:
+                        break
+                if len(new_combos) >= 25:
+                    break
+        
+        else:
+            # For 4+ additional columns, use best combinations from previous size
+            if len(results) > 1:
+                # Build on best combinations from previous sizes
+                seed_combos = [c for c in results[-15:] if len(c) == target_size - 1][:10]
+                if not seed_combos:
+                    seed_combos = [c for c in results[-15:]][:10]
+                
+                for combo in seed_combos:
+                    for col in seed_columns[:30]:
+                        if col not in combo:
+                            new_combo = tuple(sorted(list(combo) + [col]))
+                            if new_combo not in new_combos and new_combo not in results:
+                                new_combos.append(new_combo)
+                                if len(new_combos) >= 20:
+                                    break
+                    if len(new_combos) >= 20:
+                        break
+        
+        # Validate and keep best
+        if new_combos:
+            validated = discoverer._validate_combinations(new_combos[:40])
+            added_count = 0
+            for combo, score in validated[:12]:  # Keep top 12 from each size
                 if combo not in results:
                     results.append(combo)
-                    best_from_size.append(combo)
+                    added_count += 1
+                    if score >= 99.9:
+                        print(f"   ✅ Found perfect key ({score:.1f}%): {', '.join(combo[:3])}{'...' if len(combo) > 3 else ''}")
                     if len(results) >= max_combinations:
                         break
-                    if score >= 99.9:
-                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
             
-            # Use best from this size as seeds for next size
-            current_combos = best_from_size[:8]
+            print(f"   Added {added_count} combinations with {additional_cols} additional columns")
     
     print(f"\n✅ Guided discovery complete: {len(results)} combinations found")
     print(f"   Sizes: {min(len(c) for c in results)}-{max(len(c) for c in results)} columns")

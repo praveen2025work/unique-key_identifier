@@ -20,8 +20,9 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
         List of column combinations (tuples)
     """
     
-    # NEW: Use intelligent discovery for large datasets to avoid combinatorial explosion
-    if use_intelligent_discovery and len(df.columns) > 50:
+    # NEW: Use intelligent discovery when enabled by user
+    # Intelligent discovery works for any dataset but is especially useful for large ones
+    if use_intelligent_discovery:
         print(f"🚀 Using Intelligent Key Discovery (avoiding combinatorial explosion)")
         print(f"   Dataset: {len(df.columns)} columns × {len(df):,} rows")
         
@@ -36,11 +37,13 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 print(f"   Base: {', '.join(base_combination)}")
             
             # Search for combinations from 2 to 10 columns (or up to num_columns if specified)
-            # Get up to 100 combinations total for comprehensive analysis
+            # For large datasets (300+ cols), get 100-150 combinations with balanced distribution
+            target_combinations = 150 if len(df.columns) > 200 else 100
+            
             combinations_found = discover_unique_keys_intelligent(
                 df=df,
                 num_columns=None,  # Search multiple sizes, not just one
-                max_combinations=min(100, max_combinations * 2),  # Get more combinations
+                max_combinations=target_combinations,  # 100-150 based on dataset size
                 excluded_combinations=excluded_combinations,
                 min_columns=2,  # Start from 2-column combinations
                 max_columns=min(10, num_columns) if num_columns else 10,  # Up to 10 columns
