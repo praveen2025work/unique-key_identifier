@@ -359,21 +359,27 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onOpenChange }) => {
               </div>
 
               <div className="bg-white p-5 rounded-lg border border-indigo-100">
-                <h4 className="font-bold text-indigo-900 mb-3">📋 Multiple Combinations Support</h4>
+                <h4 className="font-bold text-indigo-900 mb-3">📋 Multiple Combinations - Enhanced Power Mode</h4>
                 <p className="text-gray-700 text-sm mb-2">
-                  <strong>When to use:</strong> Have primary key + other specific keys to validate
+                  <strong>When to use:</strong> Have multiple business-relevant keys to explore
                 </p>
                 <p className="text-gray-600 text-sm mb-2">
                   <strong>How to use:</strong> Enter multiple combinations (one per line) + Enable Smart Keys
                 </p>
                 <div className="bg-indigo-50 p-3 rounded-md">
-                  <p className="text-sm text-gray-700 mb-1"><strong>Behavior:</strong></p>
+                  <p className="text-sm text-gray-700 mb-1"><strong>Behavior (ENHANCED):</strong></p>
                   <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                    <li>• <strong>First combination:</strong> Enhanced with guided discovery (~100 variations)</li>
-                    <li>• <strong>Remaining combinations:</strong> Analyzed individually (no enhancement)</li>
-                    <li>• Can add unlimited combinations for validation</li>
-                    <li>• Total results: ~100 + N (where N = remaining combinations)</li>
+                    <li>• <strong>ALL combinations get intelligent enhancement!</strong></li>
+                    <li>• Each combination becomes a base (~100-150 variations per base)</li>
+                    <li>• System adds 2-10 additional columns to each base</li>
+                    <li>• Example: 3 bases × 100 variations = ~300 total combinations</li>
+                    <li>• Better results: Explores all your business knowledge thoroughly</li>
                   </ul>
+                </div>
+                <div className="bg-green-50 border border-green-200 p-2 rounded-md mt-2">
+                  <p className="text-xs font-semibold text-green-800">
+                    💡 Each of your combinations represents business logic - all will be enhanced!
+                  </p>
                 </div>
               </div>
 

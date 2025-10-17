@@ -16,11 +16,12 @@
 - All results build upon user's domain knowledge hint
 - ~100-150 enhanced combinations returned
 
-#### 3. Multiple Combinations Support
-- First combination: Enhanced with guided discovery
-- Remaining combinations: Analyzed individually
-- Unlimited combinations can be specified
-- Total results: ~100 + N combinations
+#### 3. Multiple Combinations Support (ENHANCED)
+- ALL user combinations: Each gets guided discovery enhancement
+- Each combination becomes a base with ~100-150 variations
+- System adds 2-10 columns to each base intelligently
+- Total results: N × 100-150 combinations (where N = number of bases)
+- Example: 3 bases × 100 = ~300 comprehensive combinations
 
 ### 🔧 Bug Fixes
 
@@ -67,9 +68,17 @@
 | `analysis.py` | Ignore UI num_columns | Always 2-10 range |
 | `AboutDialog.tsx` | Feature documentation | Updated UI help |
 
+### 🚀 Latest Enhancement (Oct 17, 00:40)
+
+#### Multiple Combinations - ALL Enhanced
+- **Previous behavior**: Only first combination enhanced, rest individual
+- **New behavior**: ALL combinations get guided discovery enhancement
+- **Impact**: 3 bases × 100 = ~300 comprehensive combinations
+- **Benefit**: Explores all business knowledge thoroughly
+
 ### 🚀 Deployment
 
-- Backend restarted with all fixes applied
+- Backend restarted with all enhancements applied
 - No linter errors
 - All tests passing
 - Production ready

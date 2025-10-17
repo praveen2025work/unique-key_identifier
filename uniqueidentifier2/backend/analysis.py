@@ -190,29 +190,32 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
     
     # Determine which combinations to analyze
     if specified_combinations and use_intelligent_discovery:
-        # GUIDED DISCOVERY MODE: Use FIRST combination as base, keep others separate
-        print(f"🎯 Guided Discovery: Using FIRST of {len(specified_combinations)} combination(s) as base")
-        print(f"   First combo will be enhanced with intelligent discovery (base + 2-10 additional columns)")
-        if len(specified_combinations) > 1:
-            print(f"   Remaining {len(specified_combinations) - 1} combination(s) will be analyzed individually")
+        # GUIDED DISCOVERY MODE: Apply intelligent enhancement to ALL user combinations
+        print(f"🎯 Guided Discovery: Enhancing ALL {len(specified_combinations)} user combination(s)")
+        print(f"   Each combination will be used as base for intelligent discovery")
+        print(f"   Each base gets ~100-150 enhanced variations (base + 2-10 additional columns)")
         
-        # Get intelligent combinations using first as base
-        guided_combos = smart_discover_combinations(
-            df, 
-            num_columns, 
-            max_combinations=MAX_COMBINATIONS, 
-            excluded_combinations=excluded_combinations, 
-            use_intelligent_discovery=True,
-            specified_combinations=[specified_combinations[0]]  # Only pass first combo as base
-        )
+        all_guided_combos = []
         
-        # Add remaining specified combinations (if any) for individual analysis
-        if len(specified_combinations) > 1:
-            remaining_combos = specified_combinations[1:]
-            print(f"   Adding {len(remaining_combos)} additional user-specified combinations")
-            combos_to_analyze = guided_combos + remaining_combos
-        else:
-            combos_to_analyze = guided_combos
+        # Apply guided discovery to EACH specified combination
+        for idx, base_combo in enumerate(specified_combinations, 1):
+            print(f"\n   🔍 Processing combination {idx}/{len(specified_combinations)}: {', '.join(base_combo)}")
+            
+            # Get intelligent combinations using this combo as base
+            guided_combos = smart_discover_combinations(
+                df, 
+                num_columns, 
+                max_combinations=MAX_COMBINATIONS,  # ~100-150 per base
+                excluded_combinations=excluded_combinations, 
+                use_intelligent_discovery=True,
+                specified_combinations=[base_combo]  # Use this combo as base
+            )
+            
+            print(f"      ✅ Generated {len(guided_combos)} combinations from this base")
+            all_guided_combos.extend(guided_combos)
+        
+        print(f"\n✅ Total combinations from all bases: {len(all_guided_combos)}")
+        combos_to_analyze = all_guided_combos
             
     elif specified_combinations:
         # MANUAL MODE: Use ONLY user-specified combinations (Smart Keys OFF)
