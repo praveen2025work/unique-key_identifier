@@ -337,11 +337,24 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                 generated_count = 0
                 for combination in combinations_to_generate:
                     try:
-                        # Parse columns
+                        # Parse columns - handle nested tuples/lists
                         if isinstance(combination, str):
                             column_list = [c.strip() for c in combination.split(',')]
                         else:
-                            column_list = list(combination)
+                            # Flatten nested tuples/lists (e.g., (('col1', 'col2'),) -> ['col1', 'col2'])
+                            temp_list = list(combination)
+                            # Check if we have nested tuples/lists
+                            if temp_list and isinstance(temp_list[0], (tuple, list)):
+                                # If first element is tuple/list, flatten it
+                                column_list = [str(c).strip() for c in temp_list[0]]
+                            else:
+                                # Normal case - just convert to list of strings
+                                column_list = [str(c).strip() for c in temp_list]
+                        
+                        # Validate we have a proper list of column names
+                        if not column_list or not all(isinstance(c, str) for c in column_list):
+                            print(f"   ⚠️  Skipping invalid combination format: {combination}")
+                            continue
                         
                         print(f"   Generating full comparison for: {', '.join(column_list)}")
                         
