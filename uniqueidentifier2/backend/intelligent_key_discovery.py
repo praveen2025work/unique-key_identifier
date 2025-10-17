@@ -161,7 +161,8 @@ class IntelligentKeyDiscovery:
         # Validate top combinations on sample
         validated = self._validate_combinations(combinations_found)
         
-        return validated[:self.max_results]
+        # Extract just the combinations (drop the scores)
+        return [combo for combo, score in validated[:self.max_results]]
     
     def _get_seed_columns(self, top_n: int = 30) -> List[str]:
         """Get the most promising columns to use as seeds."""
@@ -248,7 +249,7 @@ class IntelligentKeyDiscovery:
         promising_two = [combo for combo, score in validated_two if score >= 50][:20]
         
         if target_size == 2:
-            return promising_two
+            return promising_two  # Already extracted combos above
         
         # Build 3+ column combinations from promising 2-column ones
         current_combos = promising_two
@@ -273,7 +274,7 @@ class IntelligentKeyDiscovery:
             # Validate and keep best
             if next_combos:
                 validated = self._validate_combinations(next_combos[:100])
-                current_combos = [combo for combo, score in validated if score >= 50][:20]
+                current_combos = [combo for combo, score in validated if score >= 50][:20]  # Extract combos only
             else:
                 break
         
