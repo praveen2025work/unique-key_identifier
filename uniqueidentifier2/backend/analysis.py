@@ -36,9 +36,12 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 print(f"🎯 Guided Discovery: Using first specified combination as base hint")
                 print(f"   Base: {', '.join(base_combination)}")
             
-            # Search for combinations from 2 to 10 columns (or up to num_columns if specified)
+            # Search for combinations from 2 to 10 columns
+            # When Smart Keys is enabled, ALWAYS search 2-10 columns (ignore UI's num_columns field)
             # For large datasets (300+ cols), get 100-150 combinations with balanced distribution
             target_combinations = 150 if len(df.columns) > 200 else 100
+            
+            print(f"   Smart Keys Mode: Searching 2-10 column combinations (ignoring UI column count)")
             
             combinations_found = discover_unique_keys_intelligent(
                 df=df,
@@ -46,7 +49,7 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 max_combinations=target_combinations,  # 100-150 based on dataset size
                 excluded_combinations=excluded_combinations,
                 min_columns=2,  # Start from 2-column combinations
-                max_columns=min(10, num_columns) if num_columns else 10,  # Up to 10 columns
+                max_columns=10,  # ALWAYS 10 when Smart Keys enabled (don't use num_columns from UI)
                 base_combination=base_combination  # NEW: Use first combo as hint
             )
             
@@ -186,14 +189,33 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
                 df[col] = df[col].astype('category')
     
     # Determine which combinations to analyze
-    if specified_combinations:
-        # Use user-specified combinations (limit to prevent memory issues)
+    if specified_combinations and use_intelligent_discovery:
+        # GUIDED DISCOVERY MODE: Use first combination as base, then enhance with intelligent discovery
+        print(f"🎯 Guided Discovery: Using {len(specified_combinations)} specified combination(s) as base")
+        combos_to_analyze = smart_discover_combinations(
+            df, 
+            num_columns, 
+            max_combinations=MAX_COMBINATIONS, 
+            excluded_combinations=excluded_combinations, 
+            use_intelligent_discovery=True,
+            specified_combinations=specified_combinations
+        )
+    elif specified_combinations:
+        # Use ONLY user-specified combinations (intelligent discovery disabled)
+        print(f"📊 Using {len(specified_combinations)} user-specified combination(s) only")
         combos_to_analyze = specified_combinations[:MAX_COMBINATIONS]
         if len(specified_combinations) > MAX_COMBINATIONS:
             print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
     else:
-        # Smart auto-discovery: limit to top combinations
-        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations, use_intelligent_discovery=use_intelligent_discovery, specified_combinations=specified_combinations)
+        # Smart auto-discovery without base hint
+        combos_to_analyze = smart_discover_combinations(
+            df, 
+            num_columns, 
+            max_combinations=MAX_COMBINATIONS, 
+            excluded_combinations=excluded_combinations, 
+            use_intelligent_discovery=use_intelligent_discovery,
+            specified_combinations=None
+        )
     
     for combo in combos_to_analyze:
         try:
