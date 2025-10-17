@@ -4,7 +4,7 @@ Data analysis operations - combination discovery and uniqueness analysis
 from itertools import combinations
 from config import MAX_COMBINATIONS
 
-def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None, use_intelligent_discovery=True):
+def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_combinations=None, use_intelligent_discovery=True, specified_combinations=None):
     """
     Intelligently discover the best column combinations to analyze.
     
@@ -14,6 +14,7 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
         max_combinations: Maximum number of combinations to return
         excluded_combinations: Combinations to exclude
         use_intelligent_discovery: Use new intelligent algorithm (prevents combinatorial explosion)
+        specified_combinations: User-specified combinations (first one used as base hint)
     
     Returns:
         List of column combinations (tuples)
@@ -27,6 +28,13 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
         from intelligent_key_discovery import discover_unique_keys_intelligent
         
         try:
+            # NEW FEATURE: Guided Discovery - Use first specified combination as base hint
+            base_combination = None
+            if specified_combinations and len(specified_combinations) > 0:
+                base_combination = specified_combinations[0]
+                print(f"🎯 Guided Discovery: Using first specified combination as base hint")
+                print(f"   Base: {', '.join(base_combination)}")
+            
             # Search for combinations from 2 to 10 columns (or up to num_columns if specified)
             # Get up to 100 combinations total for comprehensive analysis
             combinations_found = discover_unique_keys_intelligent(
@@ -35,7 +43,8 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
                 max_combinations=min(100, max_combinations * 2),  # Get more combinations
                 excluded_combinations=excluded_combinations,
                 min_columns=2,  # Start from 2-column combinations
-                max_columns=min(10, num_columns) if num_columns else 10  # Up to 10 columns
+                max_columns=min(10, num_columns) if num_columns else 10,  # Up to 10 columns
+                base_combination=base_combination  # NEW: Use first combo as hint
             )
             
             if combinations_found:
@@ -181,7 +190,7 @@ def analyze_file_combinations(df, num_columns, specified_combinations=None, excl
             print(f"⚠️ Limiting to first {MAX_COMBINATIONS} combinations for performance")
     else:
         # Smart auto-discovery: limit to top combinations
-        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations, use_intelligent_discovery=use_intelligent_discovery)
+        combos_to_analyze = smart_discover_combinations(df, num_columns, max_combinations=MAX_COMBINATIONS, excluded_combinations=excluded_combinations, use_intelligent_discovery=use_intelligent_discovery, specified_combinations=specified_combinations)
     
     for combo in combos_to_analyze:
         try:

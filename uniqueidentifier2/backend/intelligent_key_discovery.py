@@ -384,7 +384,8 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
                                      max_combinations: int = 50,
                                      excluded_combinations: List = None,
                                      min_columns: int = None,
-                                     max_columns: int = None) -> List[Tuple]:
+                                     max_columns: int = None,
+                                     base_combination: Tuple = None) -> List[Tuple]:
     """
     Main function to discover unique keys using intelligent algorithm.
     
@@ -395,6 +396,7 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
         excluded_combinations: Combinations to exclude from analysis
         min_columns: Minimum combination size (only used if num_columns is None)
         max_columns: Maximum combination size (only used if num_columns is None)
+        base_combination: Optional base combination to build upon (user hint)
     
     Returns:
         List of promising column combinations
@@ -409,6 +411,17 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
         
         if excluded_cols:
             df = df[[col for col in df.columns if col not in excluded_cols]]
+    
+    # NEW FEATURE: Guided Discovery with Base Combination
+    if base_combination:
+        print(f"🎯 Guided Discovery Mode: Using base combination as starting point")
+        print(f"   Base: {', '.join(base_combination)}")
+        return _discover_from_base_combination(
+            df=df,
+            base_combination=base_combination,
+            max_combinations=max_combinations,
+            max_columns=max_columns if max_columns else 10
+        )
     
     # Determine combination size strategy
     if num_columns is not None:
@@ -481,6 +494,155 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
         # Search specific size only
         combinations = discoverer.discover_keys(target_size=target_size)
         return combinations
+
+
+def _discover_from_base_combination(df: pd.DataFrame, 
+                                     base_combination: Tuple,
+                                     max_combinations: int = 50,
+                                     max_columns: int = 10) -> List[Tuple]:
+    """
+    Guided discovery: Build combinations starting from a user-provided base.
+    
+    This allows users to provide domain knowledge hints while still benefiting
+    from intelligent discovery to find optimal extensions.
+    
+    Args:
+        df: DataFrame to analyze
+        base_combination: User-provided base combination (e.g., ('customer_id', 'order_date'))
+        max_combinations: Maximum combinations to return
+        max_columns: Maximum total columns in a combination
+    
+    Returns:
+        List of combinations built upon the base
+    """
+    
+    # Validate base combination
+    base_cols = list(base_combination)
+    missing_cols = [col for col in base_cols if col not in df.columns]
+    if missing_cols:
+        print(f"⚠️ Warning: Base columns not found in dataset: {missing_cols}")
+        print(f"   Available columns: {', '.join(df.columns.tolist()[:10])}...")
+        return []
+    
+    base_size = len(base_cols)
+    print(f"   Base has {base_size} columns")
+    
+    # Initialize discovery engine for analysis
+    discoverer = IntelligentKeyDiscovery(
+        df=df,
+        max_combination_size=max_columns,
+        max_results=max_combinations
+    )
+    
+    results = []
+    
+    # Always include the base combination first
+    print(f"\n📊 Analyzing base combination...")
+    base_validated = discoverer._validate_combinations([tuple(base_cols)])
+    if base_validated:
+        base_combo, base_score = base_validated[0]
+        results.append(base_combo)
+        print(f"   Base uniqueness: {base_score:.1f}%")
+        
+        # If base is already 100% unique, we're done!
+        if base_score >= 99.9:
+            print(f"✅ Base combination is already a perfect unique key!")
+            return results
+    
+    # Get remaining columns (not in base)
+    remaining_cols = [col for col in df.columns if col not in base_cols]
+    
+    # Score remaining columns by their potential to improve uniqueness
+    print(f"\n🔍 Analyzing {len(remaining_cols)} additional columns...")
+    seed_columns = discoverer._get_seed_columns(top_n=min(50, len(remaining_cols)))
+    # Prioritize columns not already in base
+    seed_columns = [col for col in seed_columns if col in remaining_cols][:50]
+    
+    # Strategy 1: Add one more column to base
+    if base_size < max_columns:
+        print(f"\n📊 Building {base_size + 1}-column combinations from base...")
+        one_more = []
+        for col in seed_columns[:30]:  # Try top 30 columns
+            new_combo = tuple(sorted(base_cols + [col]))
+            one_more.append(new_combo)
+        
+        # Validate and score
+        if one_more:
+            validated = discoverer._validate_combinations(one_more[:50])
+            # Keep combinations with good improvement
+            for combo, score in validated[:20]:
+                if combo not in results:
+                    results.append(combo)
+                    if score >= 99.9:
+                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
+    
+    # Strategy 2: Add two more columns to base
+    if base_size + 1 < max_columns and len(results) < max_combinations:
+        print(f"\n📊 Building {base_size + 2}-column combinations from base...")
+        two_more = []
+        for i, col1 in enumerate(seed_columns[:20]):
+            for col2 in seed_columns[i+1:25]:
+                if col1 != col2:
+                    new_combo = tuple(sorted(base_cols + [col1, col2]))
+                    if new_combo not in two_more and new_combo not in results:
+                        two_more.append(new_combo)
+                        if len(two_more) >= 50:
+                            break
+            if len(two_more) >= 50:
+                break
+        
+        # Validate and score
+        if two_more:
+            validated = discoverer._validate_combinations(two_more)
+            for combo, score in validated[:15]:
+                if combo not in results:
+                    results.append(combo)
+                    if len(results) >= max_combinations:
+                        break
+                    if score >= 99.9:
+                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
+    
+    # Strategy 3: Incrementally add more columns up to max_columns
+    current_combos = results[:10]  # Use best combinations so far as seeds
+    
+    for size in range(base_size + 3, max_columns + 1):
+        if len(results) >= max_combinations:
+            break
+            
+        print(f"\n📊 Building {size}-column combinations from base...")
+        next_combos = []
+        
+        for combo in current_combos[:8]:
+            for col in seed_columns[:30]:
+                if col not in combo:
+                    new_combo = tuple(sorted(list(combo) + [col]))
+                    if new_combo not in next_combos and new_combo not in results:
+                        next_combos.append(new_combo)
+                        if len(next_combos) >= 40:
+                            break
+            if len(next_combos) >= 40:
+                break
+        
+        if next_combos:
+            validated = discoverer._validate_combinations(next_combos[:40])
+            best_from_size = []
+            for combo, score in validated[:10]:
+                if combo not in results:
+                    results.append(combo)
+                    best_from_size.append(combo)
+                    if len(results) >= max_combinations:
+                        break
+                    if score >= 99.9:
+                        print(f"   ✅ Found perfect key: {', '.join(combo)} ({score:.1f}%)")
+            
+            # Use best from this size as seeds for next size
+            current_combos = best_from_size[:8]
+    
+    print(f"\n✅ Guided discovery complete: {len(results)} combinations found")
+    print(f"   Sizes: {min(len(c) for c in results)}-{max(len(c) for c in results)} columns")
+    print(f"   All built upon base: {', '.join(base_cols)}")
+    
+    return results[:max_combinations]
 
 
 # Example usage and testing
