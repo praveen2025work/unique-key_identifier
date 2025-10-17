@@ -27,20 +27,27 @@ def smart_discover_combinations(df, num_columns, max_combinations=50, excluded_c
         from intelligent_key_discovery import discover_unique_keys_intelligent
         
         try:
+            # Search for combinations from 2 to 10 columns (or up to num_columns if specified)
+            # Get up to 100 combinations total for comprehensive analysis
             combinations_found = discover_unique_keys_intelligent(
                 df=df,
-                num_columns=num_columns,
-                max_combinations=max_combinations,
-                excluded_combinations=excluded_combinations
+                num_columns=None,  # Search multiple sizes, not just one
+                max_combinations=min(100, max_combinations * 2),  # Get more combinations
+                excluded_combinations=excluded_combinations,
+                min_columns=2,  # Start from 2-column combinations
+                max_columns=min(10, num_columns) if num_columns else 10  # Up to 10 columns
             )
             
             if combinations_found:
                 print(f"✅ Found {len(combinations_found)} promising combinations intelligently")
+                print(f"   Sizes: {min(len(c) for c in combinations_found)}-{max(len(c) for c in combinations_found)} columns")
                 return combinations_found
             else:
                 print("⚠️ Intelligent discovery returned no results, falling back to heuristic approach")
         except Exception as e:
             print(f"⚠️ Intelligent discovery error: {e}, falling back to heuristic approach")
+            import traceback
+            traceback.print_exc()
     
     # ORIGINAL HEURISTIC APPROACH (for smaller datasets or fallback)
     columns = df.columns.tolist()

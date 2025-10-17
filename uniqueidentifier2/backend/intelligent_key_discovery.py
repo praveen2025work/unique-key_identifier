@@ -149,7 +149,7 @@ class IntelligentKeyDiscovery:
         combinations_found = []
         
         # Step 1: Start with high-cardinality and ID columns as seeds
-        seed_columns = self._get_seed_columns()
+        seed_columns = self._get_seed_columns(top_n=50)  # Get more seed columns for better coverage
         
         if size == 2:
             # For 2-column combinations, pair seed columns intelligently
@@ -159,10 +159,14 @@ class IntelligentKeyDiscovery:
             combinations_found = self._incremental_combination_building(seed_columns, size)
         
         # Validate top combinations on sample
-        validated = self._validate_combinations(combinations_found)
+        # For larger sizes, validate more candidates to find the best ones
+        candidates_to_validate = min(len(combinations_found), self.max_results * 3)
+        validated = self._validate_combinations(combinations_found[:candidates_to_validate])
         
         # Extract just the combinations (drop the scores)
-        return [combo for combo, score in validated[:self.max_results]]
+        # Return more results for larger combination sizes
+        results_to_return = min(self.max_results, len(validated))
+        return [combo for combo, score in validated[:results_to_return]]
     
     def _get_seed_columns(self, top_n: int = 30) -> List[str]:
         """Get the most promising columns to use as seeds."""
@@ -237,16 +241,19 @@ class IntelligentKeyDiscovery:
         """
         Build larger combinations incrementally.
         Start with 2-column combinations and add columns that increase uniqueness.
+        Enhanced for better discovery of 3-10 column combinations.
         """
         
         # Start with 2-column combinations
         two_col_combos = self._find_two_column_combinations(seed_columns)
         
         # Validate which 2-column combos are most promising
-        validated_two = self._validate_combinations(two_col_combos[:50])  # Test top 50
+        validated_two = self._validate_combinations(two_col_combos[:100])  # Test more combos
         
-        # Keep only those with >50% uniqueness on sample
-        promising_two = [combo for combo, score in validated_two if score >= 50][:20]
+        # For larger target sizes, be less strict about uniqueness threshold
+        # Composite keys often have lower individual uniqueness but high combined uniqueness
+        uniqueness_threshold = max(30, 70 - (target_size * 5))  # Lower threshold for larger sizes
+        promising_two = [combo for combo, score in validated_two if score >= uniqueness_threshold][:30]
         
         if target_size == 2:
             return promising_two  # Already extracted combos above
@@ -256,25 +263,40 @@ class IntelligentKeyDiscovery:
         
         for current_size in range(2, target_size):
             next_combos = []
+            seen_combos = set()  # Track to avoid duplicates
             
-            for combo in current_combos[:15]:  # Limit expansion from top 15
+            # Expand from more base combinations for larger target sizes
+            expansion_limit = min(25, len(current_combos))
+            
+            for combo in current_combos[:expansion_limit]:
                 # Try adding each seed column
-                for col in seed_columns[:30]:  # Try top 30 columns
+                for col in seed_columns[:50]:  # Try more columns for better coverage
                     if col not in combo:
                         new_combo = tuple(sorted(list(combo) + [col]))
-                        if new_combo not in next_combos:
+                        
+                        # Avoid duplicates
+                        if new_combo not in seen_combos:
+                            seen_combos.add(new_combo)
                             next_combos.append(new_combo)
                             
-                            if len(next_combos) >= self.max_results * 2:
+                            if len(next_combos) >= self.max_results * 4:  # Generate more candidates
                                 break
                 
-                if len(next_combos) >= self.max_results * 2:
+                if len(next_combos) >= self.max_results * 4:
                     break
             
             # Validate and keep best
             if next_combos:
-                validated = self._validate_combinations(next_combos[:100])
-                current_combos = [combo for combo, score in validated if score >= 50][:20]  # Extract combos only
+                # For larger sizes, validate more candidates
+                validate_count = min(len(next_combos), 150)
+                validated = self._validate_combinations(next_combos[:validate_count])
+                
+                # Adjust threshold based on size
+                size_threshold = max(30, 70 - (current_size * 5))
+                keep_count = min(30, self.max_results)
+                current_combos = [combo for combo, score in validated if score >= size_threshold][:keep_count]
+                
+                print(f"      Size {current_size + 1}: Generated {len(next_combos)} candidates, kept {len(current_combos)} promising ones")
             else:
                 break
         
@@ -360,15 +382,19 @@ class IntelligentKeyDiscovery:
 def discover_unique_keys_intelligent(df: pd.DataFrame, 
                                      num_columns: int = None,
                                      max_combinations: int = 50,
-                                     excluded_combinations: List = None) -> List[Tuple]:
+                                     excluded_combinations: List = None,
+                                     min_columns: int = None,
+                                     max_columns: int = None) -> List[Tuple]:
     """
     Main function to discover unique keys using intelligent algorithm.
     
     Args:
         df: DataFrame to analyze
-        num_columns: Target combination size (None = all sizes)
+        num_columns: Target combination size (None = search range from min to max)
         max_combinations: Maximum number of combinations to return
         excluded_combinations: Combinations to exclude from analysis
+        min_columns: Minimum combination size (only used if num_columns is None)
+        max_columns: Maximum combination size (only used if num_columns is None)
     
     Returns:
         List of promising column combinations
@@ -384,17 +410,77 @@ def discover_unique_keys_intelligent(df: pd.DataFrame,
         if excluded_cols:
             df = df[[col for col in df.columns if col not in excluded_cols]]
     
+    # Determine combination size strategy
+    if num_columns is not None:
+        # User specified exact size - use that
+        max_size = num_columns
+        target_size = num_columns
+    else:
+        # Search a range of sizes
+        max_size = max_columns if max_columns else 10
+        target_size = None  # None means search all sizes from min to max
+    
     # Initialize discovery engine
     discoverer = IntelligentKeyDiscovery(
         df=df,
-        max_combination_size=num_columns if num_columns else 5,
+        max_combination_size=max_size,
         max_results=max_combinations
     )
     
     # Discover combinations
-    combinations = discoverer.discover_keys(target_size=num_columns)
-    
-    return combinations
+    if target_size is None:
+        # Search multiple sizes (2 to max_size)
+        print(f"🔍 Searching for combinations from {min_columns or 2} to {max_size} columns")
+        all_combinations = []
+        start_size = min_columns if min_columns else 2  # Skip single columns by default
+        size_range = range(start_size, max_size + 1)
+        num_sizes = len(list(size_range))
+        
+        # Distribute combinations across sizes
+        # Allocate more combinations to smaller sizes (they're more common)
+        # But ensure we get some from each size
+        combos_per_size = max(10, max_combinations // (num_sizes * 2))  # At least 10 per size
+        
+        for size in size_range:
+            print(f"\n📊 Searching {size}-column combinations...")
+            
+            # Temporarily adjust max_results for this size
+            original_max = discoverer.max_results
+            discoverer.max_results = combos_per_size
+            
+            combos = discoverer._discover_keys_of_size(size)
+            
+            # Restore original
+            discoverer.max_results = original_max
+            
+            # Add combinations
+            all_combinations.extend(combos)
+            
+            print(f"   Found {len(combos)} promising {size}-column combinations")
+            print(f"   Total so far: {len(all_combinations)} combinations")
+        
+        # If we have too few, try to get more from smaller sizes
+        if len(all_combinations) < max_combinations:
+            print(f"\n⚡ Need more combinations, getting additional from smaller sizes...")
+            for size in range(start_size, min(start_size + 3, max_size + 1)):
+                if len(all_combinations) >= max_combinations:
+                    break
+                needed = max_combinations - len(all_combinations)
+                discoverer.max_results = needed
+                additional = discoverer._discover_keys_of_size(size)
+                # Only add if not already present
+                for combo in additional:
+                    if combo not in all_combinations:
+                        all_combinations.append(combo)
+                        if len(all_combinations) >= max_combinations:
+                            break
+        
+        print(f"\n✅ Total: {len(all_combinations)} combinations across {num_sizes} size ranges")
+        return all_combinations[:max_combinations]
+    else:
+        # Search specific size only
+        combinations = discoverer.discover_keys(target_size=target_size)
+        return combinations
 
 
 # Example usage and testing
