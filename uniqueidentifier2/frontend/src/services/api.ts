@@ -221,6 +221,17 @@ class ApiService {
     }
     return response.json();
   }
+
+  async cancelJob(runId: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${this.baseUrl}/api/run/${runId}/cancel`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to cancel job');
+    }
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();

@@ -50,7 +50,7 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
       const data = await response.json();
       setJobStatus(data);
 
-      if (data.status === 'completed' || data.status === 'error') {
+      if (data.status === 'completed' || data.status === 'error' || data.status === 'cancelled') {
         setAutoRefresh(false);
         
         if (data.status === 'completed') {
@@ -63,6 +63,8 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
           }
         } else if (data.status === 'error') {
           toast.error(`Analysis failed: ${data.error || 'Unknown error'}`);
+        } else if (data.status === 'cancelled') {
+          toast.info('Job cancelled');
         }
       }
     } catch (error: any) {
@@ -76,6 +78,31 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
 
   const downloadCSV = () => window.open(`${apiEndpoint}/api/download/${runId}/csv`, '_blank');
   const downloadExcel = () => window.open(`${apiEndpoint}/api/download/${runId}/excel`, '_blank');
+
+  const handleCancel = async () => {
+    if (!window.confirm('Are you sure you want to cancel this job?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${apiEndpoint}/api/run/${runId}/cancel`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to cancel job');
+      }
+      
+      const result = await response.json();
+      toast.success(result.message || 'Job cancelled');
+      setAutoRefresh(false);
+      // Refresh status to show cancelled state
+      loadStatus();
+    } catch (error: any) {
+      toast.error(`Failed to cancel job: ${error.message}`);
+    }
+  };
 
   if (!jobStatus) {
     return (
@@ -131,6 +158,16 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                 </svg>
                 <span>Dashboard</span>
+              </button>
+            )}
+            
+            {(jobStatus.status === 'queued' || jobStatus.status === 'running') && (
+              <button onClick={handleCancel}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 flex items-center space-x-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <span>Cancel Job</span>
               </button>
             )}
             

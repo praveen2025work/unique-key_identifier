@@ -78,6 +78,15 @@ create_tables()
 job_lock = threading.Lock()
 
 
+def check_job_cancelled(run_id):
+    """Check if job has been cancelled"""
+    cursor = conn.cursor()
+    cursor.execute('SELECT status FROM runs WHERE run_id = ?', (run_id,))
+    result = cursor.fetchone()
+    if result:
+        return result[0] == 'cancelled'
+    return False
+
 def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows_limit=0, 
                          specified_combinations=None, excluded_combinations=None, 
                          working_directory=None, data_quality_check=False, 
@@ -94,6 +103,11 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
     try:
         # Set database busy timeout to prevent locking issues
         conn.execute("PRAGMA busy_timeout = 30000")  # 30 seconds
+        
+        # Check if already cancelled before starting
+        if check_job_cancelled(run_id):
+            update_job_status(run_id, status='cancelled', error='Job was cancelled before processing started')
+            return
         
         # Pre-check file sizes
         row_count_a, size_a = get_file_stats(file_a_path)
@@ -125,6 +139,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
                 read_mode = "full"
         
         # Stage 1: Reading Files
+        if check_job_cancelled(run_id):
+            return
         update_job_status(run_id, status='running', stage='reading_files', progress=10)
         update_stage_status(run_id, 'reading_files', 'in_progress', f'Loading data files ({read_mode})')
         
@@ -144,6 +160,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         # Stage 1.5: Data Quality Check (if enabled)
         quality_results = None
         if data_quality_check:
+            if check_job_cancelled(run_id):
+                return
             update_job_status(run_id, stage='data_quality_check', progress=22)
             update_stage_status(run_id, 'data_quality_check', 'in_progress', 'Analyzing column patterns and data types')
             
@@ -168,6 +186,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
             update_job_status(run_id, progress=25)
         
         # Stage 2: Validating Data
+        if check_job_cancelled(run_id):
+            return
         update_job_status(run_id, stage='validating_data', progress=30)
         update_stage_status(run_id, 'validating_data', 'in_progress', 'Checking column structure')
         
@@ -202,6 +222,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, progress=35)
         
         # Stage 3: Analyzing File A
+        if check_job_cancelled(run_id):
+            return
         update_job_status(run_id, stage='analyzing_file_a', progress=35)
         update_stage_status(run_id, 'analyzing_file_a', 'in_progress', 'Processing combinations for File A')
         
@@ -221,6 +243,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, progress=55)
         
         # Stage 4: Analyzing File B
+        if check_job_cancelled(run_id):
+            return
         update_job_status(run_id, stage='analyzing_file_b', progress=60)
         update_stage_status(run_id, 'analyzing_file_b', 'in_progress', 'Processing combinations for File B')
         
@@ -240,6 +264,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         update_job_status(run_id, progress=80)
         
         # Stage 5: Storing Results
+        if check_job_cancelled(run_id):
+            return
         update_job_status(run_id, stage='storing_results', progress=85)
         update_stage_status(run_id, 'storing_results', 'in_progress', 'Saving analysis to database')
         
@@ -302,6 +328,8 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
         # Generate comparison exports based on user selection (Column Combos and/or File A-B)
         if generate_column_combinations or generate_file_comparison:
             try:
+                if check_job_cancelled(run_id):
+                    return
                 update_job_status(run_id, stage='generating_comparisons', progress=90)
                 
                 # Determine what we're generating
@@ -697,6 +725,58 @@ async def compare_files(
         import traceback
         traceback.print_exc()
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+
+@app.post("/api/run/{run_id}/cancel")
+async def cancel_job(run_id: int):
+    """Cancel a queued or running job"""
+    cursor = conn.cursor()
+    
+    # Check if run exists
+    cursor.execute('''
+        SELECT status FROM runs WHERE run_id = ?
+    ''', (run_id,))
+    run_info = cursor.fetchone()
+    
+    if not run_info:
+        raise HTTPException(status_code=404, detail="Run not found")
+    
+    current_status = run_info[0]
+    
+    # Only allow cancellation of queued or running jobs
+    if current_status not in ['queued', 'running']:
+        return JSONResponse({
+            "success": False,
+            "message": f"Cannot cancel job with status '{current_status}'. Only queued or running jobs can be cancelled."
+        }, status_code=400)
+    
+    # Update job status to cancelled
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute('''
+        UPDATE runs 
+        SET status = 'cancelled', 
+            completed_at = ?,
+            error_message = 'Cancelled by user'
+        WHERE run_id = ?
+    ''', (timestamp, run_id))
+    
+    # Update any in-progress stages to cancelled
+    cursor.execute('''
+        UPDATE job_stages 
+        SET status = 'cancelled', 
+            completed_at = ?,
+            details = 'Cancelled by user'
+        WHERE run_id = ? AND status IN ('pending', 'in_progress')
+    ''', (timestamp, run_id))
+    
+    conn.commit()
+    
+    return JSONResponse({
+        "success": True,
+        "message": f"Job {run_id} has been cancelled",
+        "run_id": run_id,
+        "status": "cancelled"
+    })
 
 
 @app.get("/api/status/{run_id}")

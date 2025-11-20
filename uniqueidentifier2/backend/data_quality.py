@@ -182,10 +182,16 @@ def analyze_file_quality(df, file_name):
     
     return quality_report
 
-def compare_file_patterns(file1_report, file2_report):
+def compare_file_patterns(file1_report, file2_report, df1=None, df2=None):
     """
     Compare patterns between two files and identify mismatches
-    Returns list of pattern discrepancies
+    Returns list of pattern discrepancies with sample records showing differences
+    
+    Args:
+        file1_report: Quality report for first file
+        file2_report: Quality report for second file
+        df1: Optional DataFrame for first file (for collecting sample records)
+        df2: Optional DataFrame for second file (for collecting sample records)
     """
     discrepancies = []
     
@@ -219,7 +225,52 @@ def compare_file_patterns(file1_report, file2_report):
         
         # Check pattern type mismatch
         if file1_pattern['pattern_type'] != file2_pattern['pattern_type']:
-            discrepancies.append({
+            # Collect sample records showing the difference
+            sample_records = []
+            if df1 is not None and df2 is not None and col in df1.columns and col in df2.columns:
+                # Get up to 10 sample records from each file that demonstrate the pattern difference
+                try:
+                    # Get non-null values from both files
+                    file1_values = df1[col].dropna()
+                    file2_values = df2[col].dropna()
+                    
+                    # Sample up to 10 records from each file
+                    num_samples = min(10, len(file1_values), len(file2_values))
+                    if num_samples > 0:
+                        # Sample from file1
+                        if len(file1_values) > num_samples:
+                            file1_sample = file1_values.sample(n=num_samples, random_state=42)
+                        else:
+                            file1_sample = file1_values
+                        
+                        # Sample from file2
+                        if len(file2_values) > num_samples:
+                            file2_sample = file2_values.sample(n=num_samples, random_state=42)
+                        else:
+                            file2_sample = file2_values
+                        
+                        # Create sample records showing the difference
+                        for idx in range(min(len(file1_sample), len(file2_sample), num_samples)):
+                            file1_val = file1_sample.iloc[idx]
+                            file2_val = file2_sample.iloc[idx]
+                            
+                            # Get row index to potentially show more context
+                            file1_idx = file1_sample.index[idx]
+                            file2_idx = file2_sample.index[idx]
+                            
+                            sample_records.append({
+                                'file1_value': str(file1_val),
+                                'file1_row_index': int(file1_idx),
+                                'file2_value': str(file2_val),
+                                'file2_row_index': int(file2_idx),
+                                'file1_type': file1_pattern['pattern_type'],
+                                'file2_type': file2_pattern['pattern_type']
+                            })
+                except Exception as e:
+                    # If sampling fails, just use the examples from pattern detection
+                    print(f"Warning: Could not collect sample records for column {col}: {e}")
+            
+            discrepancy = {
                 'type': 'pattern_mismatch',
                 'column': col,
                 'severity': 'high',
@@ -228,7 +279,13 @@ def compare_file_patterns(file1_report, file2_report):
                 'file2_pattern': file2_pattern['pattern_type'],
                 'file1_examples': file1_pattern.get('sample_values', []),
                 'file2_examples': file2_pattern.get('sample_values', [])
-            })
+            }
+            
+            # Add sample records if collected
+            if sample_records:
+                discrepancy['sample_records'] = sample_records
+            
+            discrepancies.append(discrepancy)
         
         # Check consistency differences
         consistency_diff = abs(file1_pattern['consistency'] - file2_pattern['consistency'])
@@ -298,14 +355,20 @@ def generate_quality_summary(file1_report, file2_report, discrepancies):
 def perform_data_quality_check(df1, df2, file1_name, file2_name):
     """
     Main function to perform complete data quality check on two files
-    Returns comprehensive quality report
+    Returns comprehensive quality report with sample records showing differences
+    
+    Args:
+        df1: DataFrame for first file
+        df2: DataFrame for second file
+        file1_name: Name of first file
+        file2_name: Name of second file
     """
     # Analyze each file
     file1_report = analyze_file_quality(df1, file1_name)
     file2_report = analyze_file_quality(df2, file2_name)
     
-    # Compare patterns between files
-    discrepancies = compare_file_patterns(file1_report, file2_report)
+    # Compare patterns between files, passing dataframes to collect sample records
+    discrepancies = compare_file_patterns(file1_report, file2_report, df1, df2)
     
     # Generate summary
     summary = generate_quality_summary(file1_report, file2_report, discrepancies)

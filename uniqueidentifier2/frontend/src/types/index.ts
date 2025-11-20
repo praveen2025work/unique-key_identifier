@@ -14,7 +14,7 @@ export interface AnalysisRun {
   file_a: string;
   file_b: string;
   num_columns: number;
-  status: 'queued' | 'running' | 'completed' | 'error';
+  status: 'queued' | 'running' | 'completed' | 'error' | 'cancelled';
   environment: string;
 }
 
@@ -29,7 +29,7 @@ export interface JobStage {
 
 export interface JobStatus {
   run_id: number;
-  status: 'queued' | 'running' | 'completed' | 'error';
+  status: 'queued' | 'running' | 'completed' | 'error' | 'cancelled';
   current_stage: string;
   progress: number;
   error: string | null;
@@ -186,12 +186,26 @@ export interface Issue {
   severity: 'high' | 'medium' | 'low';
 }
 
+export interface SampleRecord {
+  file1_value: string;
+  file1_row_index: number;
+  file2_value: string;
+  file2_row_index: number;
+  file1_type: string;
+  file2_type: string;
+}
+
 export interface Discrepancy {
   type?: string;
   column?: string;
   severity: 'high' | 'medium' | 'low';
   message?: string;
   issue?: string;
+  file1_pattern?: string;
+  file2_pattern?: string;
+  file1_examples?: any[];
+  file2_examples?: any[];
+  sample_records?: SampleRecord[];
 }
 
 // Form and UI Types

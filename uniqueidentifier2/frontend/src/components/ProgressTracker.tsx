@@ -12,6 +12,7 @@ interface ProgressTrackerProps {
 export default function ProgressTracker({ runId, onComplete }: ProgressTrackerProps) {
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -22,8 +23,8 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
         setStatus(jobStatus);
         setLoading(false);
 
-        // If completed or error, stop polling
-        if (jobStatus.status === 'completed' || jobStatus.status === 'error') {
+        // If completed, error, or cancelled, stop polling
+        if (jobStatus.status === 'completed' || jobStatus.status === 'error' || jobStatus.status === 'cancelled') {
           clearInterval(interval);
           if (onComplete) {
             onComplete(jobStatus);
@@ -61,6 +62,27 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
     );
   }
 
+  const handleCancel = async () => {
+    if (!window.confirm('Are you sure you want to cancel this job?')) {
+      return;
+    }
+    
+    try {
+      setCancelling(true);
+      await apiService.cancelJob(runId);
+      // Refresh status to show cancelled state
+      const updatedStatus = await apiService.getJobStatus(runId);
+      setStatus(updatedStatus);
+      if (onComplete) {
+        onComplete(updatedStatus);
+      }
+    } catch (error: any) {
+      alert(`Failed to cancel job: ${error.message}`);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const getStatusColor = (stageStatus: string) => {
     switch (stageStatus) {
       case 'completed':
@@ -68,6 +90,7 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
       case 'in_progress':
         return 'bg-blue-500 animate-pulse';
       case 'error':
+      case 'cancelled':
         return 'bg-red-500';
       default:
         return 'bg-gray-300';
@@ -81,6 +104,7 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
       case 'in_progress':
         return '⋯';
       case 'error':
+      case 'cancelled':
         return '✕';
       default:
         return '○';
@@ -94,17 +118,28 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
           <h2 className="text-2xl font-bold text-gray-800">
             Analysis Progress
           </h2>
-          <span
-            className={`px-3 py-1 rounded-full text-sm font-semibold ${
-              status.status === 'completed'
-                ? 'bg-green-100 text-green-800'
-                : status.status === 'error'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-blue-100 text-blue-800'
-            }`}
-          >
-            {status.status.toUpperCase()}
-          </span>
+          <div className="flex items-center gap-3">
+            {(status.status === 'queued' || status.status === 'running') && (
+              <button
+                onClick={handleCancel}
+                disabled={cancelling}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium transition-colors"
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel Job'}
+              </button>
+            )}
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                status.status === 'completed'
+                  ? 'bg-green-100 text-green-800'
+                  : status.status === 'error' || status.status === 'cancelled'
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}
+            >
+              {status.status.toUpperCase()}
+            </span>
+          </div>
         </div>
         <p className="text-gray-600">
           {status.file_a} vs {status.file_b} (Run #{runId})
@@ -191,6 +226,16 @@ export default function ProgressTracker({ runId, onComplete }: ProgressTrackerPr
           <h4 className="font-semibold text-green-800 mb-2">✓ Analysis Complete</h4>
           <p className="text-sm text-green-700">
             Your file comparison is ready! View the results below.
+          </p>
+        </div>
+      )}
+
+      {/* Cancelled Message */}
+      {status.status === 'cancelled' && (
+        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h4 className="font-semibold text-yellow-800 mb-2">⚠ Job Cancelled</h4>
+          <p className="text-sm text-yellow-700">
+            This job was cancelled. You can start a new analysis if needed.
           </p>
         </div>
       )}

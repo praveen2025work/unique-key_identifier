@@ -22,6 +22,7 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
   const [report, setReport] = useState<DataQualityReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [expandedColumns, setExpandedColumns] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadReport();
@@ -338,6 +339,11 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                     const col1 = file1_report.columns?.[columnName];
                     const col2 = file2_report.columns?.[columnName];
                     
+                    // Find discrepancy for this column
+                    const discrepancy = discrepancies?.find(d => d.column === columnName && d.type === 'pattern_mismatch');
+                    const hasSampleRecords = discrepancy?.sample_records && discrepancy.sample_records.length > 0;
+                    const isExpanded = expandedColumns.has(columnName);
+                    
                     // Helper to get color based on value
                     const getConsistencyColor = (value: number | undefined) => {
                       if (value === undefined) return 'text-gray-400';
@@ -357,45 +363,132 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                     const hasIssues = (col1?.issues?.length || 0) + (col2?.issues?.length || 0) > 0;
 
                     return (
-                      <tr key={columnName} className="border-b border-gray-200 hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm font-mono font-medium text-gray-900 sticky left-0 bg-white">{columnName}</td>
+                      <>
+                        <tr key={columnName} className="border-b border-gray-200 hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm font-mono font-medium text-gray-900 sticky left-0 bg-white">
+                            <div className="flex items-center gap-2">
+                              {hasSampleRecords && (
+                                <button
+                                  onClick={() => {
+                                    const newExpanded = new Set(expandedColumns);
+                                    if (isExpanded) {
+                                      newExpanded.delete(columnName);
+                                    } else {
+                                      newExpanded.add(columnName);
+                                    }
+                                    setExpandedColumns(newExpanded);
+                                  }}
+                                  className="text-gray-500 hover:text-gray-700"
+                                  title={isExpanded ? "Hide samples" : "Show sample records"}
+                                >
+                                  {isExpanded ? '▼' : '▶'}
+                                </button>
+                              )}
+                              {columnName}
+                              {hasSampleRecords && (
+                                <span className="text-xs text-blue-600 font-normal" title="Sample records available">
+                                  ({discrepancy.sample_records?.length || 0} samples)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          
+                          {/* Pattern Types */}
+                          <td className={`px-3 py-2 text-sm ${col1 ? 'text-gray-700' : 'text-gray-400'}`}>
+                            <div className="flex flex-col">
+                              <span>{col1?.pattern_type || 'N/A'}</span>
+                              {col1?.sample_values && col1.sample_values.length > 0 && (
+                                <span className="text-xs text-gray-500 mt-0.5">
+                                  Sample: {String(col1.sample_values[0]).substring(0, 20)}
+                                  {String(col1.sample_values[0]).length > 20 ? '...' : ''}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className={`px-3 py-2 text-sm ${col2 ? (typesMatch ? 'text-gray-700' : 'text-orange-600 font-semibold') : 'text-gray-400'}`}>
+                            <div className="flex flex-col">
+                              <span>
+                                {col2?.pattern_type || 'N/A'}
+                                {col1 && col2 && !typesMatch && <span className="ml-1 text-orange-600">⚠️</span>}
+                              </span>
+                              {col2?.sample_values && col2.sample_values.length > 0 && (
+                                <span className="text-xs text-gray-500 mt-0.5">
+                                  Sample: {String(col2.sample_values[0]).substring(0, 20)}
+                                  {String(col2.sample_values[0]).length > 20 ? '...' : ''}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          
+                          {/* Consistency */}
+                          <td className={`px-3 py-2 text-sm text-right ${getConsistencyColor(col1?.consistency)}`}>
+                            {col1?.consistency !== undefined ? `${col1.consistency.toFixed(1)}%` : 'N/A'}
+                          </td>
+                          <td className={`px-3 py-2 text-sm text-right ${getConsistencyColor(col2?.consistency)}`}>
+                            {col2?.consistency !== undefined ? `${col2.consistency.toFixed(1)}%` : 'N/A'}
+                          </td>
+                          
+                          {/* Null Percentage */}
+                          <td className={`px-3 py-2 text-sm text-right ${getNullColor(col1?.null_percentage)}`}>
+                            {col1?.null_percentage !== undefined ? `${col1.null_percentage.toFixed(1)}%` : 'N/A'}
+                          </td>
+                          <td className={`px-3 py-2 text-sm text-right ${getNullColor(col2?.null_percentage)}`}>
+                            {col2?.null_percentage !== undefined ? `${col2.null_percentage.toFixed(1)}%` : 'N/A'}
+                          </td>
+                          
+                          {/* Issues */}
+                          <td className="px-3 py-2 text-center">
+                            {hasIssues ? (
+                              <span className="text-red-600 font-bold text-sm">
+                                {(col1?.issues?.length || 0) + (col2?.issues?.length || 0)}
+                              </span>
+                            ) : (
+                              <span className="text-green-600 text-sm">✓</span>
+                            )}
+                          </td>
+                        </tr>
                         
-                        {/* Pattern Types */}
-                        <td className={`px-3 py-2 text-sm ${col1 ? 'text-gray-700' : 'text-gray-400'}`}>
-                          {col1?.pattern_type || 'N/A'}
-                        </td>
-                        <td className={`px-3 py-2 text-sm ${col2 ? (typesMatch ? 'text-gray-700' : 'text-orange-600 font-semibold') : 'text-gray-400'}`}>
-                          {col2?.pattern_type || 'N/A'}
-                          {col1 && col2 && !typesMatch && <span className="ml-1 text-orange-600">⚠️</span>}
-                        </td>
-                        
-                        {/* Consistency */}
-                        <td className={`px-3 py-2 text-sm text-right ${getConsistencyColor(col1?.consistency)}`}>
-                          {col1?.consistency !== undefined ? `${col1.consistency.toFixed(1)}%` : 'N/A'}
-                        </td>
-                        <td className={`px-3 py-2 text-sm text-right ${getConsistencyColor(col2?.consistency)}`}>
-                          {col2?.consistency !== undefined ? `${col2.consistency.toFixed(1)}%` : 'N/A'}
-                        </td>
-                        
-                        {/* Null Percentage */}
-                        <td className={`px-3 py-2 text-sm text-right ${getNullColor(col1?.null_percentage)}`}>
-                          {col1?.null_percentage !== undefined ? `${col1.null_percentage.toFixed(1)}%` : 'N/A'}
-                        </td>
-                        <td className={`px-3 py-2 text-sm text-right ${getNullColor(col2?.null_percentage)}`}>
-                          {col2?.null_percentage !== undefined ? `${col2.null_percentage.toFixed(1)}%` : 'N/A'}
-                        </td>
-                        
-                        {/* Issues */}
-                        <td className="px-3 py-2 text-center">
-                          {hasIssues ? (
-                            <span className="text-red-600 font-bold text-sm">
-                              {(col1?.issues?.length || 0) + (col2?.issues?.length || 0)}
-                            </span>
-                          ) : (
-                            <span className="text-green-600 text-sm">✓</span>
-                          )}
-                        </td>
-                      </tr>
+                        {/* Expanded sample records row */}
+                        {isExpanded && hasSampleRecords && discrepancy?.sample_records && (
+                          <tr className="bg-blue-50 border-b border-gray-200">
+                            <td colSpan={8} className="px-4 py-3">
+                              <div className="space-y-2">
+                                <div className="text-xs font-semibold text-gray-700 mb-2">
+                                  Sample Records Showing Difference ({discrepancy.sample_records.length} of {discrepancy.sample_records.length} shown)
+                                </div>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-xs border border-gray-300 bg-white">
+                                    <thead className="bg-gray-100">
+                                      <tr>
+                                        <th className="px-2 py-1 text-left border border-gray-300">#</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">File A ({file1_report?.file_name})</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">Type</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">Row Index</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">File B ({file2_report?.file_name})</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">Type</th>
+                                        <th className="px-2 py-1 text-left border border-gray-300">Row Index</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {discrepancy.sample_records.map((record, idx) => (
+                                        <tr key={idx} className="hover:bg-gray-50">
+                                          <td className="px-2 py-1 border border-gray-300 text-center">{idx + 1}</td>
+                                          <td className="px-2 py-1 border border-gray-300 font-mono text-gray-800">{record.file1_value}</td>
+                                          <td className="px-2 py-1 border border-gray-300 text-gray-600">{record.file1_type}</td>
+                                          <td className="px-2 py-1 border border-gray-300 text-gray-500">{record.file1_row_index}</td>
+                                          <td className="px-2 py-1 border border-gray-300 font-mono text-gray-800">{record.file2_value}</td>
+                                          <td className="px-2 py-1 border border-gray-300 text-gray-600">{record.file2_type}</td>
+                                          <td className="px-2 py-1 border border-gray-300 text-gray-500">{record.file2_row_index}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     );
                   });
                 })()}
