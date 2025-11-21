@@ -22,11 +22,12 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
   const [report, setReport] = useState<DataQualityReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [expandedColumns, setExpandedColumns] = useState<Set<string>>(new Set());
   const [columnSearchText, setColumnSearchText] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [issuesTab, setIssuesTab] = useState<'fileA' | 'fileB'>('fileA');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all'); // Filter by type
+  const [selectedColumnForPanel, setSelectedColumnForPanel] = useState<string | null>(null); // Column selected for right panel
 
   useEffect(() => {
     loadReport();
@@ -177,7 +178,7 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
   const statusConfig = getStatusConfig();
 
   return (
-    <div className="max-w-7xl mx-auto p-4 space-y-4">
+    <div className="w-full mx-auto p-4 space-y-4">
       
       {/* Simple Header */}
       <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-sm">
@@ -287,24 +288,82 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
         </table>
       </div>
 
-      {/* Column-by-Column Comparison Table - WITH SEARCH AND SORTING */}
-      {file1_report?.columns && file2_report?.columns && (
-        <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 bg-gray-100 border-b border-gray-300">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-900">Column Quality Comparison</h3>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Search columns..."
-                  value={columnSearchText}
-                  onChange={(e) => setColumnSearchText(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+      {/* Column-by-Column Comparison Table - WITH SEARCH, SORTING, TYPE FILTER, AND RIGHT PANEL */}
+      {file1_report?.columns && file2_report?.columns && (() => {
+        // Collect all unique types from both files
+        const allTypes = new Set<string>();
+        Object.values(file1_report.columns || {}).forEach(col => {
+          if (col.pattern_type) allTypes.add(col.pattern_type);
+        });
+        Object.values(file2_report.columns || {}).forEach(col => {
+          if (col.pattern_type) allTypes.add(col.pattern_type);
+        });
+        const sortedTypes = Array.from(allTypes).sort();
+
+        // Get selected column's discrepancy for right panel
+        const selectedDiscrepancy = selectedColumnForPanel 
+          ? discrepancies?.find(d => d.column === selectedColumnForPanel && d.type === 'pattern_mismatch')
+          : null;
+
+        return (
+          <div className="flex gap-4">
+            {/* Main Grid - Left Side */}
+            <div className={`bg-white border border-gray-300 rounded-lg overflow-hidden transition-all ${selectedColumnForPanel ? 'flex-1' : 'flex-1'}`}>
+              <div className="px-4 py-3 bg-gray-100 border-b border-gray-300">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-gray-900">Column Quality Comparison</h3>
+                    {selectedColumnForPanel && (
+                      <button
+                        onClick={() => setSelectedColumnForPanel(null)}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        ✕ Close Panel
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Type Filter - Show all types at top */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-700">Filter by Type:</span>
+                    <button
+                      onClick={() => setSelectedTypeFilter('all')}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        selectedTypeFilter === 'all'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      All Types
+                    </button>
+                    {sortedTypes.map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setSelectedTypeFilter(type)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          selectedTypeFilter === type
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Search columns..."
+                      value={columnSearchText}
+                      onChange={(e) => setColumnSearchText(e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
+              <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-300">
                 <tr>
@@ -345,6 +404,15 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                     );
                   }
 
+                  // Filter by type
+                  if (selectedTypeFilter !== 'all') {
+                    allColumns = allColumns.filter(col => {
+                      const col1 = file1_report.columns?.[col];
+                      const col2 = file2_report.columns?.[col];
+                      return col1?.pattern_type === selectedTypeFilter || col2?.pattern_type === selectedTypeFilter;
+                    });
+                  }
+
                   // Sort columns
                   allColumns.sort((a, b) => {
                     if (sortColumn === 'name') {
@@ -362,7 +430,6 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                     // Find discrepancy for this column
                     const discrepancy = discrepancies?.find(d => d.column === columnName && d.type === 'pattern_mismatch');
                     const hasSampleRecords = discrepancy?.sample_records && discrepancy.sample_records.length > 0;
-                    const isExpanded = expandedColumns.has(columnName);
                     
                     // Helper to get color based on value
                     const getConsistencyColor = (value: number | undefined) => {
@@ -383,33 +450,25 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                     const hasIssues = (col1?.issues?.length || 0) + (col2?.issues?.length || 0) > 0;
 
                     return (
-                      <>
-                        <tr key={columnName} className="border-b border-gray-200 hover:bg-gray-50">
+                      <tr 
+                        key={columnName} 
+                        className={`border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors ${
+                          selectedColumnForPanel === columnName ? 'bg-blue-50' : ''
+                        }`}
+                        onClick={() => {
+                          if (hasSampleRecords) {
+                            setSelectedColumnForPanel(selectedColumnForPanel === columnName ? null : columnName);
+                          }
+                        }}
+                      >
                           <td className="px-4 py-2 text-sm font-mono font-medium text-gray-900 sticky left-0 bg-white">
                             <div className="flex items-center gap-2">
                               {hasSampleRecords && (
-                                <button
-                                  onClick={() => {
-                                    const newExpanded = new Set(expandedColumns);
-                                    if (isExpanded) {
-                                      newExpanded.delete(columnName);
-                                    } else {
-                                      newExpanded.add(columnName);
-                                    }
-                                    setExpandedColumns(newExpanded);
-                                  }}
-                                  className="text-gray-500 hover:text-gray-700"
-                                  title={isExpanded ? "Hide samples" : "Show sample records"}
-                                >
-                                  {isExpanded ? '▼' : '▶'}
-                                </button>
-                              )}
-                              {columnName}
-                              {hasSampleRecords && (
-                                <span className="text-xs text-blue-600 font-normal" title="Sample records available">
-                                  ({discrepancy.sample_records?.length || 0} samples)
+                                <span className="text-xs text-blue-600 font-normal" title="Click to view sample records">
+                                  📊 ({discrepancy.sample_records?.length || 0} samples)
                                 </span>
                               )}
+                              {columnName}
                             </div>
                           </td>
                           
@@ -467,56 +526,71 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
                             )}
                           </td>
                         </tr>
-                        
-                        {/* Expanded sample records row */}
-                        {isExpanded && hasSampleRecords && discrepancy?.sample_records && (
-                          <tr className="bg-blue-50 border-b border-gray-200">
-                            <td colSpan={8} className="px-4 py-3">
-                              <div className="space-y-2">
-                                <div className="text-xs font-semibold text-gray-700 mb-2">
-                                  Sample Records Showing Difference ({discrepancy.sample_records.length} of {discrepancy.sample_records.length} shown)
-                                </div>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-xs border border-gray-300 bg-white">
-                                    <thead className="bg-gray-100">
-                                      <tr>
-                                        <th className="px-2 py-1 text-left border border-gray-300">#</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">File A ({file1_report?.file_name})</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">Type</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">Row Index</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">File B ({file2_report?.file_name})</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">Type</th>
-                                        <th className="px-2 py-1 text-left border border-gray-300">Row Index</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {discrepancy.sample_records.map((record, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50">
-                                          <td className="px-2 py-1 border border-gray-300 text-center">{idx + 1}</td>
-                                          <td className="px-2 py-1 border border-gray-300 font-mono text-gray-800">{record.file1_value}</td>
-                                          <td className="px-2 py-1 border border-gray-300 text-gray-600">{record.file1_type}</td>
-                                          <td className="px-2 py-1 border border-gray-300 text-gray-500">{record.file1_row_index}</td>
-                                          <td className="px-2 py-1 border border-gray-300 font-mono text-gray-800">{record.file2_value}</td>
-                                          <td className="px-2 py-1 border border-gray-300 text-gray-600">{record.file2_type}</td>
-                                          <td className="px-2 py-1 border border-gray-300 text-gray-500">{record.file2_row_index}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
                     );
                   });
                 })()}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+            </div>
+
+            {/* Right Panel - Sample Records */}
+            {selectedColumnForPanel && selectedDiscrepancy?.sample_records && (
+              <div className="w-96 bg-white border border-gray-300 rounded-lg overflow-hidden flex flex-col">
+                <div className="px-4 py-3 bg-blue-600 text-white border-b border-blue-700">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold">Sample Records</h3>
+                    <button
+                      onClick={() => setSelectedColumnForPanel(null)}
+                      className="text-white hover:text-gray-200"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p className="text-xs mt-1 text-blue-100">
+                    Column: <span className="font-mono">{selectedColumnForPanel}</span>
+                  </p>
+                  <p className="text-xs mt-0.5 text-blue-100">
+                    {selectedDiscrepancy.file1_pattern} vs {selectedDiscrepancy.file2_pattern}
+                  </p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="text-xs font-semibold text-gray-700 mb-3">
+                    Showing {selectedDiscrepancy.sample_records.length} sample records
+                  </div>
+                  <div className="space-y-3">
+                    {selectedDiscrepancy.sample_records.map((record, idx) => (
+                      <div key={idx} className="border border-gray-300 rounded p-3 bg-gray-50">
+                        <div className="text-xs font-semibold text-gray-600 mb-2">Record #{idx + 1}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <div className="text-xs font-semibold text-blue-700 mb-1">File A</div>
+                            <div className="text-xs font-mono text-gray-800 bg-white p-2 rounded border border-gray-200">
+                              {record.file1_value}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Type: {record.file1_type} • Row: {record.file1_row_index}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs font-semibold text-purple-700 mb-1">File B</div>
+                            <div className="text-xs font-mono text-gray-800 bg-white p-2 rounded border border-gray-200">
+                              {record.file2_value}
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Type: {record.file2_type} • Row: {record.file2_row_index}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Overall Issues - WITH TABS FOR FILE A/B */}
       <div className="bg-white border border-gray-300 rounded-lg p-4">
