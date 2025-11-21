@@ -23,6 +23,10 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
   const [loading, setLoading] = useState(true);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [expandedColumns, setExpandedColumns] = useState<Set<string>>(new Set());
+  const [columnSearchText, setColumnSearchText] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [issuesTab, setIssuesTab] = useState<'fileA' | 'fileB'>('fileA');
 
   useEffect(() => {
     loadReport();
@@ -224,31 +228,7 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
         </div>
       </div>
 
-      {/* Cross-File Issues - Simple List */}
-      {discrepancies && discrepancies.length > 0 && (
-        <div className="bg-white border border-gray-300 rounded-lg p-4">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">Cross-File Discrepancies ({discrepancies.length})</h3>
-          <div className="space-y-2">
-            {discrepancies.map((disc, idx) => (
-              <div key={idx} className="border-l-3 border-gray-400 pl-3 py-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-semibold text-gray-700 uppercase">{disc.severity}</span>
-                      {disc.column && (
-                        <span className="text-xs font-mono text-gray-600 border border-gray-300 px-1 rounded">{disc.column}</span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-800">{disc.message || disc.issue}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* File Summary Comparison Table */}
+      {/* File Summary Comparison Table - MOVED TO TOP */}
       <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-100 border-b border-gray-300">
@@ -307,17 +287,40 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
         </table>
       </div>
 
-      {/* Column-by-Column Comparison Table */}
+      {/* Column-by-Column Comparison Table - WITH SEARCH AND SORTING */}
       {file1_report?.columns && file2_report?.columns && (
         <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
           <div className="px-4 py-3 bg-gray-100 border-b border-gray-300">
-            <h3 className="text-sm font-bold text-gray-900">Column Quality Comparison</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-gray-900">Column Quality Comparison</h3>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Search columns..."
+                  value={columnSearchText}
+                  onChange={(e) => setColumnSearchText(e.target.value)}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-300">
                 <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 sticky left-0 bg-gray-50">Column</th>
+                  <th 
+                    className="px-4 py-2 text-left text-xs font-bold text-gray-700 sticky left-0 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                    onClick={() => {
+                      if (sortColumn === 'name') {
+                        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortColumn('name');
+                        setSortDirection('asc');
+                      }
+                    }}
+                  >
+                    Column {sortColumn === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">File A - Type</th>
                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-700">File B - Type</th>
                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-700">File A - Consistency</th>
@@ -330,12 +333,29 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
               <tbody>
                 {(() => {
                   // Get all unique column names from both files
-                  const allColumns = new Set([
+                  let allColumns = Array.from(new Set([
                     ...Object.keys(file1_report.columns || {}),
                     ...Object.keys(file2_report.columns || {})
-                  ]);
+                  ]));
 
-                  return Array.from(allColumns).sort().map((columnName) => {
+                  // Filter by search text
+                  if (columnSearchText) {
+                    allColumns = allColumns.filter(col => 
+                      col.toLowerCase().includes(columnSearchText.toLowerCase())
+                    );
+                  }
+
+                  // Sort columns
+                  allColumns.sort((a, b) => {
+                    if (sortColumn === 'name') {
+                      return sortDirection === 'asc' 
+                        ? a.localeCompare(b)
+                        : b.localeCompare(a);
+                    }
+                    return 0;
+                  });
+
+                  return allColumns.map((columnName) => {
                     const col1 = file1_report.columns?.[columnName];
                     const col2 = file2_report.columns?.[columnName];
                     
@@ -498,55 +518,104 @@ export default function DataQualityViewer({ runId }: DataQualityViewerProps) {
         </div>
       )}
 
-      {/* Overall Issues - Simple List */}
+      {/* Overall Issues - WITH TABS FOR FILE A/B */}
       <div className="bg-white border border-gray-300 rounded-lg p-4">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">All Issues</h3>
-        
-        {/* File A Issues */}
-        {file1_report && file1_report.overall_issues.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">File A ({file1_report.overall_issues.length})</h4>
-            <div className="space-y-1">
-              {file1_report.overall_issues.map((issue, idx) => (
-                <div key={idx} className="border-l-2 border-gray-300 pl-3 py-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-gray-600 uppercase">{issue.severity}</span>
-                    {issue.column && (
-                      <span className="text-xs font-mono text-gray-600">{issue.column}</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-800">{issue.message || issue.issue}</p>
-                </div>
-              ))}
-            </div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900">All Issues</h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIssuesTab('fileA')}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                issuesTab === 'fileA'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              File A ({file1_report?.overall_issues.length || 0})
+            </button>
+            <button
+              onClick={() => setIssuesTab('fileB')}
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                issuesTab === 'fileB'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              File B ({file2_report?.overall_issues.length || 0})
+            </button>
           </div>
+        </div>
+        
+        {/* File A Issues Tab */}
+        {issuesTab === 'fileA' && (
+          <>
+            {file1_report && file1_report.overall_issues.length > 0 ? (
+              <div className="space-y-1">
+                {file1_report.overall_issues.map((issue, idx) => (
+                  <div key={idx} className="border-l-2 border-gray-300 pl-3 py-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-semibold text-gray-600 uppercase">{issue.severity}</span>
+                      {issue.column && (
+                        <span className="text-xs font-mono text-gray-600">{issue.column}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-800">{issue.message || issue.issue}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 text-center py-4">No issues detected in File A</p>
+            )}
+          </>
         )}
         
-        {/* File B Issues */}
-        {file2_report && file2_report.overall_issues.length > 0 && (
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 mb-2">File B ({file2_report.overall_issues.length})</h4>
-            <div className="space-y-1">
-              {file2_report.overall_issues.map((issue, idx) => (
-                <div key={idx} className="border-l-2 border-gray-300 pl-3 py-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs font-semibold text-gray-600 uppercase">{issue.severity}</span>
-                    {issue.column && (
-                      <span className="text-xs font-mono text-gray-600">{issue.column}</span>
-                    )}
+        {/* File B Issues Tab */}
+        {issuesTab === 'fileB' && (
+          <>
+            {file2_report && file2_report.overall_issues.length > 0 ? (
+              <div className="space-y-1">
+                {file2_report.overall_issues.map((issue, idx) => (
+                  <div key={idx} className="border-l-2 border-gray-300 pl-3 py-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-semibold text-gray-600 uppercase">{issue.severity}</span>
+                      {issue.column && (
+                        <span className="text-xs font-mono text-gray-600">{issue.column}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-800">{issue.message || issue.issue}</p>
                   </div>
-                  <p className="text-sm text-gray-800">{issue.message || issue.issue}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {(!file1_report || file1_report.overall_issues.length === 0) && 
-         (!file2_report || file2_report.overall_issues.length === 0) && (
-          <p className="text-sm text-gray-600 text-center py-4">No issues detected</p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 text-center py-4">No issues detected in File B</p>
+            )}
+          </>
         )}
       </div>
+
+      {/* Cross-File Discrepancies - MOVED TO BOTTOM */}
+      {discrepancies && discrepancies.length > 0 && (
+        <div className="bg-white border border-gray-300 rounded-lg p-4">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Cross-File Discrepancies ({discrepancies.length})</h3>
+          <div className="space-y-2">
+            {discrepancies.map((disc, idx) => (
+              <div key={idx} className="border-l-3 border-gray-400 pl-3 py-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-semibold text-gray-700 uppercase">{disc.severity}</span>
+                      {disc.column && (
+                        <span className="text-xs font-mono text-gray-600 border border-gray-300 px-1 rounded">{disc.column}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-800">{disc.message || disc.issue}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="text-center text-xs text-gray-500">

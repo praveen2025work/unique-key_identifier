@@ -132,6 +132,9 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
   const [results, setResults] = useState<RunDetails | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [comparisonView, setComparisonView] = useState<'sidebyside' | 'matched' | 'only_a' | 'only_b' | 'neither'>('sidebyside');
+  const [analysisViewMode, setAnalysisViewMode] = useState<'table' | 'grouped'>('table'); // New: table or grouped view
+  const [sortColumn, setSortColumn] = useState<string>('score'); // New: sorting column
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc'); // New: sort direction
   const [submitting, setSubmitting] = useState(false);
   
   const [previousRuns, setPreviousRuns] = useState<Run[]>([]);
@@ -1427,9 +1430,9 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                 return (
                   <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
                     
-                    {/* Summary Banner */}
+                    {/* Summary Banner with View Toggle */}
                     <div className="sticky top-0 z-10 bg-gradient-to-r from-indigo-50 to-blue-50 border-b-2 border-indigo-200 p-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-3">
                         <div>
                           <h3 className="text-lg font-bold text-gray-900">
                             Total: <span className="text-indigo-600">{totalCombos}</span> combinations
@@ -1438,17 +1441,159 @@ export default function FileComparisonApp({ onAnalysisStarted, initialRunId }: F
                             {groupCount} base {groupCount === 1 ? 'combination' : 'combinations'} × ~{avgPerBase} variations each
                           </p>
                         </div>
-                        <div className="text-xs text-gray-500 bg-white px-3 py-2 rounded-lg border border-gray-300">
-                          <div className="font-semibold text-gray-700 mb-1">Breakdown:</div>
-                          {Array.from(groupedCombos.entries()).slice(0, 3).map(([base, members], idx) => (
-                            <div key={idx}>Base {idx + 1}: {base} ({members.length} variations)</div>
-                          ))}
-                          {groupCount > 3 && <div className="text-gray-400 italic">... and {groupCount - 3} more</div>}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-700 font-medium">View:</span>
+                          <button
+                            onClick={() => setAnalysisViewMode('table')}
+                            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                              analysisViewMode === 'table'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                            }`}
+                          >
+                            📊 Table View
+                          </button>
+                          <button
+                            onClick={() => setAnalysisViewMode('grouped')}
+                            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                              analysisViewMode === 'grouped'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                            }`}
+                          >
+                            📁 Grouped View
+                          </button>
                         </div>
                       </div>
                     </div>
                     
-                    {comparisonView === 'sidebyside' && (
+                    {/* Table View - All combinations in one scrollable table */}
+                    {comparisonView === 'sidebyside' && analysisViewMode === 'table' && (() => {
+                      // Combine all results with both A and B data
+                      const allCombinationsData = allCombos.map(combo => {
+                        const resultA = results.results_a.find(r => r.columns === combo);
+                        const resultB = results.results_b.find(r => r.columns === combo);
+                        return {
+                          columns: combo,
+                          resultA,
+                          resultB,
+                          bestScore: Math.max(resultA?.uniqueness_score || 0, resultB?.uniqueness_score || 0),
+                          isUniqueKeyA: resultA?.is_unique_key || false,
+                          isUniqueKeyB: resultB?.is_unique_key || false,
+                        };
+                      });
+
+                      // Sort data
+                      const sortedData = [...allCombinationsData].sort((a, b) => {
+                        if (sortColumn === 'score') {
+                          return sortDirection === 'desc' ? b.bestScore - a.bestScore : a.bestScore - b.bestScore;
+                        } else if (sortColumn === 'columns') {
+                          return sortDirection === 'desc' 
+                            ? b.columns.localeCompare(a.columns)
+                            : a.columns.localeCompare(b.columns);
+                        }
+                        return 0;
+                      });
+
+                      const handleSort = (col: string) => {
+                        if (sortColumn === col) {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortColumn(col);
+                          setSortDirection('desc');
+                        }
+                      };
+
+                      return (
+                        <div className="p-4">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm border-collapse">
+                              <thead className="bg-slate-700 text-white sticky top-0" style={{ zIndex: 5 }}>
+                                <tr>
+                                  <th 
+                                    className="px-4 py-3 text-left font-semibold cursor-pointer hover:bg-slate-600 transition-colors"
+                                    style={{ width: '40%' }}
+                                    onClick={() => handleSort('columns')}
+                                  >
+                                    Column Combination
+                                    {sortColumn === 'columns' && (
+                                      <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                    )}
+                                  </th>
+                                  <th colSpan={3} className="px-3 py-3 text-center font-semibold border-x border-blue-400 bg-blue-600" style={{ width: '30%' }}>
+                                    File A
+                                  </th>
+                                  <th colSpan={3} className="px-3 py-3 text-center font-semibold bg-purple-600" style={{ width: '30%' }}>
+                                    File B
+                                  </th>
+                                </tr>
+                                <tr className="bg-slate-600">
+                                  <th 
+                                    className="px-4 py-2 cursor-pointer hover:bg-slate-500 transition-colors"
+                                    onClick={() => handleSort('score')}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span>Best Score</span>
+                                      {sortColumn === 'score' && (
+                                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                                      )}
+                                    </div>
+                                  </th>
+                                  <th className="px-2 py-2 text-xs border-l border-blue-400">Unique</th>
+                                  <th className="px-2 py-2 text-xs">Dups</th>
+                                  <th className="px-2 py-2 text-xs border-r border-blue-400">Score</th>
+                                  <th className="px-2 py-2 text-xs">Unique</th>
+                                  <th className="px-2 py-2 text-xs">Dups</th>
+                                  <th className="px-2 py-2 text-xs">Score</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {sortedData.map((item, idx) => (
+                                  <tr 
+                                    key={idx} 
+                                    className={`hover:bg-gray-50 transition-colors ${
+                                      (item.isUniqueKeyA || item.isUniqueKeyB) ? 'bg-green-50' : ''
+                                    }`}
+                                  >
+                                    <td className="px-4 py-3">
+                                      <div className="font-mono text-xs break-words">
+                                        {item.columns}
+                                      </div>
+                                      {(item.isUniqueKeyA || item.isUniqueKeyB) && (
+                                        <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                                          ✓ Unique Key
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center border-l border-blue-200 ${item.isUniqueKeyA ? 'bg-green-50 font-semibold text-green-700' : ''}`}>
+                                      {item.resultA?.unique_rows.toLocaleString() || '-'}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center text-red-600 ${item.isUniqueKeyA ? 'bg-green-50' : ''}`}>
+                                      {item.resultA?.duplicate_count.toLocaleString() || '-'}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center border-r border-blue-200 ${item.isUniqueKeyA ? 'bg-green-50' : ''}`}>
+                                      {item.resultA ? `${item.resultA.uniqueness_score.toFixed(1)}%` : '-'}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center ${item.isUniqueKeyB ? 'bg-purple-50 font-semibold text-purple-700' : ''}`}>
+                                      {item.resultB?.unique_rows.toLocaleString() || '-'}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center text-red-600 ${item.isUniqueKeyB ? 'bg-purple-50' : ''}`}>
+                                      {item.resultB?.duplicate_count.toLocaleString() || '-'}
+                                    </td>
+                                    <td className={`px-2 py-3 text-center ${item.isUniqueKeyB ? 'bg-purple-50' : ''}`}>
+                                      {item.resultB ? `${item.resultB.uniqueness_score.toFixed(1)}%` : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
+                    {/* Grouped View - Original expandable groups */}
+                    {comparisonView === 'sidebyside' && analysisViewMode === 'grouped' && (
                       <div className="p-4">
                         {/* Group by base columns with collapsible sections */}
                         {Array.from(groupedCombos.entries()).map(([base, members], groupIdx) => {
