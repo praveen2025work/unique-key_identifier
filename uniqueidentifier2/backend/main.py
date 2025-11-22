@@ -2,7 +2,7 @@
 Unique Key Identifier - Comprehensive REST API
 Complete backend implementation for file comparison and unique key analysis
 """
-from fastapi import FastAPI, HTTPException, Form, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Form, Query, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 import pandas as pd
@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import io
 import csv
+import shutil
 
 # Import local modules
 from config import (
@@ -450,11 +451,128 @@ def process_analysis_job(run_id, file_a_path, file_b_path, num_columns, max_rows
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {
+    return JSONResponse({
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "version": "2.0.0"
-    }
+    })
+
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Upload a file to the backend application folder
+    Files are saved to the uploads directory for quick access
+    """
+    try:
+        # Validate file extension
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in SUPPORTED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Supported types: {', '.join(SUPPORTED_EXTENSIONS)}"
+            )
+        
+        # Sanitize filename
+        safe_filename = "".join(c for c in file.filename if c.isalnum() or c in "._- ")
+        if not safe_filename:
+            safe_filename = f"uploaded_file_{datetime.now().strftime('%Y%m%d_%H%M%S')}{file_ext}"
+        
+        # Create full path
+        file_path = os.path.join(UPLOAD_DIR, safe_filename)
+        
+        # Handle duplicate filenames
+        counter = 1
+        original_path = file_path
+        while os.path.exists(file_path):
+            name_part = Path(safe_filename).stem
+            ext_part = Path(safe_filename).suffix
+            file_path = os.path.join(UPLOAD_DIR, f"{name_part}_{counter}{ext_part}")
+            counter += 1
+        
+        # Save file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Get file stats
+        file_size = os.path.getsize(file_path)
+        file_size_mb = file_size / (1024 * 1024)
+        
+        return JSONResponse({
+            "success": True,
+            "filename": os.path.basename(file_path),
+            "file_path": file_path,
+            "file_size": file_size,
+            "file_size_mb": round(file_size_mb, 2),
+            "message": f"File uploaded successfully: {os.path.basename(file_path)}"
+        })
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+
+@app.get("/api/uploaded-files")
+async def list_uploaded_files():
+    """
+    List all uploaded files in the uploads directory
+    """
+    try:
+        files = []
+        if os.path.exists(UPLOAD_DIR):
+            for filename in os.listdir(UPLOAD_DIR):
+                file_path = os.path.join(UPLOAD_DIR, filename)
+                if os.path.isfile(file_path):
+                    file_size = os.path.getsize(file_path)
+                    file_size_mb = file_size / (1024 * 1024)
+                    modified_time = os.path.getmtime(file_path)
+                    
+                    files.append({
+                        "filename": filename,
+                        "file_size": file_size,
+                        "file_size_mb": round(file_size_mb, 2),
+                        "modified_time": datetime.fromtimestamp(modified_time).isoformat(),
+                        "file_path": filename  # Relative path for use in analysis
+                    })
+        
+        # Sort by modified time (newest first)
+        files.sort(key=lambda x: x["modified_time"], reverse=True)
+        
+        return JSONResponse({
+            "files": files,
+            "count": len(files)
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
+
+
+@app.delete("/api/uploaded-files/{filename}")
+async def delete_uploaded_file(filename: str):
+    """
+    Delete an uploaded file
+    """
+    try:
+        # Security: Only allow deleting files in uploads directory
+        safe_filename = os.path.basename(filename)  # Prevent path traversal
+        file_path = os.path.join(UPLOAD_DIR, safe_filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        if not file_path.startswith(UPLOAD_DIR):
+            raise HTTPException(status_code=403, detail="Invalid file path")
+        
+        os.remove(file_path)
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"File {safe_filename} deleted successfully"
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
 
 @app.get("/api/preview-columns")
@@ -474,7 +592,23 @@ async def preview_columns(
             return JSONResponse({"error": "Please provide both file names"}, status_code=400)
         
         # Determine base directory
-        base_dir = work_dir if work_dir else SCRIPT_DIR
+        # Check if files are in uploads directory first
+        if not work_dir:
+            # Check if file_a exists in uploads directory
+            upload_file_a_path = os.path.join(UPLOAD_DIR, file_a_name)
+            upload_file_b_path = os.path.join(UPLOAD_DIR, file_b_name)
+            
+            if os.path.exists(upload_file_a_path) or os.path.exists(upload_file_b_path):
+                base_dir = UPLOAD_DIR
+                # Use just filenames if they're in uploads
+                if os.path.exists(upload_file_a_path):
+                    file_a_name = os.path.basename(file_a_name)
+                if os.path.exists(upload_file_b_path):
+                    file_b_name = os.path.basename(file_b_name)
+            else:
+                base_dir = SCRIPT_DIR
+        else:
+            base_dir = work_dir
         
         if work_dir and not os.path.isdir(base_dir):
             return JSONResponse({"error": f"Directory not found: {base_dir}"}, status_code=400)
@@ -602,7 +736,23 @@ async def compare_files(
             return JSONResponse({"error": "Please provide both file names"}, status_code=400)
 
         # Determine base directory
-        base_dir = work_dir if work_dir else SCRIPT_DIR
+        # Check if files are in uploads directory first
+        if not work_dir:
+            # Check if file_a exists in uploads directory
+            upload_file_a_path = os.path.join(UPLOAD_DIR, file_a_name)
+            upload_file_b_path = os.path.join(UPLOAD_DIR, file_b_name)
+            
+            if os.path.exists(upload_file_a_path) or os.path.exists(upload_file_b_path):
+                base_dir = UPLOAD_DIR
+                # Use just filenames if they're in uploads
+                if os.path.exists(upload_file_a_path):
+                    file_a_name = os.path.basename(file_a_name)
+                if os.path.exists(upload_file_b_path):
+                    file_b_name = os.path.basename(file_b_name)
+            else:
+                base_dir = SCRIPT_DIR
+        else:
+            base_dir = work_dir
         
         if work_dir and not os.path.isdir(base_dir):
             return JSONResponse({"error": f"Directory not found: {base_dir}"}, status_code=400)

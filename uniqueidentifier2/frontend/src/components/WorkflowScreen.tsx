@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import WorkflowView from './WorkflowView';
 import type { JobStatus } from '../types';
+import { useApiEndpoint } from '../hooks/useApiEndpoint';
+import apiService from '../services/api';
 
 interface WorkflowScreenProps {
   runId: number;
@@ -16,7 +18,8 @@ interface WorkflowScreenProps {
 export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, onBack, onViewResults, onAnalysisCompleted }: WorkflowScreenProps) {
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const apiEndpoint = apiEndpointProp || (typeof window !== 'undefined' ? localStorage.getItem('apiEndpoint') : null) || 'http://localhost:8000';
+  const { endpoint: apiEndpointFromHook } = useApiEndpoint();
+  const apiEndpoint = apiEndpointProp || apiEndpointFromHook;
 
   useEffect(() => {
     if (!runId) return;
@@ -37,17 +40,7 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
-      const response = await fetch(`${apiEndpoint}/api/status/${runId}`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        console.warn('Status check failed:', response.status);
-        return;
-      }
-      
-      const data = await response.json();
+      const data = await apiService.getJobStatus(runId);
       setJobStatus(data);
 
       if (data.status === 'completed' || data.status === 'error' || data.status === 'cancelled') {
@@ -76,8 +69,8 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
     }
   };
 
-  const downloadCSV = () => window.open(`${apiEndpoint}/api/download/${runId}/csv`, '_blank');
-  const downloadExcel = () => window.open(`${apiEndpoint}/api/download/${runId}/excel`, '_blank');
+  const downloadCSV = () => apiService.downloadCSV(runId);
+  const downloadExcel = () => apiService.downloadExcel(runId);
 
   const handleCancel = async () => {
     if (!window.confirm('Are you sure you want to cancel this job?')) {
@@ -85,16 +78,7 @@ export default function WorkflowScreen({ runId, apiEndpoint: apiEndpointProp, on
     }
     
     try {
-      const response = await fetch(`${apiEndpoint}/api/run/${runId}/cancel`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to cancel job');
-      }
-      
-      const result = await response.json();
+      const result = await apiService.cancelJob(runId);
       toast.success(result.message || 'Job cancelled');
       setAutoRefresh(false);
       // Refresh status to show cancelled state
