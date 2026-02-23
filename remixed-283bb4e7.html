@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PLEX P&L Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --primary: #337ab7;
+    --primary-dark: #285f8f;
+    --primary-light: #e8f0f8;
+    --primary-lighter: #f4f8fc;
+    --primary-hover: #2a6aa0;
+    --accent-green: #2ecc71;
+    --accent-green-bg: #eafaf1;
+    --accent-amber: #f0ad4e;
+    --accent-amber-bg: #fef8ec;
+    --accent-red: #e74c3c;
+    --accent-red-bg: #fdecea;
+    --accent-violet: #8e44ad;
+    --bg: #f7f9fc;
+    --white: #ffffff;
+    --surface: #ffffff;
+    --border: #e4e9f0;
+    --border-light: #eef2f7;
+    --text-primary: #2c3e50;
+    --text-secondary: #6c7a8a;
+    --text-muted: #9ba8b5;
+    --shadow-sm: 0 1px 3px rgba(51,122,183,0.06);
+    --shadow-md: 0 2px 8px rgba(51,122,183,0.08);
+    --shadow-lg: 0 4px 16px rgba(51,122,183,0.1);
+    --radius: 6px;
+    --radius-lg: 10px;
+    --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── HEADER ──────────────────────────────────────── */
+  .header {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-badge {
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.12em;
+  }
+
+  .header-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .header-subtitle {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-green-bg);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.68rem;
+    color: #27ae60;
+    font-weight: 500;
+  }
+
+  .status-pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #2ecc71;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .header-meta {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+  }
+
+  .btn-header {
+    background: var(--primary-light);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    padding: 5px 14px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-header:hover {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  /* ─── LAYOUT ──────────────────────────────────────── */
+  .main {
+    padding: 1.25rem 2rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ─── PBI DEV NOTE ────────────────────────────────── */
+  .pbi-note {
+    background: #faf5ff;
+    border: 1px solid #e8d5f5;
+    border-left: 3px solid var(--accent-violet);
+    border-radius: var(--radius);
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .pbi-note-icon {
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--accent-violet);
+    background: #f0e6f6;
+    padding: 2px 8px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .pbi-note-text {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+  }
+
+  .pbi-note-text strong { color: var(--accent-violet); }
+  .pbi-tag {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    background: #f0e6f6;
+    color: var(--accent-violet);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin: 0 2px;
+  }
+
+  /* ─── FILTERS ─────────────────────────────────────── */
+  .filters-bar {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .filter-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    width: 150px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .filter-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(51,122,183,0.12);
+  }
+
+  .filter-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    width: 200px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .filter-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(51,122,183,0.12);
+  }
+
+  .filter-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .btn-apply {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-family: var(--font);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 7px 20px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-apply:hover { background: var(--primary-hover); box-shadow: var(--shadow-md); }
+
+  .btn-clear {
+    background: var(--white);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    font-family: var(--font);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-clear:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+  /* ─── KPI CARDS ───────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  .kpi-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 4px 0 0 4px;
+  }
+
+  .kpi-card.blue::before  { background: var(--primary); }
+  .kpi-card.green::before { background: var(--accent-green); }
+  .kpi-card.amber::before { background: var(--accent-amber); }
+  .kpi-card.muted::before { background: var(--border); }
+
+  .kpi-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .kpi-card.blue .kpi-icon  { background: var(--primary-light); }
+  .kpi-card.green .kpi-icon { background: var(--accent-green-bg); }
+  .kpi-card.amber .kpi-icon { background: var(--accent-amber-bg); }
+  .kpi-card.muted .kpi-icon { background: var(--bg); }
+
+  .kpi-label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.02em;
+  }
+
+  .kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+  }
+
+  .kpi-card.blue  .kpi-value { color: var(--primary); }
+  .kpi-card.green .kpi-value { color: #27ae60; }
+  .kpi-card.amber .kpi-value { color: #e67e22; }
+  .kpi-card.muted .kpi-value { color: var(--text-primary); font-size: 1rem; font-weight: 600; }
+
+  .kpi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+  }
+
+  .kpi-badge.up   { background: var(--accent-green-bg); color: #27ae60; }
+  .kpi-badge.flat { background: var(--bg); color: var(--text-muted); }
+
+  .kpi-sub {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 0.2rem;
+  }
+
+  .pbi-visual-tag {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 0.52rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 1px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.06em;
+  }
+
+  /* ─── MID ROW ─────────────────────────────────────── */
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.875rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .panel {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 0.7rem 1.1rem;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--primary-lighter);
+  }
+
+  .panel-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-title-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    background: var(--primary);
+    flex-shrink: 0;
+  }
+
+  .panel-actions { display: flex; gap: 0.35rem; }
+
+  .btn-sm {
+    font-family: var(--font);
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-sm.active { border-color: var(--primary); color: var(--white); background: var(--primary); }
+  .btn-sm.excel { color: #27ae60; border-color: #c3e6cb; }
+  .btn-sm.excel:hover { background: var(--accent-green-bg); }
+  .btn-sm.pdf   { color: var(--accent-red); border-color: #f5c6cb; }
+  .btn-sm.pdf:hover { background: var(--accent-red-bg); }
+
+  /* ─── CHART ───────────────────────────────────────── */
+  .chart-area { padding: 1.1rem; }
+
+  .chart-container {
+    position: relative;
+    height: 220px;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+
+  .chart-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding-right: 0.4rem;
+    flex-shrink: 0;
+  }
+
+  .chart-y-label {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6rem;
+    flex: 1;
+    height: 100%;
+    padding-bottom: 22px;
+  }
+
+  .chart-grid {
+    position: absolute;
+    inset: 0;
+    bottom: 22px;
+    left: 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .chart-grid-line {
+    border-top: 1px solid var(--border-light);
+    width: 100%;
+  }
+
+  .chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    gap: 4px;
+    cursor: pointer;
+  }
+
+  .chart-bar {
+    width: 100%;
+    max-width: 48px;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.25s ease;
+    position: relative;
+    min-height: 4px;
+    background: var(--primary);
+    opacity: 0.7;
+  }
+
+  .chart-bar:hover { opacity: 1; }
+  .chart-bar.highlighted { opacity: 1; background: var(--primary-dark); box-shadow: 0 -2px 8px rgba(51,122,183,0.25); }
+
+  .chart-bar-label {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-align: center;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .chart-bar-val {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--primary);
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .chart-bar-wrap:hover .chart-bar-val { opacity: 1; }
+
+  .chart-x-label {
+    text-align: center;
+    margin-top: 0.4rem;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+
+  /* ─── DATA TABLE ──────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0.6rem 1rem;
+    text-align: left;
+    background: var(--primary-lighter);
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  thead th:last-child { text-align: center; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+
+  tbody tr:hover { background: var(--primary-lighter); }
+  tbody tr.selected { background: var(--primary-light); border-left: 3px solid var(--primary); }
+
+  tbody td {
+    padding: 0.6rem 1rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .td-code {
+    font-weight: 600;
+    font-size: 0.73rem;
+    color: var(--primary);
+  }
+
+  .td-amount {
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #27ae60;
+  }
+
+  .badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+  }
+
+  .badge-status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .badge-status.active  { background: var(--accent-green-bg); color: #27ae60; }
+  .badge-status.warning { background: var(--accent-amber-bg); color: #e67e22; }
+  .badge-status.error   { background: var(--accent-red-bg);   color: var(--accent-red); }
+
+  .btn-drill {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-family: var(--font);
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-drill:hover { background: var(--primary-hover); box-shadow: var(--shadow-sm); }
+
+  .table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--border-light);
+    background: var(--primary-lighter);
+  }
+
+  .pagination-info {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+  }
+
+  .pagination-btns { display: flex; gap: 0.3rem; }
+
+  .btn-page {
+    font-family: var(--font);
+    font-size: 0.62rem;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--white);
+    color: var(--text-secondary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-page:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-page.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* ─── DRILL DOWN ──────────────────────────────────── */
+  .drilldown-panel {
+    background: var(--white);
+    border: 1px solid var(--accent-amber);
+    border-radius: var(--radius-lg);
+    margin-top: 0.875rem;
+    box-shadow: 0 2px 12px rgba(240,173,78,0.1);
+    animation: slideDown 0.2s ease-out;
+    overflow: hidden;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .drilldown-header {
+    padding: 0.65rem 1.1rem;
+    border-bottom: 1px solid rgba(240,173,78,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--accent-amber-bg);
+  }
+
+  .drilldown-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #c27a00;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .drilldown-book {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .btn-close {
+    font-family: var(--font);
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 4px 14px;
+    border: 1px solid rgba(231,76,60,0.3);
+    background: var(--accent-red-bg);
+    color: var(--accent-red);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-close:hover { background: #f8d7da; }
+
+  .td-instrument { color: var(--text-secondary); font-size: 0.75rem; }
+  .td-notional { font-weight: 600; font-size: 0.75rem; color: var(--text-primary); }
+  .td-pl-pos  { font-weight: 700; font-size: 0.75rem; color: #27ae60; }
+  .td-pl-neg  { font-weight: 700; font-size: 0.75rem; color: var(--accent-red); }
+  .td-pl-warn { font-weight: 700; font-size: 0.75rem; color: #e67e22; }
+
+  .drilldown-footer {
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--border-light);
+    background: var(--accent-amber-bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ─── FOOTER ──────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 0.6rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--white);
+  }
+
+  .footer-text {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+  }
+
+  .footer-links { display: flex; gap: 1rem; }
+
+  .footer-link {
+    font-size: 0.62rem;
+    color: var(--primary);
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+
+  .footer-link:hover { color: var(--primary-dark); text-decoration: underline; }
+
+  /* ─── RESPONSIVE ──────────────────────────────────── */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .mid-row  { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-badge">PLEX</div>
+    <div>
+      <div class="header-title">P&L Analytics Dashboard</div>
+      <div class="header-subtitle">Book Level View · Source: GMIS Application</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="status-pill"><span class="dot"></span> Live</div>
+    <span class="header-meta">Last sync 10:30 AM</span>
+    <button class="btn-header">⚙ Settings</button>
+    <button class="btn-header">👤 User</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- PBI DEV NOTE -->
+  <div class="pbi-note">
+    <span class="pbi-note-icon">PBI MAP</span>
+    <div class="pbi-note-text">
+      <strong>Power BI Visual Mapping:</strong>
+      KPI Cards → <span class="pbi-tag">Card Visual</span>
+      Bar Chart → <span class="pbi-tag">Clustered Bar</span> (Book Group axis)
+      Book Table → <span class="pbi-tag">Table Visual</span> w/ conditional formatting
+      Drill-Down → <span class="pbi-tag">Drillthrough Page</span> on Book Code
+      Filters → <span class="pbi-tag">Slicer Visuals</span> (Date Range, Book Group)
+      Export → <span class="pbi-tag">Power Automate</span> / Report Actions
+    </div>
+  </div>
+
+  <!-- FILTERS → PBI: Slicers -->
+  <div class="filters-bar">
+    <span class="filter-label" style="color:var(--primary);font-weight:600;">Filters</span>
+    <div class="filter-divider"></div>
+    <label class="filter-label">Date From</label>
+    <input type="date" class="filter-input" id="dateFrom" value="2026-01-01"/>
+    <label class="filter-label">Date To</label>
+    <input type="date" class="filter-input" id="dateTo" value="2026-02-23"/>
+    <div class="filter-divider"></div>
+    <label class="filter-label">Book Group (Named P&L)</label>
+    <select class="filter-select" id="bookGroup">
+      <option value="">— Select Book Group —</option>
+      <option value="trading">Trading Books</option>
+      <option value="investment">Investment Books</option>
+      <option value="hedge">Hedge Books</option>
+      <option value="derivative">Derivative Books</option>
+    </select>
+    <button class="btn-apply" onclick="applyFilters()">Apply</button>
+    <button class="btn-clear" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- KPI CARDS → PBI: Card Visuals -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <span class="pbi-visual-tag">PBI: Card</span>
+      <div class="kpi-icon blue">💰</div>
+      <div class="kpi-label">Total P&L</div>
+      <div class="kpi-value">$1,234,567</div>
+      <span class="kpi-badge up">▲ 5.2%</span>
+    </div>
+    <div class="kpi-card green">
+      <span class="pbi-visual-tag">PBI: Card</span>
+      <div class="kpi-icon green">📚</div>
+      <div class="kpi-label">Book Count</div>
+      <div class="kpi-value">45</div>
+      <span class="kpi-badge flat">~ 0%</span>
+    </div>
+    <div class="kpi-card amber">
+      <span class="pbi-visual-tag">PBI: Card</span>
+      <div class="kpi-icon amber">📊</div>
+      <div class="kpi-label">Trade Count</div>
+      <div class="kpi-value">1,234</div>
+      <span class="kpi-badge up">▲ 3.1%</span>
+    </div>
+    <div class="kpi-card muted">
+      <span class="pbi-visual-tag">PBI: Card</span>
+      <div class="kpi-icon muted">🕒</div>
+      <div class="kpi-label">Last Updated</div>
+      <div class="kpi-value">2026-02-23</div>
+      <div class="kpi-sub">10:30 AM EST</div>
+    </div>
+  </div>
+
+  <!-- MID ROW -->
+  <div class="mid-row">
+
+    <!-- CHART → PBI: Clustered Bar Visual -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">
+          <span class="panel-title-dot"></span>
+          P&L by Book Group
+          <span class="pbi-visual-tag" style="position:static;">PBI: Clustered Bar</span>
+        </span>
+        <div class="panel-actions">
+          <button class="btn-sm active" id="btnBar" onclick="setChart('bar')">Bar</button>
+          <button class="btn-sm" id="btnLine" onclick="setChart('line')">Line</button>
+        </div>
+      </div>
+      <div class="chart-area">
+        <div class="chart-container" id="chartContainer">
+          <div class="chart-grid">
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+          </div>
+          <div class="chart-y-axis">
+            <span class="chart-y-label">$300K</span>
+            <span class="chart-y-label">$200K</span>
+            <span class="chart-y-label">$100K</span>
+            <span class="chart-y-label">$0</span>
+          </div>
+          <div class="chart-bars" id="chartBars"></div>
+        </div>
+        <div class="chart-x-label">Book Groups →</div>
+      </div>
+    </div>
+
+    <!-- TABLE → PBI: Table Visual -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">
+          <span class="panel-title-dot"></span>
+          Book Level P&L Data
+          <span class="pbi-visual-tag" style="position:static;">PBI: Table</span>
+        </span>
+        <div class="panel-actions">
+          <button class="btn-sm excel">↓ Excel</button>
+          <button class="btn-sm pdf">↓ PDF</button>
+          <button class="btn-sm">Share</button>
+        </div>
+      </div>
+      <div>
+        <table id="bookTable">
+          <thead>
+            <tr>
+              <th>Book Code</th>
+              <th>Book Name</th>
+              <th>P&L Amount</th>
+              <th>Status</th>
+              <th style="text-align:center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="drillDown('BK001','Trading Book A')" class="selected">
+              <td class="td-code">BK001</td>
+              <td>Trading Book A</td>
+              <td class="td-amount">$125,430</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td style="text-align:center"><button class="btn-drill" onclick="event.stopPropagation();drillDown('BK001','Trading Book A')">Drill ↓</button></td>
+            </tr>
+            <tr onclick="drillDown('BK002','Trading Book B')">
+              <td class="td-code">BK002</td>
+              <td>Trading Book B</td>
+              <td class="td-amount">$98,750</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td style="text-align:center"><button class="btn-drill" onclick="event.stopPropagation();drillDown('BK002','Trading Book B')">Drill ↓</button></td>
+            </tr>
+            <tr onclick="drillDown('BK003','Investment Book')">
+              <td class="td-code">BK003</td>
+              <td>Investment Book</td>
+              <td class="td-amount">$234,890</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td style="text-align:center"><button class="btn-drill" onclick="event.stopPropagation();drillDown('BK003','Investment Book')">Drill ↓</button></td>
+            </tr>
+            <tr onclick="drillDown('BK004','Hedge Book')">
+              <td class="td-code">BK004</td>
+              <td>Hedge Book</td>
+              <td class="td-amount">$45,670</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td style="text-align:center"><button class="btn-drill" onclick="event.stopPropagation();drillDown('BK004','Hedge Book')">Drill ↓</button></td>
+            </tr>
+            <tr onclick="drillDown('BK005','Derivative Book')">
+              <td class="td-code">BK005</td>
+              <td>Derivative Book</td>
+              <td class="td-amount">$187,920</td>
+              <td><span class="badge-status warning"><span class="dot"></span>Warning</span></td>
+              <td style="text-align:center"><button class="btn-drill" onclick="event.stopPropagation();drillDown('BK005','Derivative Book')">Drill ↓</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-pagination">
+          <span class="pagination-info">Page 1 of 9 · 45 books total</span>
+          <div class="pagination-btns">
+            <button class="btn-page">← Prev</button>
+            <button class="btn-page active">1</button>
+            <button class="btn-page">2</button>
+            <button class="btn-page">3</button>
+            <button class="btn-page">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRILL DOWN → PBI: Drillthrough Page -->
+  <div class="drilldown-panel" id="drillPanel">
+    <div class="drilldown-header">
+      <div class="drilldown-title">
+        ⬇ Drill Down: Trade Level Data (MOTIF Trial Balance)
+        <span class="drilldown-book" id="drillBookLabel">· BK001 – Trading Book A</span>
+        <span class="pbi-visual-tag" style="position:static;background:#fef3cd;color:#856404;">PBI: Drillthrough</span>
+      </div>
+      <button class="btn-close" onclick="closeDrill()">✕ Close</button>
+    </div>
+    <div>
+      <table id="drillTable">
+        <thead>
+          <tr>
+            <th>Trade ID</th>
+            <th>Trade Date</th>
+            <th>Counterparty</th>
+            <th>Instrument</th>
+            <th>Notional</th>
+            <th>P&L</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="drillBody"></tbody>
+      </table>
+    </div>
+    <div class="drilldown-footer">
+      <span class="pagination-info" id="drillFooterInfo">Showing 5 of 234 trades</span>
+      <div class="pagination-btns">
+        <button class="btn-page">← Prev</button>
+        <button class="btn-page" style="background:var(--accent-amber);color:#fff;border-color:var(--accent-amber);">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <span class="footer-text">© PLEX P&L Analytics · Data refreshed: 2026-02-23 10:30 AM · v2.4.1</span>
+  <div class="footer-links">
+    <a class="footer-link">Help</a>
+    <a class="footer-link">Support</a>
+    <a class="footer-link">API Docs</a>
+    <a class="footer-link">Power BI Report</a>
+  </div>
+</footer>
+
+<script>
+  const chartData = [
+    { label: 'Trading-A', value: 125430 },
+    { label: 'Trading-B', value: 98750  },
+    { label: 'Invest',    value: 234890 },
+    { label: 'Hedge',     value: 45670  },
+    { label: 'Deriv',     value: 187920 },
+    { label: 'FX',        value: 210000 },
+    { label: 'Equity',    value: 155000 },
+    { label: 'Credit',    value: 76000  },
+  ];
+
+  const maxVal = Math.max(...chartData.map(d => d.value));
+
+  function renderChart() {
+    const bars = document.getElementById('chartBars');
+    bars.innerHTML = chartData.map((d, i) => `
+      <div class="chart-bar-wrap" onclick="highlightBar(${i})">
+        <div class="chart-bar ${i === 2 ? 'highlighted' : ''}"
+             id="bar-${i}"
+             style="height:${(d.value / maxVal) * 88}%">
+          <span class="chart-bar-val">$${(d.value/1000).toFixed(0)}K</span>
+        </div>
+        <span class="chart-bar-label">${d.label}</span>
+      </div>
+    `).join('');
+  }
+
+  function highlightBar(idx) {
+    document.querySelectorAll('.chart-bar').forEach(b => b.classList.remove('highlighted'));
+    document.getElementById('bar-' + idx).classList.add('highlighted');
+  }
+
+  function setChart(type) {
+    document.getElementById('btnBar').classList.toggle('active', type === 'bar');
+    document.getElementById('btnLine').classList.toggle('active', type === 'line');
+    renderChart();
+  }
+
+  const drillDataMap = {
+    'BK001': [
+      { id:'TRD-001', date:'2026-02-20', cp:'Bank ABC',  instr:'EUR/USD Swap',       notional:'$1,000,000', pl:'$12,543', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-002', date:'2026-02-21', cp:'Corp XYZ',  instr:'Interest Rate Swap',  notional:'$2,500,000', pl:'$8,750',  plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-003', date:'2026-02-22', cp:'Fund DEF',  instr:'FX Forward',          notional:'$750,000',   pl:'$3,240',  plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-004', date:'2026-02-23', cp:'Bank GHI',  instr:'Credit Default Swap', notional:'$5,000,000', pl:'$45,890', plClass:'td-pl-warn',status:'warning' },
+      { id:'TRD-005', date:'2026-02-23', cp:'Hedge JKL', instr:'Option',              notional:'$1,200,000', pl:'$7,650',  plClass:'td-pl-pos', status:'active' },
+    ],
+    'BK002': [
+      { id:'TRD-101', date:'2026-02-20', cp:'Alpha Bank', instr:'USD/JPY Swap',  notional:'$3,000,000', pl:'$22,100', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-102', date:'2026-02-21', cp:'Beta Corp',  instr:'Equity Swap',   notional:'$1,800,000', pl:'-$5,400', plClass:'td-pl-neg', status:'warning' },
+      { id:'TRD-103', date:'2026-02-22', cp:'Gamma LLC',  instr:'FX Forward',    notional:'$900,000',   pl:'$4,120',  plClass:'td-pl-pos', status:'active' },
+    ],
+    'BK003': [
+      { id:'TRD-201', date:'2026-02-19', cp:'Delta Fund', instr:'Bond',   notional:'$10,000,000', pl:'$98,000', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-202', date:'2026-02-22', cp:'Epsilon PE', instr:'Equity', notional:'$4,500,000',  pl:'$62,000', plClass:'td-pl-pos', status:'active' },
+    ],
+    'BK004': [
+      { id:'TRD-301', date:'2026-02-20', cp:'Zeta Bank',  instr:'IRS Hedge',    notional:'$6,000,000', pl:'$18,200', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-302', date:'2026-02-22', cp:'Theta Corp',  instr:'FX Hedge',    notional:'$2,200,000', pl:'$9,470',  plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-303', date:'2026-02-23', cp:'Iota Fund',   instr:'Commodity Hedge', notional:'$3,100,000', pl:'-$2,100', plClass:'td-pl-neg', status:'warning' },
+    ],
+    'BK005': [
+      { id:'TRD-401', date:'2026-02-19', cp:'Kappa Sec',  instr:'Barrier Option', notional:'$8,000,000', pl:'$72,000', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-402', date:'2026-02-21', cp:'Lambda LP',  instr:'CDS Index',     notional:'$12,000,000', pl:'$55,920', plClass:'td-pl-warn', status:'warning' },
+      { id:'TRD-403', date:'2026-02-23', cp:'Mu Capital', instr:'Swaption',      notional:'$4,800,000', pl:'$31,000', plClass:'td-pl-pos', status:'active' },
+    ],
+  };
+
+  function drillDown(bookCode, bookName) {
+    const data = drillDataMap[bookCode] || drillDataMap['BK001'];
+    document.getElementById('drillBookLabel').textContent = `· ${bookCode} – ${bookName}`;
+    document.getElementById('drillFooterInfo').textContent = `Showing ${data.length} of 234 trades`;
+
+    const tbody = document.getElementById('drillBody');
+    tbody.innerHTML = data.map(t => `
+      <tr>
+        <td class="td-code">${t.id}</td>
+        <td style="font-size:0.73rem;color:var(--text-secondary)">${t.date}</td>
+        <td>${t.cp}</td>
+        <td class="td-instrument">${t.instr}</td>
+        <td class="td-notional">${t.notional}</td>
+        <td class="${t.plClass}">${t.pl}</td>
+        <td><span class="badge-status ${t.status}"><span class="dot"></span>${t.status.charAt(0).toUpperCase()+t.status.slice(1)}</span></td>
+      </tr>
+    `).join('');
+
+    document.getElementById('drillPanel').style.display = 'block';
+    document.querySelectorAll('#bookTable tbody tr').forEach(r => r.classList.remove('selected'));
+    if(event && event.currentTarget) {
+      const row = event.currentTarget.closest('tr');
+      if(row) row.classList.add('selected');
+    }
+    document.getElementById('drillPanel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+
+  function closeDrill() {
+    document.getElementById('drillPanel').style.display = 'none';
+  }
+
+  function applyFilters() {
+    const from = document.getElementById('dateFrom').value;
+    const to   = document.getElementById('dateTo').value;
+    const grp  = document.getElementById('bookGroup').value;
+    console.log('PBI Slicer Filter:', { from, to, bookGroup: grp });
+  }
+
+  function clearFilters() {
+    document.getElementById('dateFrom').value  = '';
+    document.getElementById('dateTo').value    = '';
+    document.getElementById('bookGroup').value = '';
+  }
+
+  renderChart();
+  drillDown('BK001','Trading Book A');
+</script>
+</body>
+</html>

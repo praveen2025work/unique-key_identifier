@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PLEX P&L Analytics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --surface3: #1e2d42;
+    --border: #253047;
+    --border-bright: #2e3f5c;
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-green: #10b981;
+    --accent-amber: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-violet: #8b5cf6;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #4b5563;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --glow-blue: 0 0 20px rgba(59,130,246,0.25);
+    --glow-green: 0 0 20px rgba(16,185,129,0.25);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── HEADER ──────────────────────────────────────────── */
+  .header {
+    background: linear-gradient(135deg, #0f1c33 0%, #0b0f1a 60%);
+    border-bottom: 1px solid var(--border-bright);
+    padding: 0 2rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-badge {
+    background: var(--accent-blue);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    letter-spacing: 0.15em;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+
+  .header-title {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text-primary);
+  }
+
+  .header-subtitle {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    box-shadow: 0 0 6px var(--accent-green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+  }
+
+  .btn-icon {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 5px 12px;
+    font-size: 0.7rem;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-icon:hover {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+  }
+
+  /* ─── LAYOUT ──────────────────────────────────────────── */
+  .main {
+    padding: 1.5rem 2rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ─── FILTERS ─────────────────────────────────────────── */
+  .filters-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 0.875rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    margin-right: 0.25rem;
+    white-space: nowrap;
+  }
+
+  .filter-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    width: 160px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .filter-input:focus {
+    border-color: var(--accent-blue);
+  }
+
+  .filter-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    width: 200px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .btn-apply {
+    background: var(--accent-green);
+    color: #fff;
+    border: none;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 7px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-apply:hover { background: #059669; }
+
+  .btn-clear {
+    background: var(--accent-red);
+    color: #fff;
+    border: none;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 7px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-clear:hover { background: #dc2626; }
+
+  .filter-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ─── KPI CARDS ───────────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.green::before { background: var(--accent-green); box-shadow: var(--glow-green); }
+  .kpi-card.blue::before  { background: var(--accent-blue);  box-shadow: var(--glow-blue); }
+  .kpi-card.amber::before { background: var(--accent-amber); }
+  .kpi-card.muted::before { background: var(--border-bright); }
+
+  .kpi-card:hover { border-color: var(--border-bright); }
+
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.375rem;
+  }
+
+  .kpi-card.green .kpi-value { color: var(--accent-green); }
+  .kpi-card.blue  .kpi-value { color: var(--accent-blue); }
+  .kpi-card.amber .kpi-value { color: var(--accent-amber); }
+  .kpi-card.muted .kpi-value { color: var(--text-primary); font-size: 1.1rem; }
+
+  .kpi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 7px;
+    letter-spacing: 0.08em;
+  }
+
+  .kpi-badge.up { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+  .kpi-badge.neutral { background: rgba(148,163,184,0.1); color: var(--text-secondary); }
+
+  .kpi-sub {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+
+  /* ─── MIDDLE ROW ──────────────────────────────────────── */
+  .mid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-title::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent-blue);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    flex-shrink: 0;
+  }
+
+  .panel-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-sm {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .btn-sm:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+  .btn-sm.active { border-color: var(--accent-blue); color: var(--accent-blue); background: rgba(59,130,246,0.1); }
+  .btn-sm.excel { border-color: var(--accent-green); color: var(--accent-green); }
+  .btn-sm.pdf   { border-color: var(--accent-red); color: var(--accent-red); }
+
+  /* ─── CHART ───────────────────────────────────────────── */
+  .chart-area {
+    padding: 1.25rem;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 220px;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+
+  .chart-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    padding-right: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .chart-y-label {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex: 1;
+    height: 100%;
+    padding-bottom: 20px;
+  }
+
+  .chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    gap: 4px;
+    cursor: pointer;
+  }
+
+  .chart-bar {
+    width: 100%;
+    background: var(--accent-blue);
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 4px;
+    opacity: 0.85;
+  }
+
+  .chart-bar:hover { opacity: 1; filter: brightness(1.2); }
+  .chart-bar.highlighted { background: var(--accent-cyan); opacity: 1; }
+
+  .chart-bar-label {
+    font-family: var(--mono);
+    font-size: 0.5rem;
+    color: var(--text-muted);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .chart-bar-val {
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    color: var(--text-secondary);
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .chart-bar-wrap:hover .chart-bar-val { opacity: 1; }
+
+  .chart-grid {
+    position: absolute;
+    inset: 0;
+    bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    left: 40px;
+  }
+
+  .chart-grid-line {
+    border-top: 1px dashed var(--border);
+    width: 100%;
+  }
+
+  /* ─── DATA TABLE ──────────────────────────────────────── */
+  .data-table-wrap {
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 0.6rem 1rem;
+    text-align: left;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  thead th:last-child { text-align: center; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.selected { background: rgba(59,130,246,0.08); border-left: 2px solid var(--accent-blue); }
+
+  tbody td {
+    padding: 0.6rem 1rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .td-code {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent-cyan);
+    letter-spacing: 0.06em;
+  }
+
+  .td-amount {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-green);
+  }
+
+  .badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+  }
+
+  .badge-status.active  { background: rgba(16,185,129,0.12); color: var(--accent-green); }
+  .badge-status.warning { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+  .badge-status.error   { background: rgba(239,68,68,0.12);  color: var(--accent-red); }
+
+  .badge-status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .btn-drill {
+    background: var(--accent-blue);
+    color: #fff;
+    border: none;
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-drill:hover { background: #2563eb; }
+
+  .table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .pagination-info {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+  }
+
+  .pagination-btns { display: flex; gap: 0.5rem; }
+
+  .btn-page {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-page:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+  /* ─── DRILL DOWN PANEL ────────────────────────────────── */
+  .drilldown-panel {
+    background: var(--surface);
+    border: 1px solid var(--accent-amber);
+    margin-top: 1.25rem;
+    animation: slideDown 0.25s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .drilldown-header {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid rgba(245,158,11,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(245,158,11,0.05);
+  }
+
+  .drilldown-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-amber);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .drilldown-book {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-close {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border: 1px solid rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.08);
+    color: var(--accent-red);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-close:hover { background: rgba(239,68,68,0.2); }
+
+  .drilldown-body { padding: 0 0 0.5rem 0; }
+
+  .td-instrument { color: var(--text-secondary); font-size: 0.75rem; }
+  .td-notional { font-family: var(--mono); font-size: 0.72rem; color: var(--text-primary); }
+
+  .td-pl-pos { font-family: var(--mono); font-size: 0.72rem; color: var(--accent-green); font-weight: 600; }
+  .td-pl-neg { font-family: var(--mono); font-size: 0.72rem; color: var(--accent-red); font-weight: 600; }
+  .td-pl-warn { font-family: var(--mono); font-size: 0.72rem; color: var(--accent-amber); font-weight: 600; }
+
+  .drilldown-footer {
+    padding: 0.625rem 1rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ─── FOOTER ──────────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 0.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+
+  .footer-text {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-muted);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .footer-link {
+    font-family: var(--mono);
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+
+  .footer-link:hover { color: var(--accent-blue); }
+
+  /* ─── POWER BI NOTE ───────────────────────────────────── */
+  .pbi-note {
+    background: rgba(139,92,246,0.08);
+    border: 1px dashed rgba(139,92,246,0.4);
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .pbi-note-icon {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--accent-violet);
+    background: rgba(139,92,246,0.15);
+    padding: 3px 8px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .pbi-note-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .pbi-note-text strong { color: var(--accent-violet); font-weight: 600; }
+
+  /* ─── CHART TYPE TOGGLE ───────────────────────────────── */
+  .chart-toggle {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  /* ─── HIDDEN DRILLDOWN ────────────────────────────────── */
+  .drilldown-hidden { display: none; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-badge">PLEX</div>
+    <div>
+      <div class="header-title">P&amp;L Analytics Dashboard</div>
+      <div class="header-subtitle">Book Level View · Source: GMIS Application</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="status-dot"></div>
+    <span class="header-meta">Live · Last sync 10:30 AM</span>
+    <button class="btn-icon">⚙ Settings</button>
+    <button class="btn-icon">👤 User</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- POWER BI DEV NOTE -->
+  <div class="pbi-note">
+    <span class="pbi-note-icon">DEV NOTE</span>
+    <div class="pbi-note-text">
+      <strong>Power BI Integration Reference:</strong> This HTML prototype maps directly to a Power BI report structure.
+      KPI Cards → Card visuals. Bar Chart → Clustered Bar with Book Group axis. Book Level Table → Table visual with conditional formatting.
+      Drill-Down panel → Drillthrough page on Book Code. Filters → Slicers (Date Range, Book Group). Export buttons → Export to Excel/PDF via Report action.
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters-bar">
+    <span class="filter-label">Filters</span>
+    <div class="filter-divider"></div>
+    <label class="filter-label">Date From</label>
+    <input type="date" class="filter-input" id="dateFrom" value="2026-01-01" />
+    <label class="filter-label">Date To</label>
+    <input type="date" class="filter-input" id="dateTo" value="2026-02-23" />
+    <div class="filter-divider"></div>
+    <label class="filter-label">Book Group (Named P&amp;L)</label>
+    <select class="filter-select" id="bookGroup">
+      <option value="">— Select Book Group —</option>
+      <option value="trading">Trading Books</option>
+      <option value="investment">Investment Books</option>
+      <option value="hedge">Hedge Books</option>
+      <option value="derivative">Derivative Books</option>
+    </select>
+    <button class="btn-apply" onclick="applyFilters()">Apply</button>
+    <button class="btn-clear" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card green">
+      <div class="kpi-label">Total P&amp;L</div>
+      <div class="kpi-value">$1,234,567</div>
+      <span class="kpi-badge up">▲ 5.2%</span>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Book Count</div>
+      <div class="kpi-value">45</div>
+      <span class="kpi-badge neutral">~ 0%</span>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Trade Count</div>
+      <div class="kpi-value">1,234</div>
+      <span class="kpi-badge up">▲ 3.1%</span>
+    </div>
+    <div class="kpi-card muted">
+      <div class="kpi-label">Last Updated</div>
+      <div class="kpi-value">2026-02-23</div>
+      <div class="kpi-sub">10:30 AM EST</div>
+    </div>
+  </div>
+
+  <!-- MID ROW: CHART + TABLE -->
+  <div class="mid-row">
+
+    <!-- BAR CHART -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">P&amp;L Visualization</span>
+        <div class="chart-toggle">
+          <button class="btn-sm active" id="btnBar" onclick="setChart('bar')">Bar</button>
+          <button class="btn-sm" id="btnLine" onclick="setChart('line')">Line</button>
+        </div>
+      </div>
+      <div class="chart-area">
+        <div class="chart-container" id="chartContainer">
+          <div class="chart-grid">
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+            <div class="chart-grid-line"></div>
+          </div>
+          <div class="chart-y-axis">
+            <span class="chart-y-label">300K</span>
+            <span class="chart-y-label">200K</span>
+            <span class="chart-y-label">100K</span>
+            <span class="chart-y-label">0</span>
+          </div>
+          <div class="chart-bars" id="chartBars">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div style="text-align:center; margin-top:0.5rem;">
+          <span style="font-family:var(--mono);font-size:0.58rem;color:var(--text-muted);letter-spacing:0.1em;">BOOK GROUPS →</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOOK LEVEL TABLE -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Book Level P&amp;L Data</span>
+        <div class="panel-actions">
+          <button class="btn-sm excel">Excel</button>
+          <button class="btn-sm pdf">PDF</button>
+          <button class="btn-sm">Share</button>
+        </div>
+      </div>
+      <div class="data-table-wrap">
+        <table id="bookTable">
+          <thead>
+            <tr>
+              <th>Book Code</th>
+              <th>Book Name</th>
+              <th>P&amp;L Amount</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="drillDown('BK001','Trading Book A')" class="selected">
+              <td class="td-code">BK001</td>
+              <td>Trading Book A</td>
+              <td class="td-amount">$125,430</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td><button class="btn-drill" onclick="drillDown('BK001','Trading Book A')">Drill Down</button></td>
+            </tr>
+            <tr onclick="drillDown('BK002','Trading Book B')">
+              <td class="td-code">BK002</td>
+              <td>Trading Book B</td>
+              <td class="td-amount">$98,750</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td><button class="btn-drill" onclick="drillDown('BK002','Trading Book B')">Drill Down</button></td>
+            </tr>
+            <tr onclick="drillDown('BK003','Investment Book')">
+              <td class="td-code">BK003</td>
+              <td>Investment Book</td>
+              <td class="td-amount">$234,890</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td><button class="btn-drill" onclick="drillDown('BK003','Investment Book')">Drill Down</button></td>
+            </tr>
+            <tr onclick="drillDown('BK004','Hedge Book')">
+              <td class="td-code">BK004</td>
+              <td>Hedge Book</td>
+              <td class="td-amount">$45,670</td>
+              <td><span class="badge-status active"><span class="dot"></span>Active</span></td>
+              <td><button class="btn-drill" onclick="drillDown('BK004','Hedge Book')">Drill Down</button></td>
+            </tr>
+            <tr onclick="drillDown('BK005','Derivative Book')">
+              <td class="td-code">BK005</td>
+              <td>Derivative Book</td>
+              <td class="td-amount">$187,920</td>
+              <td><span class="badge-status warning"><span class="dot"></span>Warning</span></td>
+              <td><button class="btn-drill" onclick="drillDown('BK005','Derivative Book')">Drill Down</button></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="table-pagination">
+          <span class="pagination-info">Page 1 of 9 · 45 books total</span>
+          <div class="pagination-btns">
+            <button class="btn-page">← Prev</button>
+            <button class="btn-page" style="border-color:var(--accent-blue);color:var(--accent-blue);">1</button>
+            <button class="btn-page">2</button>
+            <button class="btn-page">3</button>
+            <button class="btn-page">Next →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRILL DOWN PANEL -->
+  <div class="drilldown-panel" id="drillPanel">
+    <div class="drilldown-header">
+      <div class="drilldown-title">
+        ⬇ Drill Down: Trade Level Data (MOTIF Trial Balance)
+        <span class="drilldown-book" id="drillBookLabel">· BK001 – Trading Book A</span>
+      </div>
+      <button class="btn-close" onclick="closeDrill()">✕ Close</button>
+    </div>
+    <div class="drilldown-body">
+      <table id="drillTable">
+        <thead>
+          <tr>
+            <th>Trade ID</th>
+            <th>Trade Date</th>
+            <th>Counterparty</th>
+            <th>Instrument</th>
+            <th>Notional</th>
+            <th>P&amp;L</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="drillBody">
+          <!-- Populated by JS -->
+        </tbody>
+      </table>
+    </div>
+    <div class="drilldown-footer">
+      <span class="pagination-info" id="drillFooterInfo">Showing 5 of 234 trades</span>
+      <div class="pagination-btns">
+        <button class="btn-page">← Prev</button>
+        <button class="btn-page" style="border-color:var(--accent-amber);color:var(--accent-amber);">1</button>
+        <button class="btn-page">2</button>
+        <button class="btn-page">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<footer class="footer">
+  <span class="footer-text">© PLEX P&amp;L Analytics · Data refreshed: 2026-02-23 10:30 AM · v2.4.1</span>
+  <div class="footer-links">
+    <a class="footer-link">Help</a>
+    <a class="footer-link">Support</a>
+    <a class="footer-link">API Docs</a>
+    <a class="footer-link">Power BI Report</a>
+  </div>
+</footer>
+
+<script>
+  /* ─── CHART DATA ─────────────────────────────────── */
+  const chartData = [
+    { label: 'Trading-A', value: 125430 },
+    { label: 'Trading-B', value: 98750  },
+    { label: 'Invest',    value: 234890 },
+    { label: 'Hedge',     value: 45670  },
+    { label: 'Deriv',     value: 187920 },
+    { label: 'FX',        value: 210000 },
+    { label: 'Equity',    value: 155000 },
+    { label: 'Credit',    value: 76000  },
+  ];
+
+  const maxVal = Math.max(...chartData.map(d => d.value));
+
+  function renderChart() {
+    const bars = document.getElementById('chartBars');
+    bars.innerHTML = chartData.map((d, i) => `
+      <div class="chart-bar-wrap" onclick="highlightBar(${i})">
+        <div class="chart-bar ${i === 0 ? 'highlighted' : ''}"
+             id="bar-${i}"
+             style="height:${(d.value / maxVal) * 90}%">
+          <span class="chart-bar-val">${(d.value/1000).toFixed(0)}K</span>
+        </div>
+        <span class="chart-bar-label">${d.label}</span>
+      </div>
+    `).join('');
+  }
+
+  function highlightBar(idx) {
+    document.querySelectorAll('.chart-bar').forEach(b => b.classList.remove('highlighted'));
+    document.getElementById('bar-' + idx).classList.add('highlighted');
+  }
+
+  function setChart(type) {
+    document.getElementById('btnBar').classList.toggle('active', type === 'bar');
+    document.getElementById('btnLine').classList.toggle('active', type === 'line');
+    // In Power BI, this maps to switching visual type
+    renderChart();
+  }
+
+  /* ─── DRILL DOWN DATA ────────────────────────────── */
+  const drillDataMap = {
+    'BK001': [
+      { id:'TRD-001', date:'2026-02-20', cp:'Bank ABC',  instr:'EUR/USD Swap',      notional:'$1,000,000', pl:'$12,543', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-002', date:'2026-02-21', cp:'Corp XYZ',  instr:'Interest Rate Swap', notional:'$2,500,000', pl:'$8,750',  plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-003', date:'2026-02-22', cp:'Fund DEF',  instr:'FX Forward',         notional:'$750,000',   pl:'$3,240',  plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-004', date:'2026-02-23', cp:'Bank GHI',  instr:'Credit Default Swap',notional:'$5,000,000', pl:'$45,890', plClass:'td-pl-warn',status:'warning' },
+      { id:'TRD-005', date:'2026-02-23', cp:'Hedge JKL', instr:'Option',             notional:'$1,200,000', pl:'$7,650',  plClass:'td-pl-pos', status:'active' },
+    ],
+    'BK002': [
+      { id:'TRD-101', date:'2026-02-20', cp:'Alpha Bank', instr:'USD/JPY Swap',       notional:'$3,000,000', pl:'$22,100', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-102', date:'2026-02-21', cp:'Beta Corp',  instr:'Equity Swap',        notional:'$1,800,000', pl:'$-5,400', plClass:'td-pl-neg', status:'warning' },
+      { id:'TRD-103', date:'2026-02-22', cp:'Gamma LLC',  instr:'FX Forward',         notional:'$900,000',   pl:'$4,120',  plClass:'td-pl-pos', status:'active' },
+    ],
+    'BK003': [
+      { id:'TRD-201', date:'2026-02-19', cp:'Delta Fund', instr:'Bond',               notional:'$10,000,000',pl:'$98,000', plClass:'td-pl-pos', status:'active' },
+      { id:'TRD-202', date:'2026-02-22', cp:'Epsilon PE', instr:'Equity',             notional:'$4,500,000', pl:'$62,000', plClass:'td-pl-pos', status:'active' },
+    ],
+  };
+
+  const defaultDrillData = drillDataMap['BK001'];
+
+  function drillDown(bookCode, bookName) {
+    const data = drillDataMap[bookCode] || defaultDrillData;
+    document.getElementById('drillBookLabel').textContent = `· ${bookCode} – ${bookName}`;
+    document.getElementById('drillFooterInfo').textContent = `Showing ${data.length} of 234 trades`;
+
+    const tbody = document.getElementById('drillBody');
+    tbody.innerHTML = data.map(t => `
+      <tr>
+        <td class="td-code">${t.id}</td>
+        <td style="font-family:var(--mono);font-size:0.7rem;color:var(--text-secondary)">${t.date}</td>
+        <td>${t.cp}</td>
+        <td class="td-instrument">${t.instr}</td>
+        <td class="td-notional">${t.notional}</td>
+        <td class="${t.plClass}">${t.pl}</td>
+        <td><span class="badge-status ${t.status}"><span class="dot"></span>${t.status.charAt(0).toUpperCase()+t.status.slice(1)}</span></td>
+      </tr>
+    `).join('');
+
+    document.getElementById('drillPanel').style.display = 'block';
+
+    // Highlight selected row
+    document.querySelectorAll('#bookTable tbody tr').forEach(r => r.classList.remove('selected'));
+    event.currentTarget.closest('tr') && event.currentTarget.closest('tr').classList.add('selected');
+  }
+
+  function closeDrill() {
+    document.getElementById('drillPanel').style.display = 'none';
+  }
+
+  /* ─── FILTER ACTIONS ─────────────────────────────── */
+  function applyFilters() {
+    const from = document.getElementById('dateFrom').value;
+    const to   = document.getElementById('dateTo').value;
+    const grp  = document.getElementById('bookGroup').value;
+    // In Power BI: these map to slicer interactions (cross-filtering)
+    console.log('PBI Filter:', { from, to, bookGroup: grp });
+  }
+
+  function clearFilters() {
+    document.getElementById('dateFrom').value   = '';
+    document.getElementById('dateTo').value     = '';
+    document.getElementById('bookGroup').value  = '';
+  }
+
+  /* ─── INIT ───────────────────────────────────────── */
+  renderChart();
+</script>
+</body>
+</html>
