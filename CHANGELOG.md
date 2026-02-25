@@ -60,3 +60,19 @@ All notable changes to the Unique Key Identifier project will be documented in t
 ---
 
 **Note**: Version 2.0+ represents a major enhancement focused on intelligent key discovery and performance optimization for large-scale datasets.
+
+
+
+Hi Team,
+I have a few questions to better understand how Oracle DB fits into the FOBO service. Please answer each one as clearly as possible.
+
+1. How does FOBO get its jobs?
+When a reconciliation request comes in, is it first saved into Oracle DB and then picked up by FOBO — or does it go directly into FOBO's memory queue without touching Oracle first?
+2. What happens in Oracle when a job fails?
+If FOBO's Pool 4 gets overloaded and a job fails, is that job still visible/saved in Oracle DB? Or is it lost completely?
+3. Where is the job status tracked?
+Is there a table in Oracle that tracks each job's status — for example, Pending, In Progress, Completed, Failed? If yes, what is that table called?
+4. How does FOBO pick up jobs from Oracle?
+Does FOBO constantly poll Oracle looking for new jobs, or does something else trigger FOBO to start processing? What controls how many jobs it picks up at a time?
+5. When Pool 4 failed, what did Oracle show?
+After the recent failure, could you query Oracle and find the affected jobs? Or were they not recorded anywhere?
