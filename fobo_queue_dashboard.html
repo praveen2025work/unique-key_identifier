@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOBO — Queue Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F0F4FA; --canvas:#fff; --surface:#F5F7FB; --surface2:#EBF0F8;
+  --border:#D8E0ED; --border2:#C4CFDF;
+  --text:#0F172A; --text2:#334155; --muted:#64748B; --subtle:#94A3B8;
+  --blue:#1D4ED8; --blue2:#2563EB; --blue-l:#EFF6FF; --blue-b:#BFDBFE;
+  --green:#15803D; --green-l:#F0FDF4; --green-b:#86EFAC;
+  --red:#B91C1C; --red-l:#FEF2F2; --red-b:#FECACA;
+  --orange:#B45309; --orange-l:#FFFBEB; --orange-b:#FDE68A;
+  --purple:#6D28D9; --purple-l:#F5F3FF; --purple-b:#DDD6FE;
+  --apac:#0369A1; --apac-l:#F0F9FF; --apac-b:#BAE6FD;
+  --emea:#7C3AED; --emea-l:#F5F3FF; --emea-b:#C4B5FD;
+  --amer:#059669; --amer-l:#ECFDF5; --amer-b:#6EE7B7;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;}
+
+/* HEADER */
+.hdr{background:#fff;border-bottom:2px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+.hdr-left{display:flex;align-items:center;gap:12px;}
+.chip{background:var(--blue);color:#fff;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;}
+.hdr-title{font-size:15px;font-weight:700;}
+.hdr-sub{font-size:11px;color:var(--muted);}
+.hdr-right{display:flex;align-items:center;gap:10px;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#22C55E;animation:blink 1.4s ease-in-out infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.live-txt{font-size:11px;font-weight:600;color:var(--green);}
+.biz-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;}
+.ref-btn{background:var(--blue-l);border:1.5px solid var(--blue-b);color:var(--blue2);font-size:11px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;}
+.ref-btn:hover{background:var(--blue2);color:#fff;}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:260px 1fr;min-height:calc(100vh - 58px);}
+
+/* SIDEBAR */
+.sidebar{background:#fff;border-right:1.5px solid var(--border);padding:16px 0;overflow-y:auto;}
+.sb-section{padding:0 16px;margin-bottom:18px;}
+.sb-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--subtle);margin-bottom:8px;padding:0 4px;}
+.sb-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;margin-bottom:2px;cursor:pointer;transition:background .12s;border:1.5px solid transparent;}
+.sb-item:hover{background:var(--surface);}
+.sb-item.on{background:var(--blue-l);border-color:var(--blue-b);}
+.sb-item-left{display:flex;align-items:center;gap:8px;}
+.sb-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.sb-name{font-size:12px;font-weight:600;}
+.sb-item.on .sb-name{color:var(--blue2);}
+.sb-count{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;}
+.sb-divider{height:1px;background:var(--border);margin:4px 16px 14px;}
+
+/* MAIN */
+.main{padding:20px 24px;overflow-y:auto;}
+
+/* SUMMARY STRIP */
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+.stat-tile{background:var(--canvas);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;}
+.st-val{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;margin-bottom:3px;}
+.st-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);}
+.st-sub{font-size:10px;color:var(--subtle);margin-top:2px;}
+
+/* SECTION HEADING */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sh-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);}
+.sh-r{display:flex;gap:6px;}
+
+/* QUEUE TABLE */
+.qtable-wrap{background:var(--canvas);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.qt{width:100%;border-collapse:collapse;font-size:12px;}
+.qt thead{background:var(--surface);border-bottom:2px solid var(--border2);}
+.qt th{padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);text-align:left;white-space:nowrap;}
+.qt td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.qt tr:last-child td{border-bottom:none;}
+.qt tr:hover td{background:var(--surface);}
+.qt tr.row-apac td{background:#F0F9FF;}
+.qt tr.row-apac:hover td{background:#E0F2FE;}
+.qt tr.row-autopost td{background:#FFFBEB;}
+.qt tr.row-autopost:hover td{background:#FEF3C7;}
+.qt tr.row-processing td{background:#F0FDF4;}
+.qt tr.row-processing:hover td{background:#DCFCE7;}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.2px;white-space:nowrap;}
+.t-proc{background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;}
+.t-queue{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;}
+.t-apac{background:#F0F9FF;color:#0369A1;border:1px solid #BAE6FD;}
+.t-autopost{background:#FFFBEB;color:#92400E;border:1px solid #FDE68A;}
+.t-emea{background:#F5F3FF;color:#6D28D9;border:1px solid #C4B5FD;}
+.t-amer{background:#ECFDF5;color:#065F46;border:1px solid #6EE7B7;}
+.t-next{background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;}
+.t-done{background:#F1F5F9;color:#64748B;border:1px solid #CBD5E1;}
+.t-low{background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;}
+.t-med{background:#FFFBEB;color:#B45309;border:1px solid #FDE68A;}
+.t-high{background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;}
+.t-fail{background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;}
+
+/* PRIORITY INDICATOR */
+.pri{display:flex;align-items:center;gap:5px;}
+.pri-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#fff;flex-shrink:0;}
+
+/* PROGRESS BAR */
+.prog{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;width:80px;}
+.prog-fill{height:100%;border-radius:3px;transition:width .3s ease;}
+
+/* ETA */
+.eta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.eta.urgent{color:var(--red);font-weight:700;}
+
+/* INSTANCE GRID */
+.inst-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.inst-card{background:var(--canvas);border:1.5px solid var(--border);border-radius:9px;padding:12px 14px;}
+.inst-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.inst-name{font-size:11px;font-weight:700;color:var(--text2);}
+.inst-status{width:8px;height:8px;border-radius:50%;}
+.inst-stat{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:11px;}
+.inst-stat-l{color:var(--muted);}
+.inst-stat-v{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;}
+.thread-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:8px;}
+.thread-fill{height:100%;border-radius:3px;}
+
+/* NEXT UP */
+.next-list{display:flex;flex-direction:column;gap:6px;margin-bottom:20px;}
+.next-item{background:var(--canvas);border:1.5px solid var(--border);border-radius:9px;padding:12px 16px;display:flex;align-items:center;gap:14px;transition:box-shadow .12s;}
+.next-item:hover{box-shadow:0 2px 10px rgba(0,0,0,0.06);}
+.next-item.ni-apac{border-color:var(--apac-b);background:var(--apac-l);}
+.next-item.ni-autopost{border-color:var(--orange-b);background:var(--orange-l);}
+.ni-rank{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff;flex-shrink:0;}
+.ni-book{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--text);}
+.ni-meta{font-size:11px;color:var(--muted);}
+.ni-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+
+/* TIMELINE MINI */
+.timeline-mini{display:flex;gap:0;background:var(--canvas);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.tm-seg{flex:1;padding:12px 14px;border-right:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.tm-seg:last-child{border-right:none;}
+.tm-seg:hover{background:var(--surface);}
+.tm-seg.tm-on{background:var(--blue-l);}
+.tm-region{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.tm-window{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:8px;}
+.tm-bar{display:flex;gap:2px;}
+.tm-chunk{height:8px;border-radius:3px;flex:1;}
+.tm-counts{display:flex;gap:8px;margin-top:6px;}
+.tm-cnt{font-size:10px;color:var(--muted);}
+.tm-cnt strong{color:var(--text);}
+
+/* TWO COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+
+/* LEGEND */
+.legend{display:flex;gap:12px;flex-wrap:wrap;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.leg-dot{width:9px;height:9px;border-radius:3px;}
+
+/* SCROLL */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="chip">FOBO</div>
+    <div>
+      <div class="hdr-title">Queue Monitor &amp; Processing Dashboard</div>
+      <div class="hdr-sub">DB-Backed Async Queue · Priority-Aware Scheduling · APAC Override Active</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="live-dot"></div><span class="live-txt">LIVE</span>
+    <div class="biz-date">Biz Date: 04-Mar-2026</div>
+    <button class="ref-btn" onclick="refresh()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-section">
+    <div class="sb-label">Filter by Region</div>
+    <div class="sb-item on" onclick="filterRegion('ALL',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--blue2)"></div><span class="sb-name">All Regions</span></div>
+      <span class="sb-count" style="background:var(--blue-l);color:var(--blue2)">247</span>
+    </div>
+    <div class="sb-item" onclick="filterRegion('APAC',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">🌏 APAC</span></div>
+      <span class="sb-count" style="background:var(--apac-l);color:var(--apac)">89</span>
+    </div>
+    <div class="sb-item" onclick="filterRegion('EMEA',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--emea)"></div><span class="sb-name">🌍 EMEA</span></div>
+      <span class="sb-count" style="background:var(--emea-l);color:var(--emea)">112</span>
+    </div>
+    <div class="sb-item" onclick="filterRegion('AMER',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--amer)"></div><span class="sb-name">🌎 AMER</span></div>
+      <span class="sb-count" style="background:var(--amer-l);color:var(--amer)">46</span>
+    </div>
+  </div>
+
+  <div class="sb-divider"></div>
+
+  <div class="sb-section">
+    <div class="sb-label">Filter by Status</div>
+    <div class="sb-item" onclick="filterStatus('PROCESSING',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:#22C55E"></div><span class="sb-name">Processing</span></div>
+      <span class="sb-count" style="background:#DCFCE7;color:#15803D">38</span>
+    </div>
+    <div class="sb-item" onclick="filterStatus('QUEUED',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--blue2)"></div><span class="sb-name">Queued (pending)</span></div>
+      <span class="sb-count" style="background:var(--blue-l);color:var(--blue2)">142</span>
+    </div>
+    <div class="sb-item" onclick="filterStatus('COMPLETE',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--subtle)"></div><span class="sb-name">Complete</span></div>
+      <span class="sb-count" style="background:var(--surface2);color:var(--muted)">62</span>
+    </div>
+    <div class="sb-item" onclick="filterStatus('FAILED',this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--red)"></div><span class="sb-name">Failed / Retry</span></div>
+      <span class="sb-count" style="background:var(--red-l);color:var(--red)">5</span>
+    </div>
+  </div>
+
+  <div class="sb-divider"></div>
+
+  <div class="sb-section">
+    <div class="sb-label">Filter by Priority</div>
+    <div class="sb-item" onclick="filterPri(1,this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:#F59E0B"></div><span class="sb-name">P1 — Auto-post</span></div>
+      <span class="sb-count" style="background:#FEF3C7;color:#92400E">14</span>
+    </div>
+    <div class="sb-item" onclick="filterPri(2,this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">P2 — APAC override</span></div>
+      <span class="sb-count" style="background:var(--apac-l);color:var(--apac)">9</span>
+    </div>
+    <div class="sb-item" onclick="filterPri(3,this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--green)"></div><span class="sb-name">P3 — LOW runtime</span></div>
+      <span class="sb-count" style="background:var(--green-l);color:var(--green)">67</span>
+    </div>
+    <div class="sb-item" onclick="filterPri(4,this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--orange)"></div><span class="sb-name">P4 — MEDIUM runtime</span></div>
+      <span class="sb-count" style="background:var(--orange-l);color:var(--orange)">94</span>
+    </div>
+    <div class="sb-item" onclick="filterPri(5,this)">
+      <div class="sb-item-left"><div class="sb-dot" style="background:var(--muted)"></div><span class="sb-name">P5 — HIGH runtime</span></div>
+      <span class="sb-count" style="background:var(--surface2);color:var(--muted)">63</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- SUMMARY STRIP -->
+  <div class="strip">
+    <div class="stat-tile" style="border-left:4px solid #22C55E">
+      <div class="st-val" style="color:var(--green)">38</div>
+      <div class="st-lbl">Currently Processing</div>
+      <div class="st-sub">Across 5 FOBO instances</div>
+    </div>
+    <div class="stat-tile" style="border-left:4px solid var(--blue2)">
+      <div class="st-val" style="color:var(--blue2)">142</div>
+      <div class="st-lbl">In Queue (pending)</div>
+      <div class="st-sub">9 APAC override waiting</div>
+    </div>
+    <div class="stat-tile" style="border-left:4px solid var(--orange)">
+      <div class="st-val" style="color:var(--orange)">14</div>
+      <div class="st-lbl">Auto-Post Eligible</div>
+      <div class="st-sub">Book close in 2h 15m</div>
+    </div>
+    <div class="stat-tile" style="border-left:4px solid var(--subtle)">
+      <div class="st-val" style="color:var(--muted)">62</div>
+      <div class="st-lbl">Completed Today</div>
+      <div class="st-sub">Last: MB-4821 3m ago</div>
+    </div>
+    <div class="stat-tile" style="border-left:4px solid var(--red)">
+      <div class="st-val" style="color:var(--red)">5</div>
+      <div class="st-lbl">Failed / Retry</div>
+      <div class="st-sub">Auto-retry in progress</div>
+    </div>
+  </div>
+
+  <!-- REGION TIMELINE -->
+  <div class="sh"><div class="sh-t">Regional Batch Windows</div></div>
+  <div class="timeline-mini" style="margin-bottom:20px">
+    <div class="tm-seg tm-on">
+      <div class="tm-region" style="color:var(--apac)">🌏 APAC</div>
+      <div class="tm-window">06:30 – 14:00 IST</div>
+      <div class="tm-bar">
+        <div class="tm-chunk" style="background:#22C55E;flex:2"></div>
+        <div class="tm-chunk" style="background:var(--blue2);flex:1"></div>
+        <div class="tm-chunk" style="background:var(--surface2);flex:3"></div>
+      </div>
+      <div class="tm-counts"><span class="tm-cnt">Done <strong>62</strong></span><span class="tm-cnt">Active <strong>18</strong></span><span class="tm-cnt">Waiting <strong>9</strong></span></div>
+    </div>
+    <div class="tm-seg tm-on" style="background:var(--emea-l)">
+      <div class="tm-region" style="color:var(--emea)">🌍 EMEA — Active Window</div>
+      <div class="tm-window">12:00 – 18:00 IST</div>
+      <div class="tm-bar">
+        <div class="tm-chunk" style="background:#22C55E;flex:1"></div>
+        <div class="tm-chunk" style="background:var(--blue2);flex:2"></div>
+        <div class="tm-chunk" style="background:var(--surface2);flex:4"></div>
+      </div>
+      <div class="tm-counts"><span class="tm-cnt">Done <strong>0</strong></span><span class="tm-cnt">Active <strong>20</strong></span><span class="tm-cnt">Waiting <strong>133</strong></span></div>
+    </div>
+    <div class="tm-seg">
+      <div class="tm-region" style="color:var(--amer)">🌎 AMER — Pending</div>
+      <div class="tm-window">18:30 – 24:00 IST</div>
+      <div class="tm-bar">
+        <div class="tm-chunk" style="background:var(--surface2);flex:6"></div>
+      </div>
+      <div class="tm-counts"><span class="tm-cnt">Not started <strong>46</strong></span></div>
+    </div>
+    <div style="padding:12px 14px;display:flex;flex-direction:column;justify-content:center;gap:6px;flex-shrink:0;min-width:140px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Current Time</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--blue2)" id="clock">13:47:22</div>
+      <div style="font-size:10px;color:var(--muted)">IST</div>
+      <div style="margin-top:8px;padding:6px 10px;background:var(--apac-l);border:1px solid var(--apac-b);border-radius:6px;font-size:10px;font-weight:700;color:var(--apac)">⚡ APAC Override ON</div>
+    </div>
+  </div>
+
+  <!-- INSTANCE HEALTH -->
+  <div class="sh"><div class="sh-t">FOBO Instance Health — Thread Pool Utilisation</div></div>
+  <div class="inst-grid">
+    <div class="inst-card" style="border-color:#86EFAC">
+      <div class="inst-head"><span class="inst-name">Instance 1</span><div class="inst-status" style="background:#22C55E"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">8 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">124 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Processing</span><span class="inst-stat-v" style="color:var(--green)">8 books</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:40%;background:var(--green)"></div></div>
+    </div>
+    <div class="inst-card" style="border-color:#86EFAC">
+      <div class="inst-head"><span class="inst-name">Instance 2</span><div class="inst-status" style="background:#22C55E"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">11 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">89 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Processing</span><span class="inst-stat-v" style="color:var(--green)">11 books</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:55%;background:var(--green)"></div></div>
+    </div>
+    <div class="inst-card" style="border-color:#FDE68A">
+      <div class="inst-head"><span class="inst-name">Instance 3</span><div class="inst-status" style="background:#F59E0B"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--orange)">17 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">312 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Processing</span><span class="inst-stat-v" style="color:var(--orange)">17 books</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:85%;background:var(--orange)"></div></div>
+    </div>
+    <div class="inst-card" style="border-color:#86EFAC">
+      <div class="inst-head"><span class="inst-name">Instance 4</span><div class="inst-status" style="background:#22C55E"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">6 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">67 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Processing</span><span class="inst-stat-v" style="color:var(--green)">6 books</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:30%;background:var(--green)"></div></div>
+    </div>
+    <div class="inst-card" style="border-color:#FECACA">
+      <div class="inst-head"><span class="inst-name">Instance 5</span><div class="inst-status" style="background:#F87171"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--orange)">20 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v" style="color:var(--orange)">587 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Processing</span><span class="inst-stat-v" style="color:var(--orange)">20 books</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:100%;background:var(--orange)"></div></div>
+    </div>
+  </div>
+
+  <!-- NEXT UP QUEUE -->
+  <div class="sh">
+    <div class="sh-t">Next To Be Picked Up — Priority Queue</div>
+    <div class="sh-r"><span style="font-size:11px;color:var(--muted)">Next available Titan worker will claim in order</span></div>
+  </div>
+  <div class="next-list">
+    <div class="next-item ni-autopost">
+      <div class="ni-rank" style="background:#F59E0B">1</div>
+      <div><div class="ni-book">MB-7741 · CATS-vs-MOTIF</div><div class="ni-meta">APAC · Auto-post eligible · Received 13:44:12</div></div>
+      <div class="ni-right"><span class="tag t-autopost">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">Deadline 15:30</span></div>
+    </div>
+    <div class="next-item ni-autopost">
+      <div class="ni-rank" style="background:#F59E0B">2</div>
+      <div><div class="ni-book">MB-7742 · CATS-vs-MOTIF</div><div class="ni-meta">APAC · Auto-post eligible · Received 13:44:15</div></div>
+      <div class="ni-right"><span class="tag t-autopost">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">Deadline 15:30</span></div>
+    </div>
+    <div class="next-item ni-apac">
+      <div class="ni-rank" style="background:var(--apac)">3</div>
+      <div><div class="ni-book">MB-3312 · SMS-REC</div><div class="ni-meta">APAC — Late arrival during EMEA window · Received 13:46:58</div></div>
+      <div class="ni-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-low">LOW</span><span class="eta">Est. 1m 20s</span></div>
+    </div>
+    <div class="next-item ni-apac">
+      <div class="ni-rank" style="background:var(--apac)">4</div>
+      <div><div class="ni-book">MB-3318 · REC-14</div><div class="ni-meta">APAC — Late arrival during EMEA window · Received 13:47:01</div></div>
+      <div class="ni-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-low">LOW</span><span class="eta">Est. 1m 45s</span></div>
+    </div>
+    <div class="next-item">
+      <div class="ni-rank" style="background:var(--green)">5</div>
+      <div><div class="ni-book">MB-5501 · CATS-vs-MOTIF</div><div class="ni-meta">EMEA · LOW category · Received 12:58:00</div></div>
+      <div class="ni-right"><span class="tag t-emea">P3 LOW</span><span class="tag t-low">LOW</span><span class="eta">Est. 55s</span></div>
+    </div>
+    <div class="next-item">
+      <div class="ni-rank" style="background:var(--green)">6</div>
+      <div><div class="ni-book">MB-5519 · SMS-REC</div><div class="ni-meta">EMEA · LOW category · Received 13:01:22</div></div>
+      <div class="ni-right"><span class="tag t-emea">P3 LOW</span><span class="tag t-low">LOW</span><span class="eta">Est. 1m 10s</span></div>
+    </div>
+    <div class="next-item">
+      <div class="ni-rank" style="background:var(--orange)">7</div>
+      <div><div class="ni-book">MB-6102 · REC-10</div><div class="ni-meta">EMEA · MEDIUM category · Received 12:48:11</div></div>
+      <div class="ni-right"><span class="tag t-emea">P4 MEDIUM</span><span class="tag t-med">MEDIUM</span><span class="eta">Est. 4m 20s</span></div>
+    </div>
+    <div class="next-item">
+      <div class="ni-rank" style="background:var(--muted)">8</div>
+      <div><div class="ni-book">MB-4401 · GENERIC</div><div class="ni-meta">EMEA · HIGH category · Received 12:31:00</div></div>
+      <div class="ni-right"><span class="tag t-emea">P5 HIGH</span><span class="tag t-high">HIGH</span><span class="eta">Est. 10m+</span></div>
+    </div>
+  </div>
+
+  <!-- CURRENTLY PROCESSING + QUEUE TABLE -->
+  <div class="two-col">
+    <!-- Currently Processing -->
+    <div>
+      <div class="sh"><div class="sh-t">Currently Processing (38)</div></div>
+      <div class="qtable-wrap">
+        <table class="qt">
+          <thead><tr><th>Masterbook</th><th>Region</th><th>Rec Type</th><th>Progress</th><th>Runtime</th><th>Stage</th></tr></thead>
+          <tbody>
+            <tr class="row-autopost"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7738</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><div class="prog"><div class="prog-fill" style="width:78%;background:var(--green)"></div></div></td><td class="eta">1m 12s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td></tr>
+            <tr class="row-processing"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5498</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">SMS-REC</td><td><div class="prog"><div class="prog-fill" style="width:55%;background:var(--blue2)"></div></div></td><td class="eta">2m 44s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td></tr>
+            <tr class="row-processing"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-6044</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">REC-11</td><td><div class="prog"><div class="prog-fill" style="width:90%;background:var(--green)"></div></div></td><td class="eta">28s</td><td><span class="tag" style="background:#F5F3FF;color:var(--purple);border:1px solid var(--purple-b);font-size:9px">Rules Match</span></td></tr>
+            <tr class="row-processing"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-6051</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">GENERIC</td><td><div class="prog"><div class="prog-fill" style="width:30%;background:var(--orange)"></div></div></td><td class="eta">8m 11s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td></tr>
+            <tr class="row-autopost"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7735</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><div class="prog"><div class="prog-fill" style="width:65%;background:var(--green)"></div></div></td><td class="eta">1m 50s</td><td><span class="tag" style="background:#FFF7ED;color:#C2410C;border:1px solid #FDBA74;font-size:9px">Posting</span></td></tr>
+            <tr class="row-processing"><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5512</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">REC-10</td><td><div class="prog"><div class="prog-fill" style="width:45%;background:var(--blue2)"></div></div></td><td class="eta">3m 20s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recently Completed -->
+    <div>
+      <div class="sh"><div class="sh-t">Recently Completed (Last 10)</div></div>
+      <div class="qtable-wrap">
+        <table class="qt">
+          <thead><tr><th>Masterbook</th><th>Region</th><th>Completed</th><th>Duration</th><th>Adjustments</th></tr></thead>
+          <tbody>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7730</span></td><td><span class="tag t-apac">APAC</span></td><td class="eta">13:44:50</td><td class="eta">1m 18s</td><td><span class="tag tg">3 posted</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5481</span></td><td><span class="tag t-emea">EMEA</span></td><td class="eta">13:43:22</td><td class="eta">2m 55s</td><td><span class="tag tk">0 breaks</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5478</span></td><td><span class="tag t-emea">EMEA</span></td><td class="eta">13:42:10</td><td class="eta">1m 02s</td><td><span class="tag tg">1 posted</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7725</span></td><td><span class="tag t-apac">APAC</span></td><td class="eta">13:41:05</td><td class="eta">58s</td><td><span class="tag tg">2 posted</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5470</span></td><td><span class="tag t-emea">EMEA</span></td><td class="eta">13:39:48</td><td class="eta">4m 30s</td><td><span class="tag tk">0 breaks</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-4820</span></td><td><span class="tag t-emea">EMEA</span></td><td class="eta">13:38:12</td><td class="eta">6m 14s</td><td><span class="tag to">Manual req.</span></td></tr>
+            <tr><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7718</span></td><td><span class="tag t-apac">APAC</span></td><td class="eta">13:37:00</td><td class="eta">1m 44s</td><td><span class="tag tg">5 posted</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL QUEUE TABLE -->
+  <div class="sh">
+    <div class="sh-t">Full Queue — Pending Books (142)</div>
+    <div class="sh-r">
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:#FEF3C7;border:1px solid #FDE68A"></div>Auto-post eligible</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#F0F9FF;border:1px solid #BAE6FD"></div>APAC override</div>
+        <div class="leg-item"><div class="leg-dot" style="background:#fff;border:1px solid #D8E0ED"></div>Standard queue</div>
+      </div>
+    </div>
+  </div>
+  <div class="qtable-wrap">
+    <table class="qt">
+      <thead>
+        <tr>
+          <th>Priority</th><th>Masterbook</th><th>Region</th><th>Rec Type</th>
+          <th>Runtime Cat.</th><th>Auto-Post</th><th>Queue Position</th><th>Est. Start</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="qbody">
+        <tr class="row-autopost"><td><div class="pri"><div class="pri-num" style="background:#F59E0B">1</div><span style="font-size:10px;color:#92400E;font-weight:600">Auto-Post</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7741</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><span class="tag t-low">LOW</span></td><td><span class="tag t-autopost">YES</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">1st</td><td class="eta urgent">13:48:00</td><td><span class="tag t-next">Next up</span></td></tr>
+        <tr class="row-autopost"><td><div class="pri"><div class="pri-num" style="background:#F59E0B">1</div><span style="font-size:10px;color:#92400E;font-weight:600">Auto-Post</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-7742</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><span class="tag t-low">LOW</span></td><td><span class="tag t-autopost">YES</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">2nd</td><td class="eta urgent">13:48:15</td><td><span class="tag t-next">Next up</span></td></tr>
+        <tr class="row-apac"><td><div class="pri"><div class="pri-num" style="background:var(--apac)">2</div><span style="font-size:10px;color:var(--apac);font-weight:600">APAC OVR</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-3312</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">SMS-REC</td><td><span class="tag t-low">LOW</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">3rd</td><td class="eta">13:48:30</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr class="row-apac"><td><div class="pri"><div class="pri-num" style="background:var(--apac)">2</div><span style="font-size:10px;color:var(--apac);font-weight:600">APAC OVR</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-3318</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">REC-14</td><td><span class="tag t-low">LOW</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">4th</td><td class="eta">13:48:45</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr><td><div class="pri"><div class="pri-num" style="background:var(--green)">3</div><span style="font-size:10px;color:var(--green);font-weight:600">LOW</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5501</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><span class="tag t-low">LOW</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">5th</td><td class="eta">13:49:00</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr><td><div class="pri"><div class="pri-num" style="background:var(--green)">3</div><span style="font-size:10px;color:var(--green);font-weight:600">LOW</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-5519</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">SMS-REC</td><td><span class="tag t-low">LOW</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">6th</td><td class="eta">13:49:55</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr><td><div class="pri"><div class="pri-num" style="background:var(--orange)">4</div><span style="font-size:10px;color:var(--orange);font-weight:600">MEDIUM</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-6102</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">REC-10</td><td><span class="tag t-med">MEDIUM</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">7th</td><td class="eta">13:51:10</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr><td><div class="pri"><div class="pri-num" style="background:var(--orange)">4</div><span style="font-size:10px;color:var(--orange);font-weight:600">MEDIUM</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-6118</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">GENERIC</td><td><span class="tag t-med">MEDIUM</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">8th</td><td class="eta">13:53:00</td><td><span class="tag t-queue">Queued</span></td></tr>
+        <tr style="background:var(--red-l)"><td><div class="pri"><div class="pri-num" style="background:var(--red)">5</div><span style="font-size:10px;color:var(--red);font-weight:600">HIGH</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-4401</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">GENERIC</td><td><span class="tag t-high">HIGH</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">Pending</td><td class="eta">~14:05:00</td><td><span class="tag t-fail">Retry #2</span></td></tr>
+        <tr><td><div class="pri"><div class="pri-num" style="background:var(--muted)">5</div><span style="font-size:10px;color:var(--muted);font-weight:600">HIGH</span></div></td><td><span style="font-family:'JetBrains Mono',monospace;font-weight:700">MB-4412</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">GENERIC</td><td><span class="tag t-high">HIGH</span></td><td><span class="tag tk">No</span></td><td style="font-family:'JetBrains Mono',monospace;font-size:11px">—</td><td class="eta">~14:10:00</td><td><span class="tag t-queue">Queued</span></td></tr>
+      </tbody>
+    </table>
+    <div style="padding:10px 16px;background:var(--surface);border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+      <span>Showing 10 of 142 queued books</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="" style="padding:4px 10px;background:var(--canvas);border:1.5px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;">← Prev</button>
+        <button onclick="" style="padding:4px 10px;background:var(--blue2);border:none;border-radius:5px;font-size:11px;cursor:pointer;color:#fff;">Next →</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// Clock
+function tick(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  const s=String(now.getSeconds()).padStart(2,'0');
+  const el=document.getElementById('clock');
+  if(el) el.textContent=h+':'+m+':'+s;
+}
+tick(); setInterval(tick,1000);
+
+// Sidebar filters (visual only for demo)
+function filterRegion(r,el){
+  document.querySelectorAll('.sidebar .sb-item').forEach(i=>i.classList.remove('on'));
+  el.classList.add('on');
+}
+function filterStatus(s,el){
+  document.querySelectorAll('.sidebar .sb-item').forEach(i=>i.classList.remove('on'));
+  el.classList.add('on');
+}
+function filterPri(p,el){
+  document.querySelectorAll('.sidebar .sb-item').forEach(i=>i.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// Refresh — animate summary values slightly for demo feel
+function refresh(){
+  const btn=document.querySelector('.ref-btn');
+  btn.textContent='↻ Refreshing...';
+  btn.disabled=true;
+  setTimeout(()=>{btn.textContent='↻ Refresh';btn.disabled=false;},800);
+}
+
+// Progress bars — tick forward slightly every 5s
+setInterval(()=>{
+  document.querySelectorAll('.prog-fill').forEach(bar=>{
+    const w=parseInt(bar.style.width)||0;
+    const nw=Math.min(w+Math.floor(Math.random()*3),99);
+    bar.style.width=nw+'%';
+  });
+},5000);
+</script>
+</body>
+</html>

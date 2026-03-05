@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOBO — Architecture Review</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   DESIGN TOKENS
+   ══════════════════════════════════════════ */
+:root {
+  /* Surfaces — all neutral, no color */
+  --bg:      #F4F6F9;
+  --canvas:  #FFFFFF;
+  --row:     #FAFBFC;
+  --border:  #E2E7EF;
+  --border2: #C8D2E0;
+
+  /* Typography */
+  --ink:     #0D1B2E;
+  --ink2:    #2C3E52;
+  --dim:     #5A6E84;
+  --faint:   #96A8BB;
+
+  /* Text-only semantic colors */
+  --red:     #C0181B;
+  --red2:    #E53E3E;
+  --amber:   #92400E;
+  --amber2:  #D97706;
+  --green:   #155E35;
+  --green2:  #16A34A;
+  --blue:    #1A3A6B;
+  --blue2:   #1D4ED8;
+  --blue3:   #3B82F6;
+  --vio:     #5B21B6;
+  --vio2:    #7C3AED;
+  --teal:    #0E7490;
+  --teal2:   #0D9488;
+
+  /* Region text colors */
+  --apac:  #0369A1;
+  --emea:  #6D28D9;
+  --amer:  #047857;
+}
+
+/* ══════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; font-size:14px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+code { font-family:'JetBrains Mono',monospace; font-size:11px; background:#EEF2F8; padding:2px 6px; border-radius:3px; color:var(--blue2); font-weight:500; }
+strong { font-weight:700; }
+
+/* ══════════════════════════════════════════
+   NAV — only element allowed to have color background
+   ══════════════════════════════════════════ */
+.nav { position:sticky; top:0; z-index:200; background:#0D1B2E; border-bottom:1px solid rgba(255,255,255,.07); box-shadow:0 2px 16px rgba(13,27,46,.3); }
+.nav-inner { max-width:1440px; margin:0 auto; padding:0 28px; height:52px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.brand-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; padding:3px 9px; border-radius:4px; letter-spacing:.5px; }
+.brand-name { font-size:12px; color:rgba(255,255,255,.45); }
+.tabs { display:flex; gap:2px; }
+.tab-btn { background:transparent; border:1px solid transparent; color:rgba(255,255,255,.5); font:600 11.5px/1 'Inter',sans-serif; padding:6px 13px; border-radius:4px; cursor:pointer; transition:all .14s; white-space:nowrap; }
+.tab-btn:hover { color:rgba(255,255,255,.9); }
+.tab-btn.active { background:rgba(255,255,255,.13); border-color:rgba(255,255,255,.18); color:#fff; }
+
+/* ══════════════════════════════════════════
+   LAYOUT
+   ══════════════════════════════════════════ */
+.wrap { max-width:1440px; margin:0 auto; padding:24px 28px 64px; }
+.pane { display:none; animation:rise .2s ease; }
+.pane.show { display:block; }
+@keyframes rise { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.gap { margin-bottom:20px; }
+
+/* ══════════════════════════════════════════
+   SECTION HEADING — uniform across all tabs
+   ══════════════════════════════════════════ */
+.sec { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.sec-title { font-size:10px; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:2.5px; white-space:nowrap; }
+.sec-rule { flex:1; height:1px; background:var(--border2); }
+
+/* ══════════════════════════════════════════
+   HERO — exception: gradient bg is the page opener
+   ══════════════════════════════════════════ */
+.hero { background:linear-gradient(125deg,#0C1A2E 0%,#1A3461 55%,#1D4ED8 100%); border-radius:12px; padding:30px 36px; color:#fff; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:32px; position:relative; overflow:hidden; }
+.hero::after { content:''; position:absolute; top:-80px; right:-80px; width:300px; height:300px; background:rgba(255,255,255,.03); border-radius:50%; pointer-events:none; }
+.hero-left { flex:1; position:relative; z-index:1; }
+.hero-eyebrow { font-size:10px; font-weight:600; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,.4); margin-bottom:9px; }
+.hero-title { font-size:23px; font-weight:800; line-height:1.2; margin-bottom:8px; }
+.hero-sub { font-size:12.5px; color:rgba(255,255,255,.65); line-height:1.6; max-width:480px; }
+.hero-stats { display:flex; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.13); border-radius:10px; overflow:hidden; flex-shrink:0; position:relative; z-index:1; }
+.stat { padding:14px 22px; border-right:1px solid rgba(255,255,255,.09); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-val { font:800 20px/1 'JetBrains Mono',monospace; margin-bottom:5px; }
+.stat-lbl { font-size:10px; color:rgba(255,255,255,.48); white-space:nowrap; }
+.sv-warn { color:#FCA5A5; }
+.sv-ok   { color:#86EFAC; }
+
+/* ══════════════════════════════════════════
+   CARD — white, single border, optional left accent
+   ══════════════════════════════════════════ */
+.card { background:var(--canvas); border:1px solid var(--border); border-radius:10px; padding:20px 22px; }
+.card-hd { font-size:12.5px; font-weight:700; color:var(--ink2); margin-bottom:14px; }
+
+/* Left-accent: color in the 3px border only, bg stays white */
+.card-red    { border-left:3px solid var(--red2); }
+.card-amber  { border-left:3px solid var(--amber2); }
+.card-green  { border-left:3px solid var(--green2); }
+.card-blue   { border-left:3px solid var(--blue2); }
+.card-vio    { border-left:3px solid var(--vio2); }
+.card-teal   { border-left:3px solid var(--teal2); }
+
+/* ══════════════════════════════════════════
+   TAGS — colored text on near-white, very subtle border
+   ══════════════════════════════════════════ */
+.t { display:inline-flex; align-items:center; font:700 10px/1 'JetBrains Mono',monospace; padding:2px 7px; border-radius:3px; text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; border:1px solid; }
+.t-red    { color:var(--red);    border-color:#F5C6C6; background:#FEF8F8; }
+.t-amber  { color:var(--amber);  border-color:#F0D9A0; background:#FEFAF0; }
+.t-green  { color:var(--green);  border-color:#A8DDB8; background:#F5FDF8; }
+.t-blue   { color:var(--blue2);  border-color:#BFDBFE; background:#F5F9FF; }
+.t-vio    { color:var(--vio);    border-color:#DDD6FE; background:#FAF8FF; }
+.t-teal   { color:var(--teal);   border-color:#A5F3FC; background:#F5FDFF; }
+.t-grey   { color:var(--dim);    border-color:var(--border2); background:var(--row); }
+.t-apac   { color:var(--apac);   border-color:#BAE6FD; background:#F8FCFF; }
+.t-emea   { color:var(--emea);   border-color:#DDD6FE; background:#FAF8FF; }
+.t-amer   { color:var(--amer);   border-color:#6EE7B7; background:#F5FDF9; }
+
+/* ══════════════════════════════════════════
+   BANNERS — white bg, left-border color, colored bold text
+   ══════════════════════════════════════════ */
+.bn { background:var(--canvas); border:1px solid var(--border); border-left:3px solid var(--border2); border-radius:8px; padding:14px 16px; margin-bottom:16px; }
+.bn-body { font-size:12.5px; line-height:1.65; color:var(--ink2); }
+.bn-body b { font-weight:700; display:block; margin-bottom:3px; font-size:13px; }
+/* variant: change left border + bold title color via inline style on b */
+.bn-red    { border-left-color:var(--red2); }
+.bn-amber  { border-left-color:var(--amber2); }
+.bn-green  { border-left-color:var(--green2); }
+.bn-blue   { border-left-color:var(--blue2); }
+.bn-vio    { border-left-color:var(--vio2); }
+
+/* Notice bar */
+.notice { display:flex; align-items:center; gap:10px; padding:11px 16px; border-radius:7px; border:1px solid var(--border); border-left:3px solid var(--green2); background:var(--canvas); margin-bottom:18px; }
+.notice b { font-size:13px; font-weight:700; color:var(--green); }
+.notice-txt { font-size:12px; color:var(--ink2); }
+.notice-link { margin-left:auto; font-size:11px; color:var(--dim); font-style:italic; white-space:nowrap; }
+
+/* Decision header */
+.dec-hd { padding:14px 18px; background:var(--canvas); border:1px solid var(--border); border-left:3px solid var(--green2); border-radius:8px; margin-bottom:20px; }
+.dec-title { font-size:14px; font-weight:800; color:var(--ink); }
+.dec-sub { font-size:11.5px; color:var(--dim); margin-top:3px; }
+
+/* ══════════════════════════════════════════
+   STAT ROWS
+   ══════════════════════════════════════════ */
+.sr { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.sr:last-child { border-bottom:none; }
+.sr-l { color:var(--dim); }
+.sr-v { font:700 12px/1 'JetBrains Mono',monospace; color:var(--ink); }
+.sr-v.r { color:var(--red); }
+.sr-v.g { color:var(--green2); }
+.sr-v.a { color:var(--amber); }
+.sr-v.b { color:var(--blue2); }
+
+/* ══════════════════════════════════════════
+   PROGRESS BARS
+   ══════════════════════════════════════════ */
+.pb { margin-bottom:10px; }
+.pb-top { display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:11px; margin-bottom:4px; color:var(--dim); }
+.pb-track { height:6px; background:#EEF2F8; border-radius:3px; overflow:hidden; }
+.pb-fill { height:100%; border-radius:3px; }
+.pb-fill.f-a { background:var(--amber2); }
+.pb-fill.f-r { background:var(--red2); }
+.pb-fill.f-g { background:var(--green2); }
+
+/* ══════════════════════════════════════════
+   NUMBERED ROWS
+   ══════════════════════════════════════════ */
+.nrow { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; line-height:1.5; color:var(--ink2); }
+.nrow:last-child { border-bottom:none; }
+.nrow-n { font:700 11px/1 'JetBrains Mono',monospace; flex-shrink:0; width:18px; color:var(--red); }
+
+/* ══════════════════════════════════════════
+   IMPACT TILES — white bg, text color only
+   ══════════════════════════════════════════ */
+.tile { background:var(--canvas); border:1px solid var(--border); border-radius:10px; padding:18px 20px; }
+.tile-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; margin-bottom:5px; }
+.tile-val { font:800 24px/1 'JetBrains Mono',monospace; margin-bottom:5px; }
+.tile-desc { font-size:12px; color:var(--dim); line-height:1.5; }
+.tile.t-r .tile-lbl { color:var(--red); }
+.tile.t-r .tile-val { color:var(--red); }
+.tile.t-r { border-left:3px solid var(--red2); }
+.tile.t-a .tile-lbl { color:var(--amber); }
+.tile.t-a .tile-val { color:var(--amber); }
+.tile.t-a { border-left:3px solid var(--amber2); }
+.tile.t-x .tile-lbl { color:var(--dim); }
+.tile.t-x .tile-val { color:var(--dim); }
+
+/* ══════════════════════════════════════════
+   FLOW DIAGRAM — white nodes, colored text names
+   ══════════════════════════════════════════ */
+.flow-box { background:var(--canvas); border:1px solid var(--border); border-radius:10px; padding:24px; overflow-x:auto; margin-bottom:20px; }
+.flow-row { display:flex; align-items:center; min-width:max-content; }
+.fnode { background:var(--canvas); border:1.5px solid var(--border); border-radius:9px; padding:13px 16px; text-align:center; min-width:120px; flex-shrink:0; position:relative; }
+.fnode-name { font:700 11px/1 'JetBrains Mono',monospace; margin-bottom:3px; }
+.fnode-name.blue   { color:var(--blue); }
+.fnode-name.amber  { color:var(--amber); }
+.fnode-name.vio    { color:var(--vio); }
+.fnode-name.green  { color:var(--green); }
+.fnode-sub { font-size:10px; color:var(--dim); line-height:1.4; }
+.fnode-tag { position:absolute; top:-9px; left:50%; transform:translateX(-50%); }
+.fnode-mt { margin-top:4px; }
+.arrow { display:flex; flex-direction:column; align-items:center; gap:3px; padding:0 8px; flex-shrink:0; }
+.arrow-lbl { font-size:10px; color:var(--dim); font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+.arrow-lbl.warn { color:var(--red2); font-weight:600; }
+.arrow-line { display:flex; align-items:center; }
+.al { height:2px; width:32px; background:var(--border2); }
+.ah { width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:8px solid var(--border2); }
+.arrow.col-r .al { background:var(--red2); } .arrow.col-r .ah { border-left-color:var(--red2); }
+.arrow.col-b .al { background:var(--blue3); } .arrow.col-b .ah { border-left-color:var(--blue3); }
+.arrow.col-g .al { background:var(--green2); } .arrow.col-g .ah { border-left-color:var(--green2); }
+.arrow.col-v .al { background:var(--vio2); } .arrow.col-v .ah { border-left-color:var(--vio2); }
+
+/* ══════════════════════════════════════════
+   STATE MACHINE — white bg, colored text states
+   ══════════════════════════════════════════ */
+.states-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; padding:14px 16px; background:var(--canvas); border-radius:8px; border:1px solid var(--border); }
+.state { font:700 10px/1 'JetBrains Mono',monospace; padding:4px 10px; border-radius:4px; white-space:nowrap; border:1px solid; }
+.st-grey  { color:var(--dim);    border-color:var(--border2); background:var(--row); }
+.st-blue  { color:var(--blue);   border-color:#BFDBFE; background:#F5F9FF; }
+.st-vio   { color:var(--vio);    border-color:#DDD6FE; background:#FAF8FF; }
+.st-amb   { color:var(--amber);  border-color:#F0D9A0; background:#FEFAF0; }
+.st-ora   { color:#C2410C;       border-color:#FDBA74; background:#FFF7F0; }
+.st-green { color:var(--green);  border-color:#A8DDB8; background:#F5FDF8; }
+.st-arr   { color:var(--border2); font-size:16px; }
+.st-warn  { margin-left:auto; font-size:12px; color:var(--red); font-weight:600; }
+
+/* ══════════════════════════════════════════
+   OPTION CARDS (Fix 0/1/2)
+   ══════════════════════════════════════════ */
+.oc { background:var(--canvas); border:1px solid var(--border); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.oc-amber { border-left:3px solid var(--amber2); }
+.oc-blue  { border-left:3px solid var(--blue2); }
+.oc-green { border-left:3px solid var(--green2); }
+.oc-head { display:flex; align-items:center; gap:12px; }
+.oc-badge { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; font:800 12px/1 'JetBrains Mono',monospace; flex-shrink:0; border:1px solid; }
+.oc-badge.b-amber { color:var(--amber);  border-color:#F0D9A0; background:#FEFAF0; }
+.oc-badge.b-blue  { color:var(--blue2);  border-color:#BFDBFE; background:#F5F9FF; }
+.oc-badge.b-green { color:var(--green2); border-color:#A8DDB8; background:#F5FDF8; }
+.oc-title { font-size:14px; font-weight:800; }
+.oc-title.c-amber { color:var(--amber); }
+.oc-title.c-blue  { color:var(--blue); }
+.oc-title.c-green { color:var(--green); }
+.oc-desc { font-size:12px; color:var(--ink2); line-height:1.65; }
+.oc-warn  { border-left:3px solid var(--amber2); padding:9px 12px; font-size:11.5px; color:var(--amber); line-height:1.55; background:var(--canvas); border:1px solid var(--border); border-left:3px solid var(--amber2); border-radius:6px; }
+.oc-proof { border-left:3px solid var(--green2); padding:9px 12px; font-size:11.5px; color:var(--green); font-weight:600; line-height:1.55; background:var(--canvas); border:1px solid var(--border); border-left:3px solid var(--green2); border-radius:6px; }
+.cl { list-style:none; display:flex; flex-direction:column; gap:5px; }
+.cl li { font-size:12px; display:flex; gap:8px; align-items:flex-start; line-height:1.5; color:var(--ink2); }
+
+/* ══════════════════════════════════════════
+   BEFORE / AFTER — white bg, only text color differs
+   ══════════════════════════════════════════ */
+.ba { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ba-card { border-radius:7px; padding:13px; border:1px solid var(--border); background:var(--canvas); }
+.ba-card.before { border-left:3px solid var(--red2); }
+.ba-card.after  { border-left:3px solid var(--green2); }
+.ba-hdr { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; margin-bottom:9px; }
+.ba-hdr.before { color:var(--red); }
+.ba-hdr.after  { color:var(--green); }
+
+/* ══════════════════════════════════════════
+   PRIORITY LADDER — white rows, colored left border + text
+   ══════════════════════════════════════════ */
+.pl { border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+.pl-hdr { padding:8px 14px; background:var(--row); border-bottom:1px solid var(--border); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:var(--dim); }
+.pl-row { display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border); border-left:3px solid transparent; background:var(--canvas); }
+.pl-row:last-child { border-bottom:none; }
+/* only left border gets color — bg stays white */
+.pl-deadline { border-left-color:#F59E0B; }
+.pl-apac     { border-left-color:var(--apac); }
+.pl-low      { border-left-color:var(--green2); }
+.pl-emea     { border-left-color:var(--emea); }
+.pl-medium   { border-left-color:var(--amber2); }
+.pl-high     { border-left-color:var(--border2); }
+.pl-dot { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:800 10px/1; color:#fff; flex-shrink:0; }
+.dot-deadline { background:#F59E0B; }
+.dot-apac     { background:var(--apac); }
+.dot-low      { background:var(--green2); }
+.dot-emea     { background:var(--emea); }
+.dot-medium   { background:var(--amber2); }
+.dot-high     { background:var(--faint); }
+.pl-text { flex:1; }
+.pl-t { font-weight:700; font-size:12px; color:var(--ink); }
+.pl-d { font-size:11px; color:var(--dim); margin-top:1px; }
+
+/* ══════════════════════════════════════════
+   REGIONAL CLOSE ORDER — white cards, colored text
+   ══════════════════════════════════════════ */
+.regions { display:flex; align-items:stretch; }
+.reg { flex:1; padding:16px 18px; border-radius:8px; border:1px solid var(--border); text-align:center; background:var(--canvas); }
+.reg-name { font-size:15px; font-weight:800; }
+.reg-name.apac { color:var(--apac); }
+.reg-name.emea { color:var(--emea); }
+.reg-name.amer { color:var(--amer); }
+.reg-time { font:normal 11px/1 'JetBrains Mono',monospace; color:var(--dim); margin:5px 0 9px; }
+.reg-sep { display:flex; flex-direction:column; align-items:center; padding:0 12px; flex-shrink:0; gap:3px; justify-content:center; }
+.reg-sep-arrow { font-size:18px; color:var(--border2); }
+.reg-sep-lbl { font-size:10px; color:var(--faint); white-space:nowrap; }
+.reg-rule-box { margin-top:14px; padding:12px 15px; background:var(--row); border-radius:7px; font-size:12px; color:var(--ink2); line-height:1.75; border:1px solid var(--border); }
+.c-apac { color:var(--apac); font-weight:600; }
+.c-emea { color:var(--emea); font-weight:600; }
+.c-amer { color:var(--amer); font-weight:600; }
+.c-dim  { color:var(--dim); }
+
+/* ══════════════════════════════════════════
+   WORKED EXAMPLE QUEUE — white rows, colored text only
+   ══════════════════════════════════════════ */
+.eq { border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+.eq-row { display:flex; align-items:center; gap:10px; padding:9px 13px; border-bottom:1px solid var(--border); background:var(--canvas); border-left:3px solid transparent; }
+.eq-row:last-child { border-bottom:none; }
+.eq-deadline { border-left-color:#F59E0B; }
+.eq-apac     { border-left-color:var(--apac); }
+.eq-low      { border-left-color:var(--green2); }
+.eq-medium   { border-left-color:var(--amber2); }
+.eq-high     { border-left-color:var(--faint); }
+.eq-num { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:800 10px/1; color:#fff; flex-shrink:0; }
+.en-deadline { background:#F59E0B; }
+.en-apac     { background:var(--apac); }
+.en-low      { background:var(--green2); }
+.en-medium   { background:var(--amber2); }
+.en-high     { background:var(--faint); }
+.eq-book { font:700 12px/1 'JetBrains Mono',monospace; color:var(--ink); }
+.eq-meta { font-size:11px; color:var(--dim); margin-left:4px; }
+.eq-note { font-size:11px; font-weight:600; margin-left:4px; }
+.eq-note.apac { color:var(--apac); }
+.eq-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+
+/* ══════════════════════════════════════════
+   DECISION TABLE — clean white, colored text in cells
+   ══════════════════════════════════════════ */
+.dt-wrap { background:var(--canvas); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+.dt { width:100%; border-collapse:collapse; font-size:12px; }
+.dt thead { background:var(--row); border-bottom:1.5px solid var(--border2); }
+.dt th { padding:11px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--dim); text-align:center; white-space:nowrap; }
+.dt th:first-child { text-align:left; min-width:180px; }
+.th-bad { color:var(--red)!important; }
+.th-rec { color:var(--green)!important; font-weight:800!important; }
+.dt td { padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; text-align:center; }
+.dt tr:last-child td { border-bottom:none; }
+.dt td:first-child { text-align:left; font-weight:600; color:var(--ink2); }
+.dt tr:hover td { background:var(--row); }
+.td-rec { background:#FAFFFE!important; }
+.dt tr:hover .td-rec { background:#F0FDF8!important; }
+.vp { display:inline-flex; align-items:center; font:600 11px/1; padding:2px 8px; border-radius:3px; white-space:nowrap; }
+.vp-y { color:var(--green);  background:#F0FDF4; border:1px solid #A8DDB8; }
+.vp-n { color:var(--red);    background:#FEF8F8; border:1px solid #F5C6C6; }
+.vp-w { color:var(--amber);  background:#FEFAF0; border:1px solid #F0D9A0; }
+.vp-k { color:var(--dim);    background:var(--row); border:1px solid var(--border2); }
+
+/* ══════════════════════════════════════════
+   PHASE TIMELINE — white panels, colored text labels
+   ══════════════════════════════════════════ */
+.phases { display:flex; background:var(--canvas); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+.phase { flex:1; padding:18px; border-right:1px solid var(--border); border-left:3px solid var(--border2); }
+.phase:last-child { border-right:none; }
+.ph-red   { border-left-color:var(--red2); }
+.ph-blue  { border-left-color:var(--blue2); }
+.ph-green { border-left-color:var(--green2); }
+.ph-teal  { border-left-color:var(--teal2); }
+.ph-grey  { border-left-color:var(--border2); background:var(--row); }
+.ph-lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:3px; }
+.ph-lbl.red   { color:var(--red2); }
+.ph-lbl.blue  { color:var(--blue2); }
+.ph-lbl.green { color:var(--green2); }
+.ph-lbl.teal  { color:var(--teal2); }
+.ph-lbl.grey  { color:var(--faint); }
+.ph-title { font-size:13px; font-weight:800; margin-bottom:2px; color:var(--ink); }
+.ph-title.green { color:var(--green); }
+.ph-title.grey  { color:var(--dim); }
+.ph-date { font:normal 11px/1 'JetBrains Mono',monospace; color:var(--dim); margin-bottom:10px; }
+.ph-list { list-style:none; }
+.ph-list li { font-size:11px; color:var(--ink2); padding:4px 0; border-bottom:1px solid var(--border); display:flex; gap:6px; line-height:1.4; }
+.ph-list li::before { content:'›'; color:var(--dim); flex-shrink:0; }
+.ph-list li:last-child { border-bottom:none; }
+
+/* ══════════════════════════════════════════
+   ACTION TABLE
+   ══════════════════════════════════════════ */
+.at-wrap { background:var(--canvas); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:20px; }
+.at { width:100%; border-collapse:collapse; font-size:12px; }
+.at thead { background:var(--row); border-bottom:1.5px solid var(--border2); }
+.at th { padding:10px 14px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--dim); text-align:left; white-space:nowrap; }
+.at td { padding:10px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--ink2); }
+.at tr:last-child td { border-bottom:none; }
+.at tr:hover td { background:var(--row); }
+.at-n { font:normal 11px/1 'JetBrains Mono',monospace; color:var(--faint); }
+.at-action { font-weight:600; color:var(--ink); }
+.at-owner { color:var(--dim); white-space:nowrap; }
+.at-when { font:normal 11px/1 'JetBrains Mono',monospace; white-space:nowrap; }
+.at-when.r { color:var(--red2); }
+.at-when.a { color:var(--amber2); }
+.at-when.b { color:var(--blue2); }
+.at-when.v { color:var(--vio2); }
+.at-when.x { color:var(--dim); }
+
+/* ══════════════════════════════════════════
+   TITAN
+   ══════════════════════════════════════════ */
+.inv { display:flex; gap:9px; align-items:flex-start; margin-bottom:9px; }
+.inv:last-child { margin-bottom:0; }
+.inv-dot { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:800 10px/1; color:#fff; flex-shrink:0; }
+.inv-dot.done { background:var(--green2); }
+.inv-dot.todo { background:var(--border2); color:var(--dim); }
+.inv-t { font-size:12px; font-weight:700; color:var(--ink); }
+.inv-t.done { color:var(--green2); }
+.inv-d { font-size:11px; color:var(--dim); }
+
+/* ══════════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════════ */
+footer { background:var(--canvas); border-top:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; justify-content:space-between; }
+footer span { font:normal 11px/1 'JetBrains Mono',monospace; color:var(--dim); }
+</style>
+</head>
+<body>
+
+<!--  NAV  -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <div class="brand-pill">FOBO</div>
+      <span class="brand-name">Architecture Review &nbsp;·&nbsp; March 2026</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="show('overview',this)">Overview</button>
+      <button class="tab-btn" onclick="show('current',this)">Current State</button>
+      <button class="tab-btn" onclick="show('options',this)">Fix Options</button>
+      <button class="tab-btn" onclick="show('priority',this)">Regional Priority</button>
+      <button class="tab-btn" onclick="show('decision',this)">Architecture Decision</button>
+      <button class="tab-btn" onclick="show('titan',this)">Titan Engine</button>
+      <button class="tab-btn" onclick="show('roadmap',this)">Roadmap</button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!--  OVERVIEW  -->
+<div class="pane show" id="p-overview">
+
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">FOBO · Enterprise Architecture Review · March 2026</div>
+      <div class="hero-title">Thread Pool Exhaustion &amp;<br>Regional Priority Queue</div>
+      <div class="hero-sub">Titan Engine regression (1–2 min → 10+ min) causes thread starvation via synchronous HTTP. Late APAC/EMEA books miss adjustment deadlines — close-order priority is absent.</div>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-val sv-warn">10×</div><div class="stat-lbl">Titan slowdown</div></div>
+      <div class="stat"><div class="stat-val sv-warn">10,500+</div><div class="stat-lbl">tasks/day vs 2,500 cap</div></div>
+      <div class="stat"><div class="stat-val sv-ok">3</div><div class="stat-lbl">fix phases</div></div>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">End-to-End System Architecture</div><div class="sec-rule"></div></div>
+  <div class="flow-box">
+    <div class="flow-row">
+      <div class="fnode fnode ">
+        
+        <div class="fnode-name blue">Motif SOD</div>
+        <div class="fnode-sub">Orchestration<br>SOD Milestone</div>
+      </div>
+      <div class="arrow col-b">
+        <div class="arrow-lbl">HTTP · 200–300 books</div>
+        <div class="arrow-line"><div class="al"></div><div class="ah"></div></div>
+      </div>
+      <div class="fnode">
+        
+        
+        <div class="fnode-name amber">FOBO Service</div>
+        <div class="fnode-sub">Java Spring Boot<br>5 inst · ThreadPool</div>
+      </div>
+      <div class="arrow col-r">
+        <div class="arrow-lbl warn"> Sync HTTP — 10+ min hold</div>
+        <div class="arrow-line"><div class="al"></div><div class="ah"></div></div>
+      </div>
+      <div class="fnode">
+        
+        
+        <div class="fnode-name vio">Titan Engine</div>
+        <div class="fnode-sub">Python · Pandas<br>100 inst · 4-core</div>
+      </div>
+      <div class="arrow col-v">
+        <div class="arrow-lbl">writes results</div>
+        <div class="arrow-line"><div class="al"></div><div class="ah"></div></div>
+      </div>
+      <div class="fnode fnode ">
+        
+        <div class="fnode-name blue">MADB</div>
+        <div class="fnode-sub">Motif DB<br>State · Results</div>
+      </div>
+      <div class="arrow col-g">
+        <div class="arrow-lbl">async callback</div>
+        <div class="arrow-line"><div class="al"></div><div class="ah"></div></div>
+      </div>
+      <div class="fnode">
+        
+        <div class="fnode-name green">Adj Posting</div>
+        <div class="fnode-sub">Async · Fast path</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Masterbook State Machine</div><div class="sec-rule"></div></div>
+  <div class="states-row gap">
+    <span class="state st-grey">REC_ABL_IDENTIFIED</span><span class="st-arr">›</span>
+    <span class="state st-blue">NEW</span><span class="st-arr">›</span>
+    <span class="state st-vio">TITAN_EXEC_COMPLETE</span><span class="st-arr">›</span>
+    <span class="state st-amb">RULES_MATCHED</span><span class="st-arr">›</span>
+    <span class="state st-ora">POSTING_UNDERWAY</span><span class="st-arr">›</span>
+    <span class="state st-green">COMPLETE</span>
+    <span class="st-warn"> Stuck in NEW → manual RTB re-trigger</span>
+  </div>
+
+  <div class="g3">
+    <div class="bn bn-red"><div class="bn-body"><b style="color:var(--red)">Thread Pool Overflow</b>10,500+ tasks/day vs 2,500 capacity. Generic pool overflows → <code>RejectedExecutionException</code> daily.</div></div>
+    <div class="bn bn-amber"><div class="bn-body"><b style="color:var(--amber)">Missing Regional Priority</b>Books close APAC → EMEA → AMER. Late books from an earlier-closing region sit behind slower later-region work.</div></div>
+    <div class="bn bn-blue"><div class="bn-body"><b style="color:var(--blue)">Proposed Solution</b>Persistent DB queue in MADB with regional close-order priority. No new infrastructure. Threads freed in &lt;10ms.</div></div>
+  </div>
+</div>
+
+<!--  CURRENT STATE  -->
+<div class="pane" id="p-current">
+
+  <div class="bn bn-red">
+    
+    <div class="bn-body"><b style="color:var(--red)">Root Cause — Titan Throughput Regression (5–10×)</b>Titan execution: 1–2 min → 10+ min. FOBO→Titan is <strong>synchronous HTTP</strong> — each job holds a Java thread for the full duration. At 10,500+/day this blocks ~62 threads/instance (31% of Tomcat capacity). At 30K target: ~125 threads/instance (62%).</div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Thread Pool Saturation — Per Instance</div><div class="sec-rule"></div></div>
+  <div class="g2 gap">
+    <div class="card card-red">
+      <div class="card-hd"> Pool Utilisation (20 threads · Q=500 per instance)</div>
+      <div class="pb"><div class="pb-top"><span>Cats vs Motif pool</span><span style="color:var(--amber)">88%</span></div><div class="pb-track"><div class="pb-fill f-amb" style="width:88%"></div></div></div>
+      <div class="pb"><div class="pb-top"><span>SMS Rec pool</span><span style="color:var(--amber)">92%</span></div><div class="pb-track"><div class="pb-fill f-amb" style="width:92%"></div></div></div>
+      <div class="pb"><div class="pb-top"><span>Rec 10+11 shared pool</span><span style="color:var(--amber)">78%</span></div><div class="pb-track"><div class="pb-fill f-amb" style="width:78%"></div></div></div>
+      <div class="pb"><div class="pb-top"><span>Generic pool (16 rec types)</span><span style="color:var(--red);font-weight:700">OVERFLOW </span></div><div class="pb-track"><div class="pb-fill f-crim" style="width:100%"></div></div></div>
+      <div class="bn bn-red" style="margin-bottom:0;margin-top:12px;padding:10px 13px">
+        <div class="bn-body">Daily demand: <strong>10,500+ tasks</strong> &nbsp;·&nbsp; 5-instance capacity (×500): <strong>2,500</strong><br>Overflow: <strong>8,000+ tasks rejected daily</strong></div>
+      </div>
+    </div>
+    <div class="card card-red">
+      <div class="card-hd"> Cascade Failure Chain</div>
+      <div class="nrow"><div class="nrow-n">①</div><div>Titan takes 10+ min → FOBO thread idle on socket for full duration</div></div>
+      <div class="nrow"><div class="nrow-n">②</div><div>20 threads × 10-min jobs = only <strong>2 masterbooks/thread/hour</strong> (10× below design)</div></div>
+      <div class="nrow"><div class="nrow-n">③</div><div>Queue of 500 fills before any thread completes</div></div>
+      <div class="nrow"><div class="nrow-n">④</div><div>Task #501 thrown: <code>RejectedExecutionException</code> — task permanently lost</div></div>
+      <div class="nrow"><div class="nrow-n">⑤</div><div>Orchestration UI fails → RTB alerted → manual investigation</div></div>
+      <div class="nrow"><div class="nrow-n">⑥</div><div>Re-trigger from Stage 1 — no checkpoint or partial recovery</div></div>
+      <div class="nrow"><div class="nrow-n">⑦</div><div>Auto-post deadlines missed → traders post manually before book close</div></div>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Four Core Problems</div><div class="sec-rule"></div></div>
+  <div class="g4">
+    <div class="tile t-r"><div class="tile-lbl">Thread Pool Overflow</div><div class="tile-val">8,000+</div><div class="tile-desc">Tasks rejected daily. 5 × Q500 = 2,500 capacity vs 10,500+ daily demand.</div></div>
+    <div class="tile t-r"><div class="tile-lbl">No Durability</div><div class="tile-val">0%</div><div class="tile-desc">All queuing in-memory. Node crash = tasks permanently lost. No checkpoint.</div></div>
+    <div class="tile t-a"><div class="tile-lbl">No Regional Priority</div><div class="tile-val">FIFO</div><div class="tile-desc">Late APAC/EMEA books sit behind slow later-region work. Deadlines missed.</div></div>
+    <div class="tile t-x"><div class="tile-lbl">No Observability</div><div class="tile-val">None</div><div class="tile-desc">No SLA alerts, no queue visibility. Engineers manually inspect status fields.</div></div>
+  </div>
+</div>
+
+<!--  FIX OPTIONS  -->
+<div class="pane" id="p-options">
+
+  <div class="notice">
+    
+    <b style="color:var(--green)">Recommended: DB-Backed Async Queue via MADB</b>
+    <span class="notice-txt">— Persistent queue in MADB, threads freed in &lt;10ms, regional priority built in, zero new infrastructure.</span>
+    <span class="notice-link">→ See Architecture Decision tab</span>
+  </div>
+
+  <div class="sec"><div class="sec-title">Fix 0 — Immediate Hotfix · This Weekend · Config Only</div><div class="sec-rule"></div></div>
+  <div class="g2 gap">
+    <div class="oc oc-amber">
+      <div class="oc-head">
+        <div class="oc-badge b-amber">0</div>
+        <div>
+          <div class="oc-title c-amber"> Queue Capacity Expansion</div>
+          <span class="t t-amber" style="margin-top:5px;display:inline-flex">Config change only · Zero downtime</span>
+        </div>
+      </div>
+      <div class="oc-desc">Raise <code>ThreadPoolTaskExecutor</code> queue from <strong>500 → 4,000</strong> per instance. Spring config property only — no code changes. Total capacity: 5 × 4,000 = 20,000 vs 10,500+ daily demand.</div>
+      <ul class="cl">
+        <li> Eliminates RejectedExecutionException immediately</li>
+        <li> Stops Orchestration UI failures — headroom at current volume</li>
+      </ul>
+      <div class="oc-warn"> Temporary only. Does not fix Titan slowness. Growth to 30K will re-overflow without Fix 2.</div>
+    </div>
+    <div class="card">
+      <div class="card-hd">Capacity Before vs After</div>
+      <div class="ba">
+        <div class="ba-card before">
+          <div class="ba-hdr before">Before — Q=500</div>
+          <div class="sr"><span class="sr-l">Queue/instance</span><span class="sr-v r">500</span></div>
+          <div class="sr"><span class="sr-l">5-instance total</span><span class="sr-v r">2,500</span></div>
+          <div class="sr"><span class="sr-l">Daily demand</span><span class="sr-v">10,500+</span></div>
+          <div class="sr"><span class="sr-l">Utilisation</span><span class="sr-v r">420% </span></div>
+        </div>
+        <div class="ba-card after">
+          <div class="ba-hdr after">After — Q=4,000</div>
+          <div class="sr"><span class="sr-l">Queue/instance</span><span class="sr-v g">4,000</span></div>
+          <div class="sr"><span class="sr-l">5-instance total</span><span class="sr-v g">20,000</span></div>
+          <div class="sr"><span class="sr-l">Daily demand</span><span class="sr-v">10,500+</span></div>
+          <div class="sr"><span class="sr-l">Utilisation</span><span class="sr-v g">53% </span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Fix 1 — Priority-Aware Scheduler · Weeks 2–3 · FOBO Code Change</div><div class="sec-rule"></div></div>
+  <div class="g2 gap">
+    <div class="oc oc-blue">
+      <div class="oc-head">
+        <div class="oc-badge b-blue">1</div>
+        <div>
+          <div class="oc-title c-blue"> Runtime Classification + Regional Priority Dispatch</div>
+          <span class="t t-blue" style="margin-top:5px;display:inline-flex">FOBO code change · 2–3 weeks</span>
+        </div>
+      </div>
+      <div class="oc-desc">Classify each masterbook as LOW / MEDIUM / HIGH using rolling averages from MADB history. Collect books in a <strong>60-second window</strong>, then dispatch using the regional close-order priority ladder.</div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;padding:10px;background:var(--jade-s);border:1px solid var(--jade-m);border-radius:7px;text-align:center">
+          <div style="font-size:10px;font-weight:800;color:var(--green)">LOW</div>
+          <div style="font:700 12px/1 'JetBrains Mono',monospace;margin:4px 0;color:var(--ink)">&lt;2 min</div>
+          <div style="font-size:10px;color:var(--dim)">~40%</div>
+        </div>
+        <div style="flex:1;padding:10px;background:var(--amb-s);border:1px solid var(--amb-m);border-radius:7px;text-align:center">
+          <div style="font-size:10px;font-weight:800;color:var(--amber)">MEDIUM</div>
+          <div style="font:700 12px/1 'JetBrains Mono',monospace;margin:4px 0;color:var(--ink)">2–6 min</div>
+          <div style="font-size:10px;color:var(--dim)">~40%</div>
+        </div>
+        <div style="flex:1;padding:10px;background:var(--crim-s);border:1px solid var(--crim-m);border-radius:7px;text-align:center">
+          <div style="font-size:10px;font-weight:800;color:var(--red)">HIGH</div>
+          <div style="font:700 12px/1 'JetBrains Mono',monospace;margin:4px 0;color:var(--ink)">&gt;6 min</div>
+          <div style="font-size:10px;color:var(--dim)">~20%</div>
+        </div>
+      </div>
+      <ul class="cl">
+        <li> Late books from an earlier-closing region always pre-empt later-closing regions</li>
+        <li> Auto-post eligible books always dispatched first — within any region</li>
+        <li> Uses existing MADB historical data — no new infrastructure</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd" style="color:var(--blue)">Dispatch Order — 60-Second Window</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:10px">Titan worker picks jobs in this priority sequence.</div>
+      <div class="pl">
+        <div class="pl-row pl-deadline"><div class="pl-dot dot-deadline">1</div><div class="pl-text"><div class="pl-t">Auto-post eligible — any region</div><div class="pl-d">Intraday deadline — always dispatched first</div></div><span class="t t-amber">DEADLINE</span></div>
+        <div class="pl-row pl-apac"><div class="pl-dot dot-apac">2</div><div class="pl-text"><div class="pl-t">APAC late during EMEA window</div><div class="pl-d">APAC closes first → pre-empts all EMEA books</div></div><span class="t t-apac">APAC OVERRIDE</span></div>
+        <div class="pl-row pl-low"><div class="pl-dot dot-low">3</div><div class="pl-text"><div class="pl-t">Active region — LOW runtime (&lt;2 min)</div><div class="pl-d">Fast books first within each regional window</div></div><span class="t t-green">FAST</span></div>
+        <div class="pl-row pl-emea"><div class="pl-dot dot-emea">4</div><div class="pl-text"><div class="pl-t">EMEA late during AMER window</div><div class="pl-d">EMEA closes second → pre-empts all AMER books</div></div><span class="t t-emea">EMEA OVERRIDE</span></div>
+        <div class="pl-row pl-medium"><div class="pl-dot dot-medium">5</div><div class="pl-text"><div class="pl-t">Active region — MEDIUM runtime (2–6 min)</div><div class="pl-d">Standard books within their own batch window</div></div><span class="t t-amber">STANDARD</span></div>
+        <div class="pl-row pl-high"><div class="pl-dot dot-high">6</div><div class="pl-text"><div class="pl-t">Active region — HIGH runtime (&gt;6 min)</div><div class="pl-d">Slow books last — AMER has no later region</div></div><span class="t t-grey">DEFERRED</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Fix 2 — DB-Backed Async Job Queue · Weeks 1–3 · Core Architectural Fix</div><div class="sec-rule"></div></div>
+  <div class="g2 gap">
+    <div class="oc oc-green">
+      <div class="oc-head">
+        <div class="oc-badge b-green">2</div>
+        <div>
+          <div class="oc-title c-green"> DB-Backed Async Job Queue — MADB</div>
+          <span class="t t-green" style="margin-top:5px;display:inline-flex">RECOMMENDED · Weeks 1–3</span>
+        </div>
+      </div>
+      <div class="oc-desc">Replace the synchronous HTTP call with a persistent row in MADB. FOBO <strong>inserts and returns in &lt;10ms</strong>. Titan workers poll for the next available job ordered by <code>priority_order</code>, claiming it atomically. Jobs survive node crashes via ACID guarantees and lease expiry auto-recovery.</div>
+      <ul class="cl">
+        <li> Threads freed in &lt;10ms — down from 10+ min</li>
+        <li> ACID crash resilience — lease expiry auto-reclaims timed-out jobs</li>
+        <li> Checkpoint resume — no Stage 1 full restart on failure</li>
+        <li> Zero new infrastructure — FOBO and Titan already use MADB</li>
+        <li> Regional priority column — APAC/EMEA/AMER close-order enforced</li>
+        <li> Full SQL observability — queue depth, SLA, backlog, region breakdown</li>
+      </ul>
+      <div class="oc-proof"> Pattern proven in production: Solid Queue (37signals), pg-boss (Node.js), db-scheduler (Java), Oban (Elixir).</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card card-red">
+        <div class="card-hd">Before — Synchronous HTTP</div>
+        <div class="sr"><span class="sr-l">Thread held per job</span><span class="sr-v r">10+ min</span></div>
+        <div class="sr"><span class="sr-l">Threads at 15K/day</span><span class="sr-v r">~62/instance (31%)</span></div>
+        <div class="sr"><span class="sr-l">Threads at 30K/day</span><span class="sr-v r">~125/instance (62%)</span></div>
+        <div class="sr"><span class="sr-l">Regional priority</span><span class="sr-v r">None — FIFO only</span></div>
+        <div class="sr"><span class="sr-l">Crash recovery</span><span class="sr-v r">None — tasks lost</span></div>
+      </div>
+      <div class="card card-green">
+        <div class="card-hd">After — DB-Backed Async Queue</div>
+        <div class="sr"><span class="sr-l">Thread held per job</span><span class="sr-v g">&lt;10ms (INSERT)</span></div>
+        <div class="sr"><span class="sr-l">Threads at 15K/day</span><span class="sr-v g">~8/instance (4%)</span></div>
+        <div class="sr"><span class="sr-l">Threads at 30K/day</span><span class="sr-v g">~12/instance (6%)</span></div>
+        <div class="sr"><span class="sr-l">Regional priority</span><span class="sr-v g">APAC → EMEA → AMER </span></div>
+        <div class="sr"><span class="sr-l">Crash recovery</span><span class="sr-v g">Auto via lease expiry</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--  REGIONAL PRIORITY  -->
+<div class="pane" id="p-priority">
+
+  <div class="sec"><div class="sec-title">Regional Close Order &amp; Late-Arrival Priority</div><div class="sec-rule"></div></div>
+
+  <div class="card gap">
+    <div class="card-hd">Daily Close Sequence</div>
+    <div class="regions">
+      <div class="reg r-apac">
+        
+        <div class="reg-name apac">APAC</div>
+        <div class="reg-time">06:30 – 14:00 IST</div>
+        <span class="t t-apac">Closes 1st</span>
+      </div>
+      <div class="reg-sep"><div class="reg-sep-arrow">→</div><div class="reg-sep-lbl">closes before</div></div>
+      <div class="reg r-emea">
+        
+        <div class="reg-name emea">EMEA</div>
+        <div class="reg-time">12:00 – 18:00 IST</div>
+        <span class="t t-emea">Closes 2nd</span>
+      </div>
+      <div class="reg-sep"><div class="reg-sep-arrow">→</div><div class="reg-sep-lbl">closes before</div></div>
+      <div class="reg r-amer">
+        
+        <div class="reg-name amer">AMER</div>
+        <div class="reg-time">18:30 – 24:00 IST</div>
+        <span class="t t-amer">Closes Last</span>
+      </div>
+    </div>
+    <div class="reg-rule-box">
+      <strong>Rule:</strong> When a book from an <em>earlier-closing</em> region arrives late into a <em>later-closing</em> region's window, it jumps the queue — its deadline is sooner. &nbsp;
+      <span class="c-apac">Late APAC during EMEA → pre-empts all EMEA books.</span> &nbsp;
+      <span class="c-emea">Late EMEA during AMER → pre-empts all AMER books.</span> &nbsp;
+      <span class="c-dim">AMER books have no later region to be late into.</span>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Batch Schedule &amp; Override Rules</div><div class="sec-rule"></div></div>
+  <div style="background:var(--canvas);border:1.5px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead style="background:var(--panel);border-bottom:2px solid var(--line2)">
+        <tr>
+          <th style="padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);text-align:left">Region</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);text-align:left">Window (IST)</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);text-align:left">Sequence</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);text-align:left">Late Arrival Scenario</th>
+          <th style="padding:10px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);text-align:left">Priority When Late</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:var(--apac-s)"><td style="padding:11px 14px;font-weight:700;color:var(--apac);border-bottom:1px solid var(--line)"> APAC</td><td style="padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;border-bottom:1px solid var(--line)">06:30–14:00</td><td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="t t-apac">Closes 1st</span></td><td style="padding:11px 14px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line)">APAC book arrives during EMEA window</td><td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="t t-amber">P1 — pre-empts EMEA queue</span></td></tr>
+        <tr style="background:var(--emea-s)"><td style="padding:11px 14px;font-weight:700;color:var(--emea);border-bottom:1px solid var(--line)"> EMEA</td><td style="padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;border-bottom:1px solid var(--line)">12:00–18:00</td><td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="t t-emea">Closes 2nd</span></td><td style="padding:11px 14px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--line)">EMEA book arrives during AMER window</td><td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="t t-amber">P1 — pre-empts AMER queue</span></td></tr>
+        <tr style="background:var(--amer-s)"><td style="padding:11px 14px;font-weight:700;color:var(--amer)"> AMER</td><td style="padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:11px">18:30–24:00</td><td style="padding:11px 14px"><span class="t t-amer">Closes Last</span></td><td style="padding:11px 14px;font-size:12px;color:var(--dim)">No later region to be late into</td><td style="padding:11px 14px"><span class="t t-grey">Normal priority</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="sec"><div class="sec-title">Complete Priority Ladder &amp; Worked Example</div><div class="sec-rule"></div></div>
+  <div class="g2 gap">
+    <div class="pl">
+      <div class="pl-hdr">Queue Priority Order — Titan worker picks in this sequence</div>
+      <div class="pl-row pl-deadline"><div class="pl-dot dot-deadline">1</div><div class="pl-text"><div class="pl-t">Auto-post eligible — any region</div><div class="pl-d">Intraday book-close deadline — dispatched immediately</div></div><span class="t t-amber">DEADLINE</span></div>
+      <div class="pl-row pl-apac"><div class="pl-dot dot-apac">2</div><div class="pl-text"><div class="pl-t">APAC late arrival — during EMEA window</div><div class="pl-d">APAC closes first → pre-empts all waiting EMEA books</div></div><span class="t t-apac">APAC OVERRIDE</span></div>
+      <div class="pl-row pl-low"><div class="pl-dot dot-low">3</div><div class="pl-text"><div class="pl-t">Active region — LOW runtime (&lt;2 min)</div><div class="pl-d">Fast books first — maximises thread throughput</div></div><span class="t t-green">FAST</span></div>
+      <div class="pl-row pl-emea"><div class="pl-dot dot-emea">4</div><div class="pl-text"><div class="pl-t">EMEA late arrival — during AMER window</div><div class="pl-d">Same rule: EMEA closes before AMER → pre-empts all AMER</div></div><span class="t t-emea">EMEA OVERRIDE</span></div>
+      <div class="pl-row pl-medium"><div class="pl-dot dot-medium">5</div><div class="pl-text"><div class="pl-t">Active region — MEDIUM runtime (2–6 min)</div><div class="pl-d">Standard books within their own batch window</div></div><span class="t t-amber">STANDARD</span></div>
+      <div class="pl-row pl-high"><div class="pl-dot dot-high">6</div><div class="pl-text"><div class="pl-t">Active region — HIGH runtime (&gt;6 min)</div><div class="pl-d">Slow books last — AMER has no later region to be late into</div></div><span class="t t-grey">DEFERRED</span></div>
+    </div>
+    <div class="card">
+      <div class="card-hd" style="color:var(--apac)"> Worked Example — 13:47 IST (EMEA Window Active)</div>
+      <div style="font-size:12px;color:var(--dim);margin-bottom:10px">Mixed queue. Titan worker picks in this order:</div>
+      <div class="eq">
+        <div class="eq-row eq-deadline"><div class="eq-num en-deadline">1</div><div><span class="eq-book">MB-7741</span><span class="eq-meta">APAC · CATS-vs-MOTIF</span></div><div class="eq-right"><span class="t t-amber">Auto-Post</span><span style="font-size:11px;color:var(--red);font-weight:600">Deadline 15:30</span></div></div>
+        <div class="eq-row eq-apac"><div class="eq-num en-apac">2</div><div><span class="eq-book">MB-3312</span><span class="eq-meta">APAC · SMS-REC</span><span class="eq-note apac">← Late during EMEA window</span></div><div class="eq-right"><span class="t t-apac">APAC Override</span></div></div>
+        <div class="eq-row eq-apac"><div class="eq-num en-apac">3</div><div><span class="eq-book">MB-3318</span><span class="eq-meta">APAC · REC-14</span><span class="eq-note apac">← Late during EMEA window</span></div><div class="eq-right"><span class="t t-apac">APAC Override</span></div></div>
+        <div class="eq-row eq-low"><div class="eq-num en-low">4</div><div><span class="eq-book">MB-5501</span><span class="eq-meta">EMEA · CATS-vs-MOTIF · LOW</span></div><div class="eq-right"><span class="t t-green">EMEA LOW</span></div></div>
+        <div class="eq-row eq-medium"><div class="eq-num en-medium">5</div><div><span class="eq-book">MB-6102</span><span class="eq-meta">EMEA · REC-10 · MEDIUM</span></div><div class="eq-right"><span class="t t-amber">EMEA MEDIUM</span></div></div>
+        <div class="eq-row eq-high"><div class="eq-num en-high">6</div><div><span class="eq-book">MB-4401</span><span class="eq-meta">EMEA · GENERIC · HIGH</span></div><div class="eq-right"><span class="t t-red">EMEA HIGH</span></div></div>
+      </div>
+      <div class="bn bn-blue" style="margin-top:12px;margin-bottom:0">
+        <div class="bn-body"><b style="color:var(--blue)">Result</b>APAC books (late arrivals) complete before any EMEA MEDIUM or HIGH starts. No more missed APAC adjustment deadlines.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--  ARCHITECTURE DECISION  -->
+<div class="pane" id="p-decision">
+
+  <div class="dec-hd">
+    
+    <div>
+      <div class="dec-title">Decision: DB-Backed Polling Queue via MADB</div>
+      <div class="dec-sub">No new infrastructure &nbsp;·&nbsp; Low effort &nbsp;·&nbsp; Handles 30K/day &nbsp;·&nbsp; Designed for 10-min long jobs &nbsp;·&nbsp; Regional close-order priority built in</div>
+    </div>
+  </div>
+
+  <div class="dt-wrap gap">
+    <table class="dt">
+      <thead>
+        <tr>
+          <th style="text-align:left;min-width:180px">Dimension</th>
+          <th class="th-bad">Sync HTTP<br><span style="font-size:9px;font-weight:400;color:var(--faint)">Current — broken</span></th>
+          <th>Async Callback<br><span style="font-size:9px;font-weight:400;color:var(--faint)">Webhook</span></th>
+          <th class="th-rec">DB Polling — MADB<br><span style="font-size:9px;font-weight:700">← RECOMMENDED</span></th>
+          <th>RabbitMQ<br><span style="font-size:9px;font-weight:400;color:var(--faint)">If ≥100K/day</span></th>
+          <th>Kafka<br><span style="font-size:9px;font-weight:400;color:var(--faint)">Not recommended</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Thread efficiency</td><td><span class="vp vp-n"> 10+ min blocked</span></td><td><span class="vp vp-w">~ Background risk</span></td><td class="td-rec"><span class="vp vp-y"> &lt;10ms freed</span></td><td><span class="vp vp-y"> Push dispatch</span></td><td><span class="vp vp-w">~ Complex setup</span></td></tr>
+        <tr><td>Crash resilience</td><td><span class="vp vp-n"> Tasks lost</span></td><td><span class="vp vp-w">~ Callback can fail</span></td><td class="td-rec"><span class="vp vp-y"> ACID + auto-reclaim</span></td><td><span class="vp vp-y"> Durable queues</span></td><td><span class="vp vp-y"> Replicated log</span></td></tr>
+        <tr><td>Regional priority (APAC→EMEA→AMER)</td><td><span class="vp vp-n"> FIFO only</span></td><td><span class="vp vp-n"> No ordering</span></td><td class="td-rec"><span class="vp vp-y"> ORDER BY column</span></td><td><span class="vp vp-w">~ Per-queue routing</span></td><td><span class="vp vp-w">~ Partition-based</span></td></tr>
+        <tr><td>New infrastructure required</td><td><span class="vp vp-y"> None</span></td><td><span class="vp vp-y"> None</span></td><td class="td-rec"><span class="vp vp-y"> None — MADB exists</span></td><td><span class="vp vp-n"> 3-node cluster</span></td><td><span class="vp vp-n"> 3-broker cluster</span></td></tr>
+        <tr><td>Implementation effort</td><td><span class="vp vp-k">— Exists (broken)</span></td><td><span class="vp vp-w">~ Medium</span></td><td class="td-rec"><span class="vp vp-y"> Low — SQL known</span></td><td><span class="vp vp-w">~ Medium</span></td><td><span class="vp vp-n"> High</span></td></tr>
+        <tr><td>10-min long job handling</td><td><span class="vp vp-n"> Thread starvation</span></td><td><span class="vp vp-w">~ Background risk</span></td><td class="td-rec"><span class="vp vp-y"> No issue</span></td><td><span class="vp vp-w">~ Threaded consumer</span></td><td><span class="vp vp-n"> max.poll.interval</span></td></tr>
+        <tr><td>Scales to 30K/day</td><td><span class="vp vp-n"> Fails today</span></td><td><span class="vp vp-w">~ With retry logic</span></td><td class="td-rec"><span class="vp vp-y"> Easily</span></td><td><span class="vp vp-y"> Yes</span></td><td><span class="vp vp-y"> Yes</span></td></tr>
+        <tr><td>Scales to 100K+/day</td><td><span class="vp vp-n"> No</span></td><td><span class="vp vp-n"> No</span></td><td class="td-rec"><span class="vp vp-w">~ Marginal at 100K+</span></td><td><span class="vp vp-y"> Excellent</span></td><td><span class="vp vp-y"> Very good</span></td></tr>
+        <tr><td>Operational overhead</td><td><span class="vp vp-k">— Low (currently)</span></td><td><span class="vp vp-y"> Low</span></td><td class="td-rec"><span class="vp vp-y"> Low — familiar SQL</span></td><td><span class="vp vp-w">~ Medium</span></td><td><span class="vp vp-n"> High — cluster ops</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="g2">
+    <div class="bn bn-blue"><div class="bn-body"><b style="color:var(--blue)">Key Insight</b>The MADB job tracking table is required regardless of transport choice. DB polling builds this foundation with zero additional infrastructure. RabbitMQ can be layered on later — replacing only the transport, not the state machine.</div></div>
+    <div class="bn bn-amber"><div class="bn-body"><b style="color:var(--amber)">Why Not Kafka?</b>Kafka's <code>max.poll.interval.ms</code> (default 5 min) is below our 10-min job duration — consumer ejected mid-job, causing duplicate processing. Also needs a 3-broker cluster for 0.35 msg/sec. Significant complexity for no gain here.</div></div>
+  </div>
+</div>
+
+<!--  TITAN ENGINE  -->
+<div class="pane" id="p-titan">
+
+  <div class="bn bn-vio">
+    
+    <div class="bn-body"><b style="color:var(--vio)">Titan Engine — Parallel Investigation Track</b>100 Python instances on a single 4-core server. Throughput regressed 5–10×. FOBO fixes 0–2 address symptoms while this track isolates and fixes the Titan root cause.</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:290px 1fr;gap:16px;margin-bottom:20px">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card card-red">
+        <div class="card-hd"> Server Constraints</div>
+        <div class="sr"><span class="sr-l">Language</span><span class="sr-v" style="color:var(--vio)">Python · Pandas</span></div>
+        <div class="sr"><span class="sr-l">Gateway</span><span class="sr-v">NGINX reverse proxy</span></div>
+        <div class="sr"><span class="sr-l">Instances</span><span class="sr-v r">100 (one server)</span></div>
+        <div class="sr"><span class="sr-l">CPU cores</span><span class="sr-v r">4 </span></div>
+        <div class="sr"><span class="sr-l">RAM</span><span class="sr-v g">64+ GB (adequate)</span></div>
+        <div class="sr"><span class="sr-l">CPU/process at full load</span><span class="sr-v r">0.04 cores</span></div>
+        <div class="bn bn-red" style="margin-top:12px;margin-bottom:0;padding:10px 13px"><div class="bn-body">100 processes fighting for 4 cores = severe CPU time-slicing. Every operation degrades.</div></div>
+      </div>
+      <div class="card card-blue">
+        <div class="card-hd"> Investigation Status</div>
+        <div class="inv"><div class="inv-dot done"></div><div><div class="inv-t done">NGINX scheduling validated</div><div class="inv-d">Even distribution — not the bottleneck</div></div></div>
+        <div class="inv"><div class="inv-dot done"></div><div><div class="inv-t done">FOBO submission validated</div><div class="inv-d">Async return working correctly</div></div></div>
+        <div class="inv"><div class="inv-dot todo">3</div><div><div class="inv-t">Per-stage timing logs</div><div class="inv-d">Log start/end by masterbook + substage</div></div></div>
+        <div class="inv"><div class="inv-dot todo">4</div><div><div class="inv-t">Live CPU profiling</div><div class="inv-d">Monitor during live APAC batch window</div></div></div>
+        <div class="inv"><div class="inv-dot todo">5</div><div><div class="inv-t">MADB query analysis</div><div class="inv-d">Indexes, lock contention, N+1 patterns</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd" style="color:var(--teal)"> Remediation Options — Ranked by Effort vs Impact</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="card card-green" style="padding:13px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--green)">① Right-size Instances</div><span class="t t-green">Try first</span></div><div style="font-size:12px;color:var(--ink2);line-height:1.55">Reduce 100 → 16–20 (4× core count). Each process gets real CPU time. Most likely to restore 1–2 min baseline.</div></div>
+        <div class="card card-blue" style="padding:13px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--blue)">② Query Optimisation</div><span class="t t-blue">Parallel</span></div><div style="font-size:12px;color:var(--ink2);line-height:1.55">Index hot MADB columns, batch reads, eliminate N+1. Run alongside instance right-sizing.</div></div>
+        <div class="card card-amber" style="padding:13px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--amber)">③ Vertical Scale Server</div><span class="t t-amber">Infra change</span></div><div style="font-size:12px;color:var(--ink2);line-height:1.55">Move to 32-core machine. Impact proportional to cores added. May not be needed if ① restores baseline.</div></div>
+        <div class="card card-red" style="padding:13px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div style="font-size:12px;font-weight:700;color:var(--red)">④ Horizontal Distribution</div><span class="t t-red">Last resort</span></div><div style="font-size:12px;color:var(--ink2);line-height:1.55">Spread across multiple servers. Linear scalability but highest complexity. Only if ①–③ insufficient.</div></div>
+      </div>
+      <div class="bn bn-blue" style="margin-bottom:0">
+        
+        <div class="bn-body"><b style="color:var(--teal)">Titan → DB Polling Migration</b>Each Python process replaces its HTTP listener with a DB polling loop. <strong>NGINX removed from job intake</strong> (kept for health checks). Workers claim jobs via MADB directly. <strong>Pandas reconciliation logic unchanged</strong> — only the entry-point wrapper changes. <code>supervisord</code> continues managing workers.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--  ROADMAP  -->
+<div class="pane" id="p-roadmap">
+
+  <div class="sec"><div class="sec-title">Phased Delivery Plan</div><div class="sec-rule"></div></div>
+  <div class="phases gap">
+    <div class="phase ph-red">
+      <div class="ph-lbl red">Phase 0</div><div class="ph-title">Emergency Hotfix</div>
+      <div class="ph-date">This Weekend</div>
+      <ul class="ph-list"><li>Queue 500 → 4,000 per instance</li><li>20,000 total capacity</li><li>Config only — zero downtime</li><li>Stops RejectedExecutionException</li></ul>
+    </div>
+    <div class="phase ph-blue">
+      <div class="ph-lbl blue">Phase 1A</div><div class="ph-title">Regional Priority</div>
+      <div class="ph-date">Weeks 2–3 · FOBO code</div>
+      <ul class="ph-list"><li>Runtime classification from MADB</li><li>LOW / MEDIUM / HIGH per book</li><li>Close-order flag: APAC/EMEA/AMER</li><li>60-second dispatch window</li><li>Late-arrival override rules</li></ul>
+    </div>
+    <div class="phase ph-green">
+      <div class="ph-lbl green">Phase 1B ← Core</div><div class="ph-title green">DB-Backed Async Queue</div>
+      <div class="ph-date">Weeks 1–3</div>
+      <ul class="ph-list"><li>recon_job_queue table in MADB</li><li>FOBO: INSERT replaces sync HTTP</li><li>Titan: poll + claim loop</li><li>Timeout detector + auto-recovery</li><li>Completion poller → auto-post trigger</li></ul>
+    </div>
+    <div class="phase ph-teal">
+      <div class="ph-lbl teal">Phase 2</div><div class="ph-title">Production Hardening</div>
+      <div class="ph-date">Weeks 4–8</div>
+      <ul class="ph-list"><li>LISTEN/NOTIFY — sub-second pickup</li><li>Retry with exponential backoff</li><li>Dead letter table</li><li>Automated SLA alerting</li><li>Prometheus metrics + dashboards</li><li>Queue monitoring UI</li></ul>
+    </div>
+    <div class="phase ph-grey">
+      <div class="ph-lbl grey">Phase 3</div><div class="ph-title grey">RabbitMQ (If Needed)</div>
+      <div class="ph-date">Q3 2026 · ≥100K/day</div>
+      <ul class="ph-list"><li>Spring AMQP (FOBO)</li><li>pika + threaded consumer (Titan)</li><li>Quorum queues for HA</li><li>MADB table retained for state</li></ul>
+    </div>
+  </div>
+
+  <div class="sec"><div class="sec-title">Action Plan</div><div class="sec-rule"></div></div>
+  <div class="at-wrap gap">
+    <table class="at">
+      <thead><tr><th>#</th><th>Action</th><th>Owner</th><th>When</th><th>Priority</th></tr></thead>
+      <tbody>
+        <tr><td class="at-n">1</td><td class="at-action">Queue 500 → 4,000 per instance (Spring config only)</td><td class="at-owner">FOBO</td><td class="at-when r">This Weekend</td><td><span class="t t-red">CRITICAL</span></td></tr>
+        <tr><td class="at-n">2</td><td class="at-action">Add per-stage timing logs to Titan by masterbook + substage</td><td class="at-owner">Titan</td><td class="at-when a">This Week</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">3</td><td class="at-action">CPU profiling on Titan server during live APAC batch</td><td class="at-owner">FOBO + Titan</td><td class="at-when a">Next Batch</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">4</td><td class="at-action">Design recon_job_queue schema with region + priority columns in MADB</td><td class="at-owner">FOBO + Arch</td><td class="at-when b">Week 1</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">5</td><td class="at-action">Implement Titan DB polling worker — replace HTTP listener with poll loop</td><td class="at-owner">Titan</td><td class="at-when b">Weeks 1–2</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">6</td><td class="at-action">FOBO: completion poller, timeout detector, startup recovery, regional priority logic</td><td class="at-owner">FOBO</td><td class="at-when b">Weeks 2–3</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">7</td><td class="at-action">Build runtime classification model (LOW/MEDIUM/HIGH) from MADB history</td><td class="at-owner">FOBO</td><td class="at-when b">Weeks 2–3</td><td><span class="t t-blue">MEDIUM</span></td></tr>
+        <tr><td class="at-n">8</td><td class="at-action">Automated SLA alerting — books stuck in NEW beyond threshold</td><td class="at-owner">FOBO</td><td class="at-when v">Weeks 4–6</td><td><span class="t t-blue">MEDIUM</span></td></tr>
+        <tr><td class="at-n">9</td><td class="at-action">Titan root-cause: right-size instance count 100 → 16–20</td><td class="at-owner">Titan</td><td class="at-when x">TBD post profiling</td><td><span class="t t-amber">HIGH</span></td></tr>
+        <tr><td class="at-n">10</td><td class="at-action">Queue monitoring dashboard deployment</td><td class="at-owner">FOBO</td><td class="at-when v">Weeks 4–6</td><td><span class="t t-blue">MEDIUM</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="g3">
+    <div class="bn bn-amber" style="margin-bottom:0"><div class="bn-body"><b style="color:var(--amber)">Phase 0 — Weekend</b>Queue 500→4,000. Config only. Zero risk. Stops all rejections immediately.</div></div>
+    <div class="bn bn-green" style="margin-bottom:0"><div class="bn-body"><b style="color:var(--green)">Phase 1 — Weeks 1–3</b>DB queue + regional priority. Threads freed &lt;10ms. Crash-proof. APAC/EMEA override live.</div></div>
+    <div class="bn bn-blue" style="margin-bottom:0"><div class="bn-body"><b style="color:var(--blue)">Phase 2 — Weeks 4–8</b>SLA alerting, retry, LISTEN/NOTIFY, queue UI. 30K+ ready.</div></div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<footer>
+  <span>FOBO · Java Spring Boot · 5 instances · ThreadPoolExecutor</span>
+  <span>Titan · Python · Pandas · NGINX · 100 instances · 4-core CPU</span>
+  <span>10,500+/day → 30K target · March 2026</span>
+</footer>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('show'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('p-' + id).classList.add('show');
+  btn.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
