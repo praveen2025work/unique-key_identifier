@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOBO · Queue Command — Ultimate</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ─────────── THEME VARS ─────────── */
+[data-theme="light"]{
+  --bg:#F1F5FB;--canvas:#FFFFFF;--surface:#F7F9FD;--surface2:#EBF0F8;
+  --border:#D8E2F0;--border2:#C0CDE0;
+  --text:#0D1B2A;--text2:#2C445A;--muted:#6A849A;--subtle:#9AAABB;
+  --cobalt:#1447D4;--cobalt2:#1E5FFF;--cobalt-l:#EEF3FF;--cobalt-b:#BAD0FF;
+  --green:#0A6636;--green-l:#EDFAF4;--green-b:#6EE7A8;
+  --red:#9B1C1C;--red-l:#FFF1F1;--red-b:#FECACA;
+  --orange:#913900;--orange-l:#FFF6ED;--orange-b:#FDD0A0;
+  --purple:#4C1D95;--purple-l:#F5F3FF;--purple-b:#DDD6FE;
+  --cyan:#065F6E;--cyan-l:#E0F7FA;--cyan-b:#80DEEA;
+  --apac:#1447D4;--apac-l:#EEF3FF;
+  --emea:#5B21B6;--emea-l:#F5F3FF;
+  --amer:#0A6636;--amer-l:#EDFAF4;
+  --shadow:0 2px 8px rgba(13,27,42,0.08);
+  --shadow-lg:0 8px 24px rgba(13,27,42,0.10);
+}
+[data-theme="dark"]{
+  --bg:#080C12;--canvas:#0D1520;--surface:#111C2A;--surface2:#162030;
+  --border:#1E2E42;--border2:#263B52;
+  --text:#D4E4F4;--text2:#8BACC8;--muted:#4D6B82;--subtle:#2E4558;
+  --cobalt:#4F8EFF;--cobalt2:#3D7FFF;--cobalt-l:rgba(79,142,255,0.10);--cobalt-b:rgba(79,142,255,0.25);
+  --green:#34D399;--green-l:rgba(52,211,153,0.10);--green-b:rgba(52,211,153,0.25);
+  --red:#F87171;--red-l:rgba(248,113,113,0.10);--red-b:rgba(248,113,113,0.25);
+  --orange:#FBBF24;--orange-l:rgba(251,191,36,0.10);--orange-b:rgba(251,191,36,0.25);
+  --purple:#A78BFA;--purple-l:rgba(167,139,250,0.10);--purple-b:rgba(167,139,250,0.25);
+  --cyan:#22D3EE;--cyan-l:rgba(34,211,238,0.10);--cyan-b:rgba(34,211,238,0.25);
+  --apac:#38BDF8;--apac-l:rgba(56,189,248,0.10);
+  --emea:#C084FC;--emea-l:rgba(192,132,252,0.10);
+  --amer:#34D399;--amer-l:rgba(52,211,153,0.10);
+  --shadow:0 2px 8px rgba(0,0,0,0.3);
+  --shadow-lg:0 8px 24px rgba(0,0,0,0.4);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;line-height:1.5;transition:background .3s,color .3s;}
+
+/* ─────────── HEADER ─────────── */
+.hdr{background:var(--cobalt);padding:0 20px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--shadow);}
+.hdr-l{display:flex;align-items:center;gap:14px;}
+.logo{font-family:'Fira Code',monospace;font-size:16px;font-weight:700;color:#fff;letter-spacing:4px;border:1.5px solid rgba(255,255,255,0.3);padding:3px 11px;border-radius:5px;}
+.hdr-divider{width:1px;height:26px;background:rgba(255,255,255,0.2);}
+.hdr-title{font-size:13px;font-weight:700;color:#fff;}
+.hdr-sub{font-size:10px;color:rgba(255,255,255,0.55);letter-spacing:.5px;}
+.hdr-r{display:flex;align-items:center;gap:10px;}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);padding:4px 11px;border-radius:20px;font-size:10px;font-weight:700;color:#fff;letter-spacing:1px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#34D399;box-shadow:0 0 8px #34D399;animation:livepulse 1.4s infinite;}
+@keyframes livepulse{0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0.5)}50%{box-shadow:0 0 0 5px rgba(52,211,153,0)}}
+.date-pill{font-family:'Fira Code',monospace;font-size:10px;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);padding:4px 11px;border-radius:5px;}
+.theme-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);cursor:pointer;font-size:15px;transition:background .2s;color:#fff;}
+.theme-btn:hover{background:rgba(255,255,255,0.2);}
+.ref-btn{font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;color:#fff;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);padding:5px 14px;border-radius:6px;cursor:pointer;transition:all .2s;}
+.ref-btn:hover{background:rgba(255,255,255,0.22);}
+
+/* ─────────── TICKER ─────────── */
+.ticker{background:var(--canvas);border-bottom:1px solid var(--border2);padding:5px 20px;display:flex;align-items:center;gap:0;overflow:hidden;white-space:nowrap;position:relative;}
+.ticker::after{content:'';position:absolute;right:0;top:0;bottom:0;width:60px;background:linear-gradient(90deg,transparent,var(--canvas));pointer-events:none;}
+.ticker-label{font-family:'Fira Code',monospace;font-size:9px;font-weight:700;color:#fff;background:var(--cobalt);padding:2px 8px;border-radius:3px;letter-spacing:1px;flex-shrink:0;margin-right:14px;}
+.ticker-scroll{display:flex;gap:28px;animation:scroll 30s linear infinite;}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.tick-item{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);white-space:nowrap;}
+.tick-item strong{color:var(--text2);}
+.tick-item.t-warn strong{color:var(--red);}
+.tick-item.t-ok strong{color:var(--green);}
+.tick-item.t-info strong{color:var(--cobalt);}
+
+/* ─────────── KPI ROW ─────────── */
+.kpi-row{background:var(--canvas);border-bottom:2px solid var(--border2);display:grid;grid-template-columns:repeat(7,1fr);box-shadow:var(--shadow);}
+.kpi{padding:13px 16px;border-right:1px solid var(--border);position:relative;cursor:default;transition:background .15s;}
+.kpi:last-child{border-right:none;}
+.kpi:hover{background:var(--surface);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi.k-total::before{background:linear-gradient(90deg,var(--cobalt),var(--purple));}
+.kpi.k-proc::before{background:var(--green);}
+.kpi.k-pend::before{background:var(--orange);}
+.kpi.k-done::before{background:var(--purple);}
+.kpi.k-fail::before{background:var(--red);}
+.kpi.k-thr::before{background:var(--cyan);}
+.kpi.k-sla::before{background:var(--green);}
+.kpi-label{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
+.kpi-val{font-family:'Fira Code',monospace;font-size:19px;font-weight:700;line-height:1.1;}
+.k-total .kpi-val{color:var(--cobalt);}
+.k-proc .kpi-val{color:var(--green);}
+.k-pend .kpi-val{color:var(--orange);}
+.k-done .kpi-val{color:var(--purple);}
+.k-fail .kpi-val{color:var(--red);}
+.k-thr .kpi-val{color:var(--cyan);}
+.k-sla .kpi-val{color:var(--green);}
+.kpi-delta{font-size:9px;color:var(--muted);margin-top:3px;}
+.kpi-delta.up{color:var(--green);}
+.kpi-delta.warn{color:var(--orange);}
+.kpi-delta.crit{color:var(--red);}
+
+/* ─────────── NAV ─────────── */
+.nav{background:var(--canvas);border-bottom:1px solid var(--border2);padding:0 20px;display:flex;gap:0;position:sticky;top:56px;z-index:100;box-shadow:0 1px 4px rgba(13,27,42,0.04);}
+.ntab{font-size:11px;font-weight:700;color:var(--muted);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;letter-spacing:.3px;}
+.ntab:hover{color:var(--cobalt);background:var(--cobalt-l);}
+.ntab.on{color:var(--cobalt);border-bottom-color:var(--cobalt);}
+.nbadge{font-size:9px;font-weight:800;padding:1px 6px;border-radius:8px;background:var(--red-l);color:var(--red);border:1px solid var(--red-b);}
+.cbadge{font-size:9px;font-weight:800;padding:1px 6px;border-radius:8px;background:var(--cobalt-l);color:var(--cobalt);}
+
+/* ─────────── LAYOUT ─────────── */
+.layout{display:grid;grid-template-columns:256px 1fr;min-height:calc(100vh - 136px);}
+
+/* ─────────── SIDEBAR ─────────── */
+.sidebar{background:var(--canvas);border-right:1px solid var(--border2);padding:16px 0;overflow-y:auto;position:sticky;top:96px;height:calc(100vh - 96px);}
+.sb-sec{padding:0 12px;margin-bottom:18px;}
+.sb-label{font-size:9px;font-weight:800;color:var(--subtle);letter-spacing:2px;text-transform:uppercase;padding:0 6px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.sb-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.sb-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;border-radius:7px;cursor:pointer;margin-bottom:2px;border:1.5px solid transparent;transition:all .12s;}
+.sb-item:hover{background:var(--surface);}
+.sb-item.on{background:var(--cobalt-l);border-color:var(--cobalt-b);}
+.sb-item-l{display:flex;align-items:center;gap:8px;}
+.sb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sb-name{font-size:12px;font-weight:600;color:var(--text2);}
+.sb-cnt{font-family:'Fira Code',monospace;font-size:10px;font-weight:600;color:var(--muted);}
+.sb-divider{border:none;border-top:1px solid var(--border);margin:6px 12px 10px;}
+
+/* SLA GAUGES */
+.sla-gauges{padding:2px 6px 0;display:flex;flex-direction:column;gap:7px;}
+.sla-row{display:flex;flex-direction:column;gap:3px;}
+.sla-top{display:flex;justify-content:space-between;align-items:center;}
+.sla-name{font-size:11px;color:var(--text2);font-weight:500;}
+.sla-pct{font-family:'Fira Code',monospace;font-size:10px;font-weight:700;}
+.sla-bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.sla-fill{height:100%;border-radius:3px;}
+
+/* SPARKLINE SIDEBAR */
+.sb-sparkline{padding:2px 6px 0;display:flex;align-items:flex-end;gap:2px;height:40px;}
+.sp-bar{flex:1;border-radius:2px 2px 0 0;min-width:4px;transition:opacity .2s;}
+.sp-bar:hover{opacity:.7;}
+
+/* ─────────── CONTENT ─────────── */
+.content{padding:16px 20px;overflow-y:auto;}
+.section{display:none;}
+.section.on{display:block;}
+
+/* SH */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sh-t{font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:10px;}
+.sh-r{font-size:11px;color:var(--muted);}
+
+/* ─────────── OVERRIDE BANNER ─────────── */
+.ob{background:linear-gradient(135deg,var(--orange-l),var(--cobalt-l));border:1.5px solid var(--orange-b);border-radius:12px;padding:12px 18px;display:flex;align-items:center;gap:14px;margin-bottom:14px;box-shadow:var(--shadow);}
+.ob-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--orange),var(--cobalt));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.ob-title{font-size:13px;font-weight:800;color:var(--orange);}
+.ob-sub{font-size:11px;color:var(--text2);}
+.ob-right{margin-left:auto;text-align:right;}
+.ob-time{font-family:'Fira Code',monospace;font-size:16px;font-weight:700;color:var(--red);}
+.ob-label{font-size:10px;color:var(--muted);}
+
+/* ─────────── TAGS ─────────── */
+.tag{display:inline-flex;align-items:center;font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;white-space:nowrap;letter-spacing:.5px;}
+.t-apac{background:var(--apac-l);color:var(--apac);}
+.t-emea{background:var(--emea-l);color:var(--emea);}
+.t-amer{background:var(--amer-l);color:var(--amer);}
+.t-high{background:var(--red-l);color:var(--red);}
+.t-med{background:var(--orange-l);color:var(--orange);}
+.t-low{background:var(--surface2);color:var(--muted);}
+.t-proc{background:var(--green-l);color:var(--green);}
+.t-auto{background:var(--cobalt-l);color:var(--cobalt);}
+.t-fail{background:var(--red-l);color:var(--red);}
+.t-done{background:var(--purple-l);color:var(--purple);}
+.t-warn{background:var(--orange-l);color:var(--orange);}
+.t-crit{background:var(--red-l);color:var(--red);animation:tagpulse 1s infinite;}
+@keyframes tagpulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ─────────── PRIORITY QUEUE ─────────── */
+.pq-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.pq-item{display:flex;align-items:center;gap:12px;background:var(--canvas);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;transition:all .15s;cursor:pointer;box-shadow:var(--shadow);}
+.pq-item:hover{border-color:var(--cobalt-b);box-shadow:var(--shadow-lg);}
+.pq-item.pq-auto{border-left:4px solid var(--cobalt);}
+.pq-item.pq-apac{border-left:4px solid var(--cyan);}
+.pq-item.pq-norm{border-left:4px solid var(--border2);}
+.pq-rank{min-width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Fira Code',monospace;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+.pq-book{font-family:'Fira Code',monospace;font-size:11px;font-weight:700;color:var(--text);}
+.pq-meta{font-size:10px;color:var(--muted);margin-top:1px;}
+.pq-right{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.eta{font-family:'Fira Code',monospace;font-size:10px;color:var(--muted);}
+.eta.urgent{color:var(--red);font-weight:700;animation:blink .9s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─────────── TABLE ─────────── */
+.qtable-wrap{border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--surface);border-bottom:1.5px solid var(--border2);}
+th{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding:9px 12px;text-align:left;}
+td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--surface);}
+.mono{font-family:'Fira Code',monospace;font-size:11px;font-weight:700;}
+.prog{height:5px;background:var(--surface2);border-radius:3px;min-width:70px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:3px;}
+
+/* ─────────── INSTANCE GRID ─────────── */
+.inst-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;}
+.inst-card{background:var(--canvas);border:1.5px solid var(--border2);border-radius:10px;padding:13px;box-shadow:var(--shadow);transition:all .2s;position:relative;overflow:hidden;}
+.inst-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.inst-card.ic-ok::after{background:var(--green);}
+.inst-card.ic-warn::after{background:var(--orange);}
+.inst-card.ic-crit::after{background:var(--red);}
+.inst-card:hover{box-shadow:var(--shadow-lg);}
+.inst-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.inst-name{font-size:12px;font-weight:800;}
+.inst-dot{width:8px;height:8px;border-radius:50%;}
+.inst-stat{display:flex;justify-content:space-between;margin-bottom:5px;}
+.inst-stat-l{font-size:10px;color:var(--muted);}
+.inst-stat-v{font-family:'Fira Code',monospace;font-size:11px;font-weight:700;}
+.thread-bar{height:5px;background:var(--surface2);border-radius:3px;margin-top:9px;overflow:hidden;}
+.thread-fill{height:100%;border-radius:3px;}
+
+/* ─────────── TIMELINE ─────────── */
+.tl-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.tl-card{background:var(--canvas);border:1.5px solid var(--border2);border-radius:10px;padding:12px;cursor:pointer;transition:all .15s;box-shadow:var(--shadow);}
+.tl-card:hover{border-color:var(--cobalt-b);}
+.tl-card.on{border-color:var(--cobalt);background:var(--cobalt-l);}
+.tl-region{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:2px;margin-bottom:3px;}
+.tl-window{font-size:10px;color:var(--muted);margin-bottom:9px;}
+.tl-prog{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:7px;}
+.tl-fill{height:100%;border-radius:3px;}
+.tl-counts{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
+
+/* ─────────── ALERT ITEMS ─────────── */
+.alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:10px;border-left:4px solid;margin-bottom:7px;box-shadow:var(--shadow);}
+.alert-item.a-crit{background:var(--red-l);border-color:var(--red);}
+.alert-item.a-warn{background:var(--orange-l);border-color:var(--orange);}
+.alert-item.a-info{background:var(--cobalt-l);border-color:var(--cobalt);}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.alert-title{font-size:12px;font-weight:800;margin-bottom:3px;}
+.alert-body{font-size:11px;color:var(--muted);line-height:1.6;}
+.alert-ts{font-family:'Fira Code',monospace;font-size:9px;color:var(--subtle);margin-left:auto;flex-shrink:0;}
+
+/* ─────────── ANALYTICS ─────────── */
+.an-big{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.an-card{background:var(--canvas);border:1.5px solid var(--border2);border-radius:10px;padding:14px;box-shadow:var(--shadow);}
+.an-label{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+.an-val{font-family:'Fira Code',monospace;font-size:24px;font-weight:700;line-height:1.1;margin-bottom:3px;}
+.an-sub{font-size:10px;color:var(--muted);}
+
+/* ─────────── CHART ─────────── */
+.chart-card{background:var(--canvas);border:1.5px solid var(--border2);border-radius:10px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;}
+.chart-title{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;}
+.bar-chart{display:flex;align-items:flex-end;gap:3px;height:70px;}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.bar{width:100%;border-radius:3px 3px 0 0;cursor:pointer;transition:opacity .15s;}
+.bar:hover{opacity:.7;}
+.bar-lbl{font-family:'Fira Code',monospace;font-size:7px;color:var(--subtle);}
+
+/* ─────────── TWO/THREE COL ─────────── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* ─────────── REC TYPE / REGION BREAKDOWN ─────────── */
+.breakdown-card{background:var(--canvas);border:1.5px solid var(--border2);border-radius:10px;padding:14px;box-shadow:var(--shadow);}
+.bk-title{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;}
+.bk-row{display:flex;flex-direction:column;gap:8px;}
+.bk-item{display:flex;flex-direction:column;gap:3px;}
+.bk-header{display:flex;justify-content:space-between;}
+.bk-name{font-size:11px;font-weight:600;color:var(--text2);}
+.bk-cnt{font-family:'Fira Code',monospace;font-size:11px;font-weight:700;}
+.bk-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.bk-fill{height:100%;border-radius:3px;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="logo">FOBO</div>
+    <div class="hdr-divider"></div>
+    <div><div class="hdr-title">Queue Command Center</div><div class="hdr-sub">DB-BACKED ASYNC · PRIORITY SCHEDULER · APAC OVERRIDE · 5 INSTANCES</div></div>
+  </div>
+  <div class="hdr-r">
+    <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+    <div class="date-pill">04-MAR-2026</div>
+    <button class="theme-btn" onclick="toggleTheme()" title="Toggle theme" id="themeIcon">🌙</button>
+    <button class="ref-btn" onclick="refresh()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <span class="ticker-label">LIVE</span>
+  <div class="ticker-scroll" id="ticker-scroll">
+    <span class="tick-item t-warn">🚨 <strong>INST-5 SATURATED</strong> — 20/20 threads, queue depth 587, avg runtime 14m22s</span>
+    <span class="tick-item">⚡ <strong>APAC OVERRIDE ACTIVE</strong> — 14 auto-post + 31 standard books elevated to P1/P2</span>
+    <span class="tick-item t-warn">⚠ <strong>7 APAC BOOKS AT SLA RISK</strong> — Deadline 15:30 SGT in 1h 39m</span>
+    <span class="tick-item t-ok">✓ <strong>THREAD_POOL</strong> — 500→4,000 Phase 0 complete, no rejection risk</span>
+    <span class="tick-item t-info">📊 <strong>TODAY</strong> — 18,432 completed · 2,219 pending · 38 processing · 98.7% SLA</span>
+    <span class="tick-item">🖥️ <strong>INSTANCES 1–4</strong> — 30–55% utilization, healthy</span>
+    <!-- duplicate for seamless loop -->
+    <span class="tick-item t-warn">🚨 <strong>INST-5 SATURATED</strong> — 20/20 threads, queue depth 587, avg runtime 14m22s</span>
+    <span class="tick-item">⚡ <strong>APAC OVERRIDE ACTIVE</strong> — 14 auto-post + 31 standard books elevated to P1/P2</span>
+    <span class="tick-item t-warn">⚠ <strong>7 APAC BOOKS AT SLA RISK</strong> — Deadline 15:30 SGT in 1h 39m</span>
+    <span class="tick-item t-ok">✓ <strong>THREAD_POOL</strong> — 500→4,000 Phase 0 complete, no rejection risk</span>
+    <span class="tick-item t-info">📊 <strong>TODAY</strong> — 18,432 completed · 2,219 pending · 38 processing · 98.7% SLA</span>
+    <span class="tick-item">🖥️ <strong>INSTANCES 1–4</strong> — 30–55% utilization, healthy</span>
+  </div>
+</div>
+
+<!-- KPI ROW -->
+<div class="kpi-row">
+  <div class="kpi k-total"><div class="kpi-label">Queue Total</div><div class="kpi-val">20,689</div><div class="kpi-delta up">↑ 312 this hour</div></div>
+  <div class="kpi k-proc"><div class="kpi-label">Processing</div><div class="kpi-val">38</div><div class="kpi-delta">5 instances active</div></div>
+  <div class="kpi k-pend"><div class="kpi-label">Pending</div><div class="kpi-val">2,219</div><div class="kpi-delta warn">↓ 88 last 5m</div></div>
+  <div class="kpi k-done"><div class="kpi-label">Completed</div><div class="kpi-val" id="kpi-done">18,432</div><div class="kpi-delta up">+1,204 vs yesterday</div></div>
+  <div class="kpi k-fail"><div class="kpi-label">Failed / Retry</div><div class="kpi-val">12</div><div class="kpi-delta crit">3 retry queued</div></div>
+  <div class="kpi k-thr"><div class="kpi-label">Thread Util</div><div class="kpi-val">62%</div><div class="kpi-delta warn">INST-5 critical</div></div>
+  <div class="kpi k-sla"><div class="kpi-label">SLA Achievement</div><div class="kpi-val">98.7%</div><div class="kpi-delta up">↑ +0.4% vs yesterday</div></div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="ntab on" onclick="st('queue',this)">📋 Queue</div>
+  <div class="ntab" onclick="st('processing',this)">⚙️ Processing</div>
+  <div class="ntab" onclick="st('instances',this)">🖥️ Instances</div>
+  <div class="ntab" onclick="st('timeline',this)">🕐 Timeline</div>
+  <div class="ntab" onclick="st('alerts',this)">🔔 Alerts <span class="nbadge">3</span></div>
+  <div class="ntab" onclick="st('analytics',this)">📊 Analytics <span class="cbadge">+NEW</span></div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-sec">
+    <div class="sb-label">Region</div>
+    <div class="sb-item on" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--cobalt)"></div><span class="sb-name">All Regions</span></div><span class="sb-cnt">2,219</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">APAC</span></div><span class="sb-cnt" style="color:var(--apac)">847</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--emea)"></div><span class="sb-name">EMEA</span></div><span class="sb-cnt" style="color:var(--emea)">1,104</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--amer)"></div><span class="sb-name">AMER</span></div><span class="sb-cnt" style="color:var(--amer)">268</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Priority</div>
+    <div class="sb-item on" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--muted)"></div><span class="sb-name">All</span></div></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--cobalt)"></div><span class="sb-name">P1 — Auto-Post</span></div><span class="sb-cnt" style="color:var(--cobalt)">14</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--cyan)"></div><span class="sb-name">P2 — APAC Override</span></div><span class="sb-cnt" style="color:var(--cyan)">31</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--border2)"></div><span class="sb-name">P3–P5 Standard</span></div><span class="sb-cnt">2,174</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Rec Type</div>
+    <div class="sb-item on" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--muted)"></div><span class="sb-name">All Types</span></div></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">CATS-vs-MOTIF</span></div><span class="sb-cnt">891</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--emea)"></div><span class="sb-name">SMS-REC</span></div><span class="sb-cnt">743</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--amer)"></div><span class="sb-name">REC-11</span></div><span class="sb-cnt">585</span></div>
+    <div class="sb-item" onclick="flt(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--subtle)"></div><span class="sb-name">GENERIC</span></div><span class="sb-cnt">0</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">SLA Health</div>
+    <div class="sla-gauges">
+      <div class="sla-row"><div class="sla-top"><span class="sla-name">On Track</span><span class="sla-pct" style="color:var(--green)">98.7%</span></div><div class="sla-bar"><div class="sla-fill" style="width:98.7%;background:var(--green)"></div></div></div>
+      <div class="sla-row"><div class="sla-top"><span class="sla-name">Warning</span><span class="sla-pct" style="color:var(--orange)">1.0%</span></div><div class="sla-bar"><div class="sla-fill" style="width:1%;background:var(--orange)"></div></div></div>
+      <div class="sla-row"><div class="sla-top"><span class="sla-name">At Risk</span><span class="sla-pct" style="color:var(--red)">0.3%</span></div><div class="sla-bar"><div class="sla-fill" style="width:0.3%;background:var(--red)"></div></div></div>
+    </div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Throughput</div>
+    <div class="sb-sparkline" id="sb-spark"></div>
+    <div style="text-align:center;font-size:9px;color:var(--subtle);margin-top:3px;font-family:'Fira Code',monospace">Last 12 hours · peak 950/hr</div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Instance Status</div>
+    <div style="display:flex;flex-direction:column;gap:5px;padding:0 4px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--text2)">INST-1</span><span style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:40%;height:100%;background:var(--green);border-radius:2px"></div></div><span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--green)">40%</span></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--text2)">INST-2</span><span style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:55%;height:100%;background:var(--green);border-radius:2px"></div></div><span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--green)">55%</span></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--text2)">INST-3</span><span style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:85%;height:100%;background:var(--orange);border-radius:2px"></div></div><span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--orange)">85%</span></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--text2)">INST-4</span><span style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:30%;height:100%;background:var(--green);border-radius:2px"></div></div><span style="font-family:'Fira Code',monospace;font-size:9px;color:var(--green)">30%</span></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:11px;color:var(--red);font-weight:700">INST-5</span><span style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:100%;height:100%;background:var(--red);border-radius:2px"></div></div><span class="tag t-crit" style="padding:1px 5px;font-size:8px">100%</span></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- QUEUE TAB -->
+<div class="section on" id="s-queue">
+  <div class="ob">
+    <div class="ob-icon">⚡</div>
+    <div><div class="ob-title">APAC Override Window Active</div><div class="ob-sub">14 auto-post + 31 standard APAC books elevated to P1/P2 · EMEA continues at P3</div></div>
+    <div class="ob-right"><div class="ob-time">1h 39m</div><div class="ob-label">remaining · Deadline 15:30 SGT</div></div>
+  </div>
+  <div class="sh"><div class="sh-t">Priority Queue <span style="font-size:11px;font-weight:500;color:var(--muted)">2,219 pending</span></div><div class="sh-r">Next Titan worker claims in priority order</div></div>
+  <div class="pq-list">
+    <div class="pq-item pq-auto"><div class="pq-rank" style="background:var(--cobalt)">1</div><div><div class="pq-book">MB-7741 · CATS-vs-MOTIF</div><div class="pq-meta">APAC · Auto-post eligible · recv 13:44:12 · est runtime HIGH (8–12m) · recon_job_id: RJ-44128</div></div><div class="pq-right"><span class="tag t-auto">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">⚠ Deadline 15:30</span></div></div>
+    <div class="pq-item pq-auto"><div class="pq-rank" style="background:var(--cobalt)">2</div><div><div class="pq-book">MB-7742 · CATS-vs-MOTIF</div><div class="pq-meta">APAC · Auto-post eligible · recv 13:44:15 · est runtime HIGH</div></div><div class="pq-right"><span class="tag t-auto">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">⚠ Deadline 15:30</span></div></div>
+    <div class="pq-item pq-apac"><div class="pq-rank" style="background:var(--cyan)">3</div><div><div class="pq-book">MB-3312 · SMS-REC</div><div class="pq-meta">APAC late arrival during EMEA window · recv 13:46:58 · priority elevated by scheduler</div></div><div class="pq-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-low">LOW</span><span class="eta">est. 4m 20s</span></div></div>
+    <div class="pq-item pq-apac"><div class="pq-rank" style="background:var(--cyan)">4</div><div><div class="pq-book">MB-3313 · SMS-REC</div><div class="pq-meta">APAC · recv 13:47:01</div></div><div class="pq-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-med">MEDIUM</span><span class="eta">est. 7m 10s</span></div></div>
+    <div class="pq-item pq-norm"><div class="pq-rank" style="background:var(--muted)">5</div><div><div class="pq-book">MB-2211 · REC-11</div><div class="pq-meta">EMEA · MEDIUM category · recv 12:10:00</div></div><div class="pq-right"><span class="tag t-emea">P3 EMEA</span><span class="tag t-med">MEDIUM</span><span class="eta">est. 6m 00s</span></div></div>
+    <div class="pq-item pq-norm"><div class="pq-rank" style="background:var(--muted)">6</div><div><div class="pq-book">MB-1887 · CATS-vs-MOTIF</div><div class="pq-meta">EMEA · LOW category · recv 12:18:44</div></div><div class="pq-right"><span class="tag t-emea">P4 EMEA</span><span class="tag t-low">LOW</span><span class="eta">est. 3m 30s</span></div></div>
+    <div class="pq-item pq-norm"><div class="pq-rank" style="background:var(--muted)">7</div><div><div class="pq-book">MB-4401 · GENERIC</div><div class="pq-meta">EMEA · HIGH category · recv 12:31:00 · est runtime HIGH — may delay queue</div></div><div class="pq-right"><span class="tag t-emea">P5 HIGH</span><span class="tag t-high">HIGH</span><span class="eta">est. 10m+</span></div></div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-card"><div class="chart-title">24h Throughput — Completed/hour</div><div class="bar-chart" id="tput-chart"></div></div>
+    <div class="chart-card"><div class="chart-title">Queue Depth — Pending/hour</div><div class="bar-chart" id="depth-chart"></div></div>
+  </div>
+</div>
+
+<!-- PROCESSING TAB -->
+<div class="section" id="s-processing">
+  <div class="sh"><div class="sh-t">Currently Processing — 38 Active Jobs</div></div>
+  <div class="qtable-wrap">
+    <table>
+      <thead><tr><th>Masterbook</th><th>Region</th><th>Rec Type</th><th>Progress</th><th>Elapsed</th><th>Remaining</th><th>Stage</th><th>Instance</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mono" style="color:var(--cobalt)">MB-7738</span></td><td><span class="tag t-apac">APAC</span></td><td style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace">CATS-vs-MOTIF</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="prog-fill" style="width:78%;background:var(--green)"></div></div><span style="font-size:9px;color:var(--green);font-family:'Fira Code',monospace">78%</span></div></td><td class="eta">8m 48s</td><td class="eta">1m 12s</td><td><span class="tag t-proc" style="font-size:8px">Titan Exec</span></td><td class="mono" style="font-size:10px;color:var(--muted)">INST-1</td><td><span class="tag t-proc">Running</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--cobalt)">MB-5498</span></td><td><span class="tag t-emea">EMEA</span></td><td style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace">SMS-REC</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="prog-fill" style="width:55%;background:var(--cobalt)"></div></div><span style="font-size:9px;color:var(--cobalt);font-family:'Fira Code',monospace">55%</span></div></td><td class="eta">3m 16s</td><td class="eta">2m 44s</td><td><span class="tag t-proc" style="font-size:8px">Titan Exec</span></td><td class="mono" style="font-size:10px;color:var(--muted)">INST-2</td><td><span class="tag t-proc">Running</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--cobalt2)">MB-7739</span></td><td><span class="tag t-apac">APAC</span></td><td style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace">CATS-vs-MOTIF</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="prog-fill" style="width:91%;background:var(--cobalt)"></div></div><span style="font-size:9px;color:var(--cobalt);font-family:'Fira Code',monospace">91%</span></div></td><td class="eta">9m 32s</td><td class="eta">0m 28s</td><td><span class="tag t-auto" style="font-size:8px">Auto-Post</span></td><td class="mono" style="font-size:10px;color:var(--muted)">INST-3</td><td><span class="tag t-auto">Finalizing</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--red)">MB-9921</span></td><td><span class="tag t-amer">AMER</span></td><td style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace">GENERIC</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="prog-fill" style="width:15%;background:var(--red)"></div></div><span style="font-size:9px;color:var(--red);font-family:'Fira Code',monospace">15%</span></div></td><td class="eta urgent">18m 44s</td><td class="eta urgent">60m+ est.</td><td><span class="tag t-fail" style="font-size:8px">Slow Job</span></td><td class="mono" style="font-size:10px;color:var(--red)">INST-5</td><td><span class="tag t-fail">At Risk</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--cobalt)">MB-6044</span></td><td><span class="tag t-emea">EMEA</span></td><td style="font-size:10px;color:var(--muted);font-family:'Fira Code',monospace">REC-11</td><td><div style="display:flex;align-items:center;gap:6px"><div class="prog"><div class="prog-fill" style="width:42%;background:var(--purple)"></div></div><span style="font-size:9px;color:var(--purple);font-family:'Fira Code',monospace">42%</span></div></td><td class="eta">4m 02s</td><td class="eta">5m 40s</td><td><span class="tag t-proc" style="font-size:8px">Titan Exec</span></td><td class="mono" style="font-size:10px;color:var(--muted)">INST-2</td><td><span class="tag t-proc">Running</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INSTANCES TAB -->
+<div class="section" id="s-instances">
+  <div class="sh"><div class="sh-t">Instance Health — Thread Pool Utilization</div><div class="sh-r">pool_size=20 per instance · queue_cap=4,000 · Phase 0 applied</div></div>
+  <div class="inst-grid">
+    <div class="inst-card ic-ok"><div class="inst-head"><span class="inst-name">Instance 1</span><div class="inst-dot" style="background:var(--green)"></div></div><div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">8/20</span></div><div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">124/4,000</span></div><div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">6m 12s</span></div><div class="inst-stat"><span class="inst-stat-l">Completed</span><span class="inst-stat-v" style="color:var(--green)">3,841</span></div><div class="thread-bar"><div class="thread-fill" style="width:40%;background:var(--green)"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:9px;color:var(--muted);font-family:'Fira Code',monospace">40%</span><span class="tag t-proc" style="font-size:8px">Healthy</span></div></div>
+    <div class="inst-card ic-ok"><div class="inst-head"><span class="inst-name">Instance 2</span><div class="inst-dot" style="background:var(--green)"></div></div><div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">11/20</span></div><div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">89/4,000</span></div><div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">7m 44s</span></div><div class="inst-stat"><span class="inst-stat-l">Completed</span><span class="inst-stat-v" style="color:var(--green)">4,112</span></div><div class="thread-bar"><div class="thread-fill" style="width:55%;background:var(--green)"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:9px;color:var(--muted);font-family:'Fira Code',monospace">55%</span><span class="tag t-proc" style="font-size:8px">Healthy</span></div></div>
+    <div class="inst-card ic-warn"><div class="inst-head"><span class="inst-name">Instance 3</span><div class="inst-dot" style="background:var(--orange)"></div></div><div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--orange)">17/20</span></div><div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v" style="color:var(--orange)">312/4,000</span></div><div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">9m 01s</span></div><div class="inst-stat"><span class="inst-stat-l">Completed</span><span class="inst-stat-v" style="color:var(--green)">3,788</span></div><div class="thread-bar"><div class="thread-fill" style="width:85%;background:var(--orange)"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:9px;color:var(--orange);font-family:'Fira Code',monospace">85%</span><span class="tag t-warn" style="font-size:8px">Warning</span></div></div>
+    <div class="inst-card ic-ok"><div class="inst-head"><span class="inst-name">Instance 4</span><div class="inst-dot" style="background:var(--green)"></div></div><div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">6/20</span></div><div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">67/4,000</span></div><div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">5m 38s</span></div><div class="inst-stat"><span class="inst-stat-l">Completed</span><span class="inst-stat-v" style="color:var(--green)">3,602</span></div><div class="thread-bar"><div class="thread-fill" style="width:30%;background:var(--green)"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:9px;color:var(--muted);font-family:'Fira Code',monospace">30%</span><span class="tag t-proc" style="font-size:8px">Healthy</span></div></div>
+    <div class="inst-card ic-crit"><div class="inst-head"><span class="inst-name">Instance 5</span><div class="inst-dot" style="background:var(--red);box-shadow:0 0 8px rgba(155,28,28,0.5);animation:livepulse 1s infinite"></div></div><div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--red)">20/20</span></div><div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v" style="color:var(--orange)">587/4,000</span></div><div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v" style="color:var(--red)">14m 22s</span></div><div class="inst-stat"><span class="inst-stat-l">Completed</span><span class="inst-stat-v">3,089</span></div><div class="thread-bar"><div class="thread-fill" style="width:100%;background:var(--red)"></div></div><div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:9px;color:var(--red);font-family:'Fira Code',monospace">100% ← SATURATED</span><span class="tag t-crit" style="font-size:8px">Critical</span></div></div>
+  </div>
+  <div style="background:var(--red-l);border:1.5px solid var(--red-b);border-radius:10px;padding:12px 16px;font-size:12px;color:var(--text2);">
+    <strong style="color:var(--red)">⚠ Saturation Analysis:</strong> Instance 5 running at 100% with avg runtime 14m22s (2.3× the 6m normal). Instance 4 is at only 30% utilization — rebalancing HIGH-category GENERIC jobs would reduce overall tail latency. Recommend scheduler adjustment: cap GENERIC HIGH assignments to INST-5 max 10 threads.
+  </div>
+</div>
+
+<!-- TIMELINE TAB -->
+<div class="section" id="s-timeline">
+  <div class="sh"><div class="sh-t">Regional Processing Windows</div><div class="sh-r">Click to filter queue view</div></div>
+  <div class="tl-grid" style="margin-bottom:16px">
+    <div class="tl-card"><div class="tl-region" style="color:var(--apac)">APAC</div><div class="tl-window">06:00 – 10:30 SGT</div><div class="tl-prog"><div class="tl-fill" style="width:100%;background:var(--green)"></div></div><div class="tl-counts"><span><strong>847</strong> done</span><span style="color:var(--green)">✓ Complete</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--emea)">EMEA</div><div class="tl-window">08:00 – 14:30 LON</div><div class="tl-prog"><div class="tl-fill" style="width:60%;background:var(--emea)"></div></div><div class="tl-counts"><span><strong>901</strong> done</span><span><strong>203</strong> pending</span></div></div>
+    <div class="tl-card on"><div class="tl-region" style="color:var(--cobalt)">APAC OVERRIDE</div><div class="tl-window" style="color:var(--cobalt);font-weight:700">ACTIVE → 15:30 SGT</div><div class="tl-prog"><div class="tl-fill" style="width:25%;background:var(--cobalt)"></div></div><div class="tl-counts"><span><strong>14</strong> auto-post</span><span class="eta urgent">1h 39m left</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--amer)">AMER</div><div class="tl-window">14:30 – 20:00 NYC</div><div class="tl-prog"><div class="tl-fill" style="width:0%;background:var(--amer)"></div></div><div class="tl-counts"><span>Not started</span><span><strong>268</strong> queued</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--subtle)">EOD BATCH</div><div class="tl-window">20:00 – 00:00 UTC</div><div class="tl-prog"><div class="tl-fill" style="width:0%;background:var(--subtle)"></div></div><div class="tl-counts"><span>Scheduled</span><span><strong>~1,748</strong> est.</span></div></div>
+  </div>
+</div>
+
+<!-- ALERTS TAB -->
+<div class="section" id="s-alerts">
+  <div class="sh"><div class="sh-t">Active Alerts <span class="tag t-fail" style="font-size:10px">3 Active</span></div></div>
+  <div class="alert-item a-crit"><span class="alert-icon">🚨</span><div><div class="alert-title" style="color:var(--red)">Instance 5 — Thread Pool Saturated (100%)</div><div class="alert-body">All 20 threads occupied. Queue depth: 587. Average job runtime 14m22s — 2.3× normal 6m average. Likely cause: concentration of HIGH-category GENERIC jobs. Recommendation: rebalance to Instance 4 (30% utilization). Consider capping GENERIC HIGH to max 10 threads on INST-5.</div></div><span class="alert-ts">13:51:02</span></div>
+  <div class="alert-item a-warn"><span class="alert-icon">⚠️</span><div><div class="alert-title" style="color:var(--orange)">7 APAC Books at SLA Risk — Deadline 15:30 SGT</div><div class="alert-body">Books MB-7741, MB-7742, MB-3312, MB-3313 (+3 more). Current estimated queue wait: ~45 minutes. With processing time (est. 8–12m each), these will likely miss the 15:30 SGT deadline. Recommend increasing Titan worker allocation for APAC books during override window.</div></div><span class="alert-ts">13:48:44</span></div>
+  <div class="alert-item a-info"><span class="alert-icon">ℹ️</span><div><div class="alert-title" style="color:var(--cobalt)">APAC Override Window Active — Until 15:30 SGT</div><div class="alert-body">Priority scheduler elevated 45 APAC books to P1/P2. 14 auto-post eligible books will trigger automated posting upon reconciliation completion. EMEA continues at P3. AMER queue begins at 14:30 NYC.</div></div><span class="alert-ts">13:45:00</span></div>
+</div>
+
+<!-- ANALYTICS TAB -->
+<div class="section" id="s-analytics">
+  <div class="sh"><div class="sh-t">Throughput Analytics</div><div class="sh-r">Today · Biz Date 04-Mar-2026</div></div>
+  <div class="an-big">
+    <div class="an-card"><div class="an-label">Avg Throughput</div><div class="an-val" style="color:var(--cobalt)">768</div><div class="an-sub">books / hour (rolling avg)</div></div>
+    <div class="an-card"><div class="an-label">Avg Job Duration</div><div class="an-val" style="color:var(--purple)">7m 14s</div><div class="an-sub">all rec types today</div></div>
+    <div class="an-card"><div class="an-label">SLA Achievement</div><div class="an-val" style="color:var(--green)">98.7%</div><div class="an-sub" style="color:var(--green)">↑ +0.4% vs yesterday</div></div>
+    <div class="an-card"><div class="an-label">Peak Throughput</div><div class="an-val" style="color:var(--cyan)">950</div><div class="an-sub">books / hour @ 14:00</div></div>
+  </div>
+  <div class="two-col" style="margin-bottom:12px">
+    <div class="chart-card" style="margin-bottom:0"><div class="chart-title">24h Completed / Hour</div><div class="bar-chart" id="an-tput"></div></div>
+    <div class="chart-card" style="margin-bottom:0"><div class="chart-title">24h Queue Depth / Hour</div><div class="bar-chart" id="an-depth"></div></div>
+  </div>
+  <div class="three-col">
+    <div class="breakdown-card"><div class="bk-title">By Rec Type</div><div class="bk-row">
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">CATS-vs-MOTIF</span><span class="bk-cnt" style="color:var(--apac)">7,841</span></div><div class="bk-bar"><div class="bk-fill" style="width:85%;background:var(--apac)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">SMS-REC</span><span class="bk-cnt" style="color:var(--emea)">6,204</span></div><div class="bk-bar"><div class="bk-fill" style="width:67%;background:var(--emea)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">REC-11</span><span class="bk-cnt" style="color:var(--amer)">4,387</span></div><div class="bk-bar"><div class="bk-fill" style="width:48%;background:var(--amer)"></div></div></div>
+    </div></div>
+    <div class="breakdown-card"><div class="bk-title">By Region</div><div class="bk-row">
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">EMEA</span><span class="bk-cnt" style="color:var(--emea)">8,104</span></div><div class="bk-bar"><div class="bk-fill" style="width:88%;background:var(--emea)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">APAC</span><span class="bk-cnt" style="color:var(--apac)">7,218</span></div><div class="bk-bar"><div class="bk-fill" style="width:78%;background:var(--apac)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">AMER</span><span class="bk-cnt" style="color:var(--amer)">3,110</span></div><div class="bk-bar"><div class="bk-fill" style="width:34%;background:var(--amer)"></div></div></div>
+    </div></div>
+    <div class="breakdown-card"><div class="bk-title">By Instance</div><div class="bk-row">
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">INST-2</span><span class="bk-cnt" style="color:var(--green)">4,112</span></div><div class="bk-bar"><div class="bk-fill" style="width:100%;background:var(--green)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">INST-1</span><span class="bk-cnt" style="color:var(--green)">3,841</span></div><div class="bk-bar"><div class="bk-fill" style="width:93%;background:var(--green)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">INST-3</span><span class="bk-cnt" style="color:var(--orange)">3,788</span></div><div class="bk-bar"><div class="bk-fill" style="width:92%;background:var(--orange)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">INST-4</span><span class="bk-cnt" style="color:var(--green)">3,602</span></div><div class="bk-bar"><div class="bk-fill" style="width:88%;background:var(--green)"></div></div></div>
+      <div class="bk-item"><div class="bk-header"><span class="bk-name">INST-5</span><span class="bk-cnt" style="color:var(--red)">3,089</span></div><div class="bk-bar"><div class="bk-fill" style="width:75%;background:var(--red)"></div></div></div>
+    </div></div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /layout -->
+
+<script>
+function st(id,btn){document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('on'));document.getElementById('s-'+id).classList.add('on');btn.classList.add('on');}
+function flt(el){el.closest('.sb-sec').querySelectorAll('.sb-item').forEach(i=>i.classList.remove('on'));el.classList.add('on');}
+function refresh(){const b=document.querySelector('.ref-btn');b.textContent='↻ ...';setTimeout(()=>b.textContent='↻ Refresh',800);}
+
+function toggleTheme(){
+  const html=document.documentElement;
+  const isDark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',isDark?'light':'dark');
+  document.getElementById('themeIcon').textContent=isDark?'🌙':'☀️';
+}
+
+const d24=[420,380,510,640,720,810,690,580,750,820,900,880,760,840,950,880,920,870,800,750,680,710,640,590];
+const dpt=[180,220,160,140,200,350,420,380,290,240,200,180,310,290,260,320,400,380,290,250,200,240,280,310];
+
+function bc(id,data,color,highlight){
+  const el=document.getElementById(id);if(!el)return;
+  const mx=Math.max(...data);
+  el.innerHTML=data.map((v,i)=>`<div class="bar-col">
+    <div class="bar" style="height:${Math.round(v/mx*65)}px;background:${color};opacity:${i===highlight?1:0.45};border-radius:3px 3px 0 0"></div>
+    <div class="bar-lbl">${String(i).padStart(2,'0')}</div>
+  </div>`).join('');
+}
+
+bc('tput-chart',d24,'var(--cobalt)',13);
+bc('depth-chart',dpt,'var(--orange)',15);
+bc('an-tput',d24,'var(--cobalt)',13);
+bc('an-depth',dpt,'var(--orange)',15);
+
+// Sidebar sparkline
+const sb=document.getElementById('sb-spark');
+if(sb){
+  const sl=d24.slice(12);const mx=Math.max(...sl);
+  sb.innerHTML=sl.map((v,i)=>`<div class="sp-bar" style="height:${Math.round(v/mx*36)}px;background:${i===sl.length-1?'var(--cobalt)':'var(--border2)'}"></div>`).join('');
+}
+
+// Live counter
+setInterval(()=>{
+  const el=document.getElementById('kpi-done');
+  if(el){let v=parseInt(el.textContent.replace(',',''));el.textContent=(v+Math.floor(Math.random()*3)).toLocaleString();}
+},4000);
+
+// Clock update in ticker
+setInterval(()=>{
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  const s=String(now.getSeconds()).padStart(2,'0');
+},1000);
+</script>
+</body>
+</html>

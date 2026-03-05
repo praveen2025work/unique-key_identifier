@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOBO · Queue Operations Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F4F6FA;
+  --canvas: #FFFFFF;
+  --surface: #F8FAFD;
+  --border: #E2E8F4;
+  --border2: #CBD5E8;
+  --text: #1A2233;
+  --text2: #3D4F6A;
+  --muted: #7B8DAA;
+  --subtle: #A8B8CC;
+  --blue: #1A56DB;
+  --blue-l: #EEF3FF;
+  --blue-b: #BFCFFF;
+  --green: #0E8C4A;
+  --green-l: #EDFAF4;
+  --green-b: #86EAB8;
+  --red: #D0182A;
+  --red-l: #FFF0F2;
+  --red-b: #FFBBC2;
+  --orange: #C2600A;
+  --orange-l: #FFF5EC;
+  --orange-b: #FFD0A0;
+  --purple: #5B3FD4;
+  --purple-l: #F3EEFF;
+  --purple-b: #C7B2FF;
+  --apac: #0369A1;
+  --apac-l: #E8F6FF;
+  --emea: #6D28D9;
+  --emea-l: #F3EEFF;
+  --amer: #057A55;
+  --amer-l: #EAFAF3;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.5; }
+
+/* HEADER */
+.hdr {
+  background: var(--canvas); border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(26,34,51,0.06);
+}
+.hdr-l { display: flex; align-items: center; gap: 14px; }
+.logo {
+  background: linear-gradient(135deg, #1A56DB, #5B3FD4);
+  color: #fff; font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600;
+  padding: 5px 11px; border-radius: 6px; letter-spacing: 2px;
+}
+.hdr-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.hdr-sub { font-size: 11px; color: var(--muted); }
+.hdr-r { display: flex; align-items: center; gap: 12px; }
+.live-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--green-l); border: 1px solid var(--green-b);
+  padding: 4px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600; color: var(--green);
+}
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: glow 1.4s infinite; }
+@keyframes glow { 0%,100%{box-shadow:0 0 0 0 rgba(14,140,74,0.5)} 50%{box-shadow:0 0 0 5px rgba(14,140,74,0)} }
+.date-chip {
+  font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2);
+  background: var(--surface); border: 1px solid var(--border); padding: 5px 12px; border-radius: 8px;
+}
+.btn {
+  font-size: 12px; font-weight: 600; color: var(--blue); background: var(--blue-l);
+  border: 1px solid var(--blue-b); padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  transition: all .15s; font-family: 'DM Sans', sans-serif;
+}
+.btn:hover { background: var(--blue); color: #fff; }
+
+/* STATUS BAR */
+.status-bar {
+  background: linear-gradient(135deg, #1A2233 0%, #1A56DB 100%);
+  padding: 10px 24px; display: grid; grid-template-columns: repeat(6,1fr); gap: 1px;
+}
+.stat-item { padding: 0 16px; border-right: 1px solid rgba(255,255,255,0.1); }
+.stat-item:last-child { border-right: none; }
+.stat-label { font-size: 10px; font-weight: 500; color: rgba(255,255,255,0.5); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; }
+.stat-val { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 600; color: #fff; }
+.stat-delta { font-size: 10px; margin-top: 1px; }
+.up { color: #6EE7B7; }
+.down { color: #FCA5A5; }
+.warn { color: #FCD34D; }
+
+/* NAV */
+.nav { background: var(--canvas); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 2px; }
+.ntab {
+  font-size: 12px; font-weight: 500; color: var(--muted); padding: 11px 16px; cursor: pointer;
+  border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.ntab:hover { color: var(--text2); background: var(--surface); }
+.ntab.on { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+.badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+.badge-red { background: var(--red-l); color: var(--red); }
+.badge-blue { background: var(--blue-l); color: var(--blue); }
+
+/* LAYOUT */
+.layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 126px); }
+
+/* SIDEBAR */
+.sidebar { background: var(--canvas); border-right: 1px solid var(--border); padding: 18px 0; }
+.sb-sec { padding: 0 14px; margin-bottom: 20px; }
+.sb-label { font-size: 10px; font-weight: 700; color: var(--subtle); letter-spacing: 1.5px; text-transform: uppercase; padding: 0 6px; margin-bottom: 8px; }
+.sb-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer; margin-bottom: 2px;
+  border: 1.5px solid transparent; transition: all .12s;
+}
+.sb-item:hover { background: var(--surface); }
+.sb-item.on { background: var(--blue-l); border-color: var(--blue-b); }
+.sb-item-l { display: flex; align-items: center; gap: 9px; }
+.sb-dot { width: 8px; height: 8px; border-radius: 50%; }
+.sb-name { font-size: 12px; font-weight: 500; }
+.sb-cnt { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--muted); }
+.sb-divider { border: none; border-top: 1px solid var(--border); margin: 8px 14px 12px; }
+
+/* SLA GAUGE */
+.gauge-row { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; }
+.gauge-item { display: flex; flex-direction: column; gap: 3px; }
+.gauge-header { display: flex; justify-content: space-between; align-items: center; }
+.gauge-label { font-size: 11px; color: var(--text2); font-weight: 500; }
+.gauge-val { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; }
+.gauge-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.gauge-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+
+/* CONTENT */
+.content { padding: 18px 24px; }
+.section { display: none; }
+.section.on { display: block; }
+
+/* CARDS */
+.card-grid { display: grid; gap: 14px; }
+.card-grid-3 { grid-template-columns: repeat(3,1fr); }
+.card-grid-2 { grid-template-columns: 1fr 1fr; }
+.card {
+  background: var(--canvas); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+  box-shadow: 0 1px 4px rgba(26,34,51,0.04);
+}
+.card-title {
+  font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.card-title .icon { font-size: 14px; }
+
+/* SECTION HEADER */
+.sh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sh-t { font-size: 14px; font-weight: 700; color: var(--text); }
+.sh-r { font-size: 11px; color: var(--muted); }
+
+/* TAGS */
+.tag {
+  display: inline-flex; align-items: center; font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px; white-space: nowrap; letter-spacing: .3px;
+}
+.t-apac { background: var(--apac-l); color: var(--apac); }
+.t-emea { background: var(--emea-l); color: var(--emea); }
+.t-amer { background: var(--amer-l); color: var(--amer); }
+.t-high { background: var(--red-l); color: var(--red); }
+.t-med { background: var(--orange-l); color: var(--orange); }
+.t-low { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+.t-proc { background: var(--green-l); color: var(--green); }
+.t-pend { background: #FFFBEB; color: #B45309; }
+.t-auto { background: var(--orange-l); color: var(--orange); }
+.t-done { background: var(--purple-l); color: var(--purple); }
+.t-fail { background: var(--red-l); color: var(--red); }
+.t-warn { background: var(--orange-l); color: var(--orange); }
+
+/* PROGRESS */
+.prog { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; min-width: 80px; }
+.prog-fill { height: 100%; border-radius: 3px; }
+
+/* TABLE */
+.qtable-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { background: var(--surface); border-bottom: 1px solid var(--border); }
+th { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; padding: 9px 14px; text-align: left; }
+td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: var(--surface); }
+.mono { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; }
+.eta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+.eta.urgent { color: var(--red); font-weight: 600; }
+.row-priority { background: linear-gradient(90deg, rgba(194,96,10,0.04) 0%, transparent 100%); }
+.row-apac { background: linear-gradient(90deg, rgba(3,105,161,0.04) 0%, transparent 100%); }
+
+/* PRIORITY LIST */
+.pq-list { display: flex; flex-direction: column; gap: 6px; }
+.pq-item {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--canvas); border: 1.5px solid var(--border); border-radius: 10px; padding: 11px 14px;
+  transition: all .15s; cursor: pointer;
+}
+.pq-item:hover { border-color: var(--blue-b); box-shadow: 0 2px 8px rgba(26,86,219,0.08); }
+.pq-item.pq-auto { border-left: 4px solid var(--orange); }
+.pq-item.pq-apac { border-left: 4px solid var(--apac); }
+.pq-item.pq-norm { border-left: 4px solid var(--border2); }
+.pq-rank {
+  min-width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 700; color: #fff;
+}
+.pq-book { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text); }
+.pq-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.pq-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* INSTANCE GRID */
+.inst-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
+.inst-card {
+  background: var(--canvas); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px;
+  transition: all .2s;
+}
+.inst-card:hover { box-shadow: 0 4px 16px rgba(26,34,51,0.08); }
+.inst-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.inst-name { font-weight: 700; font-size: 13px; }
+.inst-status { width: 9px; height: 9px; border-radius: 50%; }
+.inst-stat { display: flex; justify-content: space-between; margin-bottom: 5px; }
+.inst-stat-l { font-size: 11px; color: var(--muted); }
+.inst-stat-v { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; }
+.thread-bar { height: 5px; background: var(--border); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.thread-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+
+/* ALERT CARDS */
+.alert-card {
+  display: flex; gap: 12px; padding: 12px 16px;
+  border-radius: 10px; border-left: 4px solid; margin-bottom: 8px;
+}
+.alert-icon { font-size: 18px; flex-shrink: 0; }
+.alert-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.alert-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.alert-ts { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--subtle); margin-left: auto; flex-shrink: 0; }
+.alert-crit { background: var(--red-l); border-color: var(--red); }
+.alert-warn { background: var(--orange-l); border-color: var(--orange); }
+.alert-info { background: var(--blue-l); border-color: var(--blue); }
+
+/* DONUT MINI */
+.donut-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.donut-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 20px; font-size: 11px;
+}
+.d-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* SPARKLINE */
+.sparkline { display: flex; align-items: flex-end; gap: 2px; height: 40px; }
+.spark-bar { flex: 1; border-radius: 2px 2px 0 0; min-width: 4px; transition: opacity .15s; }
+.spark-bar:hover { opacity: 0.7; }
+
+/* TIMELINE */
+.tl-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+.tl-card {
+  background: var(--canvas); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px;
+  cursor: pointer; transition: all .15s;
+}
+.tl-card:hover { border-color: var(--border2); }
+.tl-card.on { border-color: var(--blue-b); background: var(--blue-l); }
+.tl-region { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+.tl-window { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.tl-prog-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.tl-prog-fill { height: 100%; border-radius: 3px; }
+.tl-counts { display: flex; justify-content: space-between; }
+.tl-cnt { font-size: 10px; color: var(--muted); }
+.tl-cnt strong { color: var(--text2); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="logo">FOBO</div>
+    <div>
+      <div class="hdr-title">Queue Operations Center</div>
+      <div class="hdr-sub">DB-Backed Async Queue · Priority-Aware Scheduler · APAC Override Active</div>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <div class="live-pill"><div class="live-dot"></div>Live</div>
+    <div class="date-chip">Biz Date: 04-Mar-2026</div>
+    <button class="btn" onclick="refresh()">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="stat-item"><div class="stat-label">Total Today</div><div class="stat-val">20,689</div><div class="stat-delta up">↑ 312 this hour</div></div>
+  <div class="stat-item"><div class="stat-label">Processing</div><div class="stat-val" style="color:#6EE7B7">38</div><div class="stat-delta" style="color:rgba(255,255,255,0.4)">5 instances</div></div>
+  <div class="stat-item"><div class="stat-label">Pending</div><div class="stat-val" style="color:#FCD34D">2,219</div><div class="stat-delta down">↓ 88 last 5m</div></div>
+  <div class="stat-item"><div class="stat-label">Completed</div><div class="stat-val" style="color:#A5B4FC">18,432</div><div class="stat-delta up">+1,204 vs yesterday</div></div>
+  <div class="stat-item"><div class="stat-label">Failed / Retry</div><div class="stat-val" style="color:#FCA5A5">12</div><div class="stat-delta warn">3 retry queued</div></div>
+  <div class="stat-item"><div class="stat-label">Thread Util</div><div class="stat-val" style="color:#FCD34D">62%</div><div class="stat-delta warn">INST-5 saturated</div></div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="ntab on" onclick="showTab('queue',this)">📋 Queue</div>
+  <div class="ntab" onclick="showTab('processing',this)">⚙️ Processing</div>
+  <div class="ntab" onclick="showTab('instances',this)">🖥️ Instances</div>
+  <div class="ntab" onclick="showTab('timeline',this)">🕐 Timeline</div>
+  <div class="ntab" onclick="showTab('alerts',this)">🔔 Alerts <span class="badge badge-red">3</span></div>
+  <div class="ntab" onclick="showTab('analytics',this)">📊 Analytics</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sb-sec">
+    <div class="sb-label">Region</div>
+    <div class="sb-item on" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--blue)"></div><span class="sb-name">All Regions</span></div><span class="sb-cnt">2,219</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">APAC</span></div><span class="sb-cnt" style="color:var(--apac)">847</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--emea)"></div><span class="sb-name">EMEA</span></div><span class="sb-cnt" style="color:var(--emea)">1,104</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--amer)"></div><span class="sb-name">AMER</span></div><span class="sb-cnt" style="color:var(--amer)">268</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Priority</div>
+    <div class="sb-item on" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--muted)"></div><span class="sb-name">All</span></div></div>
+    <div class="sb-item" onclick="filter(this)" style="background:rgba(194,96,10,0.04)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--orange)"></div><span class="sb-name">P1 — Auto-Post</span></div><span class="sb-cnt" style="color:var(--orange)">14</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">P2 — APAC Override</span></div><span class="sb-cnt" style="color:var(--apac)">31</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--border2)"></div><span class="sb-name">P3–P5 Standard</span></div><span class="sb-cnt">2,174</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Rec Type</div>
+    <div class="sb-item on" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--muted)"></div><span class="sb-name">All Types</span></div></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--apac)"></div><span class="sb-name">CATS-vs-MOTIF</span></div><span class="sb-cnt">891</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--emea)"></div><span class="sb-name">SMS-REC</span></div><span class="sb-cnt">743</span></div>
+    <div class="sb-item" onclick="filter(this)"><div class="sb-item-l"><div class="sb-dot" style="background:var(--green)"></div><span class="sb-name">REC-11</span></div><span class="sb-cnt">585</span></div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">SLA Health</div>
+    <div class="gauge-row">
+      <div class="gauge-item">
+        <div class="gauge-header"><span class="gauge-label">On Track</span><span class="gauge-val" style="color:var(--green)">98.7%</span></div>
+        <div class="gauge-bar"><div class="gauge-fill" style="width:98.7%;background:var(--green)"></div></div>
+      </div>
+      <div class="gauge-item">
+        <div class="gauge-header"><span class="gauge-label">At Risk</span><span class="gauge-val" style="color:var(--red)">0.3%</span></div>
+        <div class="gauge-bar"><div class="gauge-fill" style="width:0.3%;background:var(--red)"></div></div>
+      </div>
+      <div class="gauge-item">
+        <div class="gauge-header"><span class="gauge-label">Warning</span><span class="gauge-val" style="color:var(--orange)">1.0%</span></div>
+        <div class="gauge-bar"><div class="gauge-fill" style="width:1%;background:var(--orange)"></div></div>
+      </div>
+    </div>
+  </div>
+  <hr class="sb-divider">
+  <div class="sb-sec">
+    <div class="sb-label">Throughput</div>
+    <div style="padding: 6px 6px 0">
+      <div class="sparkline" id="sidebar-spark"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">Last 12 hours</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+<!-- QUEUE TAB -->
+<div class="section on" id="s-queue">
+  <div class="sh">
+    <div class="sh-t">Priority Queue <span class="badge badge-blue" style="font-size:11px;margin-left:6px">2,219 pending</span></div>
+    <div class="sh-r">Next Titan worker claims in priority order shown below</div>
+  </div>
+
+  <!-- ALERT STRIP -->
+  <div style="background:var(--orange-l);border:1.5px solid var(--orange-b);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <span style="font-size:16px">⚡</span>
+    <span style="font-size:12px;font-weight:600;color:var(--orange)">APAC Override Active</span>
+    <span style="font-size:12px;color:var(--text2)">14 auto-post books + 31 standard APAC books elevated to P1/P2 until <strong>15:30 SGT</strong></span>
+    <span class="eta urgent" style="margin-left:auto">1h 39m remaining</span>
+  </div>
+
+  <div class="pq-list">
+    <div class="pq-item pq-auto row-priority">
+      <div class="pq-rank" style="background:var(--orange)">1</div>
+      <div><div class="pq-book">MB-7741 · CATS-vs-MOTIF</div><div class="pq-meta">APAC · Auto-post eligible · Received 13:44:12 · Runtime est: HIGH (8–12m)</div></div>
+      <div class="pq-right"><span class="tag t-auto">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">⚠ Deadline 15:30</span></div>
+    </div>
+    <div class="pq-item pq-auto row-priority">
+      <div class="pq-rank" style="background:var(--orange)">2</div>
+      <div><div class="pq-book">MB-7742 · CATS-vs-MOTIF</div><div class="pq-meta">APAC · Auto-post eligible · Received 13:44:15 · Runtime est: HIGH</div></div>
+      <div class="pq-right"><span class="tag t-auto">P1 Auto-Post</span><span class="tag t-apac">APAC</span><span class="eta urgent">⚠ Deadline 15:30</span></div>
+    </div>
+    <div class="pq-item pq-apac row-apac">
+      <div class="pq-rank" style="background:var(--apac)">3</div>
+      <div><div class="pq-book">MB-3312 · SMS-REC</div><div class="pq-meta">APAC — Late arrival during EMEA window · Received 13:46:58</div></div>
+      <div class="pq-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-low">LOW</span><span class="eta">est. 4m 20s</span></div>
+    </div>
+    <div class="pq-item pq-apac row-apac">
+      <div class="pq-rank" style="background:var(--apac)">4</div>
+      <div><div class="pq-book">MB-3313 · SMS-REC</div><div class="pq-meta">APAC · Received 13:47:01</div></div>
+      <div class="pq-right"><span class="tag t-apac">P2 APAC Override</span><span class="tag t-med">MEDIUM</span><span class="eta">est. 7m 10s</span></div>
+    </div>
+    <div class="pq-item pq-norm">
+      <div class="pq-rank" style="background:var(--muted)">5</div>
+      <div><div class="pq-book">MB-2211 · REC-11</div><div class="pq-meta">EMEA · MEDIUM category · Received 12:10:00</div></div>
+      <div class="pq-right"><span class="tag t-emea">P3 EMEA</span><span class="tag t-med">MEDIUM</span><span class="eta">est. 6m 00s</span></div>
+    </div>
+    <div class="pq-item pq-norm">
+      <div class="pq-rank" style="background:var(--muted)">6</div>
+      <div><div class="pq-book">MB-1887 · CATS-vs-MOTIF</div><div class="pq-meta">EMEA · LOW category · Received 12:18:44</div></div>
+      <div class="pq-right"><span class="tag t-emea">P4 EMEA</span><span class="tag t-low">LOW</span><span class="eta">est. 3m 30s</span></div>
+    </div>
+    <div class="pq-item pq-norm">
+      <div class="pq-rank" style="background:var(--muted)">7</div>
+      <div><div class="pq-book">MB-4401 · GENERIC</div><div class="pq-meta">EMEA · HIGH category · Received 12:31:00</div></div>
+      <div class="pq-right"><span class="tag t-emea">P5 HIGH</span><span class="tag t-high">HIGH</span><span class="eta">est. 10m+</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROCESSING TAB -->
+<div class="section" id="s-processing">
+  <div class="sh"><div class="sh-t">Currently Processing — 38 Active Jobs</div></div>
+  <div class="qtable-wrap">
+    <table>
+      <thead><tr><th>Masterbook</th><th>Region</th><th>Rec Type</th><th>Progress</th><th>Elapsed</th><th>Est. Remaining</th><th>Stage</th><th>Instance</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="row-apac"><td><span class="mono" style="color:var(--blue)">MB-7738</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><div class="prog"><div class="prog-fill" style="width:78%;background:var(--green)"></div></div><span style="font-size:10px;color:var(--green);margin-left:6px">78%</span></td><td class="eta">8m 48s</td><td class="eta">1m 12s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td><td class="mono" style="font-size:10px">INST-1</td><td><span class="tag t-proc">Running</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--blue)">MB-5498</span></td><td><span class="tag t-emea">EMEA</span></td><td style="color:var(--muted);font-size:11px">SMS-REC</td><td><div class="prog"><div class="prog-fill" style="width:55%;background:var(--blue)"></div></div><span style="font-size:10px;color:var(--blue);margin-left:6px">55%</span></td><td class="eta">3m 16s</td><td class="eta">2m 44s</td><td><span class="tag t-proc" style="font-size:9px">Titan Exec</span></td><td class="mono" style="font-size:10px">INST-2</td><td><span class="tag t-proc">Running</span></td></tr>
+        <tr class="row-priority"><td><span class="mono" style="color:var(--orange)">MB-7739</span></td><td><span class="tag t-apac">APAC</span></td><td style="color:var(--muted);font-size:11px">CATS-vs-MOTIF</td><td><div class="prog"><div class="prog-fill" style="width:91%;background:var(--orange)"></div></div><span style="font-size:10px;color:var(--orange);margin-left:6px">91%</span></td><td class="eta">9m 32s</td><td class="eta">0m 28s</td><td><span class="tag t-auto" style="font-size:9px">Auto-Post</span></td><td class="mono" style="font-size:10px">INST-3</td><td><span class="tag t-auto">Finalizing</span></td></tr>
+        <tr><td><span class="mono" style="color:var(--red)">MB-9921</span></td><td><span class="tag t-amer">AMER</span></td><td style="color:var(--muted);font-size:11px">GENERIC</td><td><div class="prog"><div class="prog-fill" style="width:15%;background:var(--red)"></div></div><span style="font-size:10px;color:var(--red);margin-left:6px">15%</span></td><td class="eta urgent">18m 44s</td><td class="eta urgent">est. 60m+</td><td><span class="tag t-fail" style="font-size:9px">Slow Job</span></td><td class="mono" style="font-size:10px;color:var(--red)">INST-5</td><td><span class="tag t-fail">At Risk</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INSTANCES TAB -->
+<div class="section" id="s-instances">
+  <div class="sh"><div class="sh-t">Instance Health — Thread Pool Utilization</div><div class="sh-r">pool_size=20 per instance · queue_capacity=4,000 (Phase 0 applied)</div></div>
+  <div class="inst-grid" style="margin-bottom:20px">
+    <div class="inst-card" style="border-color:var(--green-b)">
+      <div class="inst-head"><span class="inst-name">Instance 1</span><div class="inst-status" style="background:var(--green)"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">8 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">124 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">6m 12s</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:40%;background:var(--green)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10px;color:var(--muted)">40% utilization</span><span class="tag t-proc" style="font-size:9px">Healthy</span></div>
+    </div>
+    <div class="inst-card" style="border-color:var(--green-b)">
+      <div class="inst-head"><span class="inst-name">Instance 2</span><div class="inst-status" style="background:var(--green)"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">11 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">89 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">7m 44s</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:55%;background:var(--green)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10px;color:var(--muted)">55% utilization</span><span class="tag t-proc" style="font-size:9px">Healthy</span></div>
+    </div>
+    <div class="inst-card" style="border-color:var(--orange-b)">
+      <div class="inst-head"><span class="inst-name">Instance 3</span><div class="inst-status" style="background:var(--orange)"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--orange)">17 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v" style="color:var(--orange)">312 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">9m 01s</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:85%;background:var(--orange)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10px;color:var(--orange)">85% utilization</span><span class="tag t-warn" style="font-size:9px">Warning</span></div>
+    </div>
+    <div class="inst-card" style="border-color:var(--green-b)">
+      <div class="inst-head"><span class="inst-name">Instance 4</span><div class="inst-status" style="background:var(--green)"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--green)">6 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v">67 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v">5m 38s</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:30%;background:var(--green)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10px;color:var(--muted)">30% utilization</span><span class="tag t-proc" style="font-size:9px">Healthy</span></div>
+    </div>
+    <div class="inst-card" style="border-color:var(--red-b)">
+      <div class="inst-head"><span class="inst-name">Instance 5</span><div class="inst-status" style="background:var(--red)"></div></div>
+      <div class="inst-stat"><span class="inst-stat-l">Active threads</span><span class="inst-stat-v" style="color:var(--red)">20 / 20</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Queue depth</span><span class="inst-stat-v" style="color:var(--orange)">587 / 4,000</span></div>
+      <div class="inst-stat"><span class="inst-stat-l">Avg runtime</span><span class="inst-stat-v" style="color:var(--red)">14m 22s</span></div>
+      <div class="thread-bar"><div class="thread-fill" style="width:100%;background:var(--red)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10px;color:var(--red)">100% — SATURATED</span><span class="tag t-fail" style="font-size:9px">Critical</span></div>
+    </div>
+  </div>
+  <div style="background:var(--red-l);border:1.5px solid var(--red-b);border-radius:10px;padding:12px 16px;font-size:12px">
+    <strong style="color:var(--red)">⚠ Instance 5 Saturation:</strong> <span style="color:var(--text2)">All 20 threads occupied with avg 14m22s runtime. Instance 4 has only 30% utilization — recommend load rebalancing. Root cause: HIGH category GENERIC jobs assigned to INST-5.</span>
+  </div>
+</div>
+
+<!-- TIMELINE TAB -->
+<div class="section" id="s-timeline">
+  <div class="sh"><div class="sh-t">Regional Processing Windows</div></div>
+  <div class="tl-grid">
+    <div class="tl-card"><div class="tl-region" style="color:var(--apac)">APAC</div><div class="tl-window">06:00 – 10:30 SGT</div><div class="tl-prog-bar"><div class="tl-prog-fill" style="width:100%;background:var(--green)"></div></div><div class="tl-counts"><span class="tl-cnt"><strong>847</strong> done</span><span class="tl-cnt" style="color:var(--green)">Complete</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--emea)">EMEA</div><div class="tl-window">08:00 – 14:30 LON</div><div class="tl-prog-bar"><div class="tl-prog-fill" style="width:60%;background:var(--orange)"></div></div><div class="tl-counts"><span class="tl-cnt"><strong>901</strong> done</span><span class="tl-cnt"><strong>203</strong> pending</span></div></div>
+    <div class="tl-card on"><div class="tl-region" style="color:var(--orange)">APAC OVERRIDE</div><div class="tl-window" style="color:var(--orange);font-weight:600">ACTIVE → 15:30 SGT</div><div class="tl-prog-bar"><div class="tl-prog-fill" style="width:25%;background:var(--orange)"></div></div><div class="tl-counts"><span class="tl-cnt"><strong>14</strong> auto-post</span><span class="tl-cnt urgent" style="color:var(--red);font-family:'DM Mono',monospace;font-size:10px">1h 39m left</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--amer)">AMER</div><div class="tl-window">14:30 – 20:00 NYC</div><div class="tl-prog-bar"><div class="tl-prog-fill" style="width:0%;background:var(--amer)"></div></div><div class="tl-counts"><span class="tl-cnt">Not started</span><span class="tl-cnt"><strong>268</strong> queued</span></div></div>
+    <div class="tl-card"><div class="tl-region" style="color:var(--muted)">EOD Batch</div><div class="tl-window">20:00 – 00:00 UTC</div><div class="tl-prog-bar"><div class="tl-prog-fill" style="width:0%;background:var(--muted)"></div></div><div class="tl-counts"><span class="tl-cnt">Not started</span><span class="tl-cnt"><strong>~1,748</strong> est.</span></div></div>
+  </div>
+</div>
+
+<!-- ALERTS TAB -->
+<div class="section" id="s-alerts">
+  <div class="sh"><div class="sh-t">Active Alerts</div></div>
+  <div class="alert-card alert-crit">
+    <span class="alert-icon">🚨</span>
+    <div><div class="alert-title" style="color:var(--red)">Instance 5 — Thread Pool Saturated (100%)</div><div class="alert-body">All 20 threads occupied. Queue depth 587. Average job runtime 14m22s — 2× normal. Recommend investigating long-running GENERIC jobs. Instance 4 at 30% utilization — rebalancing opportunity.</div></div>
+    <span class="alert-ts">13:51:02</span>
+  </div>
+  <div class="alert-card alert-warn">
+    <span class="alert-icon">⚠️</span>
+    <div><div class="alert-title" style="color:var(--orange)">7 APAC Books at SLA Risk — Deadline 15:30 SGT</div><div class="alert-body">Books MB-7741, MB-7742, MB-3312, MB-3313 (+3 more). Current estimated queue wait: 45 minutes. With processing time, these may miss the 15:30 deadline. Consider increasing Titan worker allocation for APAC books.</div></div>
+    <span class="alert-ts">13:48:44</span>
+  </div>
+  <div class="alert-card alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div><div class="alert-title" style="color:var(--blue)">APAC Override Window Active</div><div class="alert-body">Priority scheduler elevated 45 APAC books to P1/P2 until 15:30 SGT. EMEA books continue at P3. 14 auto-post eligible books will trigger automated posting upon completion.</div></div>
+    <span class="alert-ts">13:45:00</span>
+  </div>
+</div>
+
+<!-- ANALYTICS TAB -->
+<div class="section" id="s-analytics">
+  <div class="sh"><div class="sh-t">Throughput Analytics — Today</div></div>
+  <div class="card-grid card-grid-3" style="margin-bottom:16px">
+    <div class="card"><div class="card-title"><span class="icon">📈</span>Avg Throughput</div><div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--blue)">768</div><div style="font-size:11px;color:var(--muted)">books / hour (rolling avg)</div></div>
+    <div class="card"><div class="card-title"><span class="icon">⏱</span>Avg Job Duration</div><div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--purple)">7m 14s</div><div style="font-size:11px;color:var(--muted)">across all rec types today</div></div>
+    <div class="card"><div class="card-title"><span class="icon">✅</span>SLA Achievement</div><div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:700;color:var(--green)">98.7%</div><div style="font-size:11px;color:var(--green)">↑ +0.4% vs yesterday</div></div>
+  </div>
+  <div class="card-grid card-grid-2">
+    <div class="card"><div class="card-title">Completed by Rec Type</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">CATS-vs-MOTIF</span><span class="mono" style="color:var(--apac)">7,841</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:42.5%;background:var(--apac)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">SMS-REC</span><span class="mono" style="color:var(--emea)">6,204</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:33.7%;background:var(--emea)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">REC-11</span><span class="mono" style="color:var(--green)">4,387</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:23.8%;background:var(--green)"></div></div></div>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Completed by Region</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">EMEA</span><span class="mono" style="color:var(--emea)">8,104</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:44%;background:var(--emea)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">APAC</span><span class="mono" style="color:var(--apac)">7,218</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:39.2%;background:var(--apac)"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:11px">AMER</span><span class="mono" style="color:var(--amer)">3,110</span></div><div class="prog" style="width:100%"><div class="prog-fill" style="width:16.9%;background:var(--amer)"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /layout -->
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('on'));
+  document.querySelectorAll('.ntab').forEach(b => b.classList.remove('on'));
+  document.getElementById('s-' + id).classList.add('on');
+  btn.classList.add('on');
+}
+function filter(el) {
+  el.closest('.sb-sec').querySelectorAll('.sb-item').forEach(i => i.classList.remove('on'));
+  el.classList.add('on');
+}
+function refresh() {
+  const b = document.querySelector('.btn');
+  b.textContent = '↻ Loading...';
+  setTimeout(() => b.textContent = '↻ Refresh', 900);
+}
+
+// Sidebar sparkline
+const spData = [580,620,710,840,760,900,950,880,820,870,920,940];
+const spEl = document.getElementById('sidebar-spark');
+if (spEl) {
+  const max = Math.max(...spData);
+  spEl.innerHTML = spData.map((v,i) => `<div class="spark-bar" style="height:${Math.round(v/max*36)}px;background:${i===spData.length-1?'var(--blue)':'var(--border2)'}"></div>`).join('');
+}
+
+// Animate completed count
+setInterval(() => {
+  const el = document.querySelector('.stat-item:nth-child(4) .stat-val');
+  if (el) {
+    let v = parseInt(el.textContent.replace(',',''));
+    el.textContent = (v + Math.floor(Math.random()*3)).toLocaleString();
+  }
+}, 5000);
+</script>
+</body>
+</html>
