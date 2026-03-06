@@ -1,0 +1,18 @@
+You are an enterprise architect. Based on your analysis of the FOBO codebase, 
+generate a concise management summary document (2 pages max when printed).
+
+Structure:
+1. WHAT IS BROKEN (2–3 sentences, non-technical)
+2. BUSINESS IMPACT (quantify: jobs failing per day, SLA breach risk, volume growth risk)
+3. ROOT CAUSE (1 paragraph, architecture-level, no jargon)
+4. THREE OPTIONS CONSIDERED (table: option name | effort | resilience | risk)
+5. RECOMMENDED SOLUTION (1 paragraph with rationale)
+6. DELIVERY PLAN (4 phases with dates and owners)
+   - Phase 0: Immediate hotfix (this weekend)
+   - Phase 1: Async DB queue (weeks 1–3)
+   - Phase 2: Hardening (weeks 4–8)
+   - Phase 3: Scale trigger (RabbitMQ if volume > 100K/day)
+7. RISKS & MITIGATIONS (top 3 risks in table form)
+8. DECISION REQUIRED (what do you need leadership to approve/unblock?)
+
+Tone: confident, precise, no fluff. Written for a CTO or VP Engineering audience.
