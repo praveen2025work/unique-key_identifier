@@ -1,0 +1,695 @@
+# Titan Engine — Claude CLI Deep-Dive Analysis Prompts
+
+## Comprehensive Codebase Interrogation for Performance, Resilience & Architecture Review
+
+### Enterprise Architect Series | FOBO ↔ Titan Investigation Track
+
+> **How to use these prompts**
+> Run each prompt sequentially inside your `ok/` folder (or Titan root).
+> Each prompt is self-contained but **carries findings forward** — copy key outputs from
+> each step into the next prompt’s context block so Claude CLI builds a cumulative picture.
+> Commands assume you are running `claude` (Claude CLI) from your project root.
+
+-----
+
+## PRE-FLIGHT: Project Structure Discovery
+
+Before any analysis, run this orientation prompt to establish the full lay of the land.
+
+```
+claude "You are a senior enterprise architect and Python performance expert.
+I am running this prompt against the Titan reconciliation engine codebase.
+Titan is a Python/Pandas service that:
+- Computes Front-Office vs Back-Office reconciliation differences for financial masterbooks
+- Is orchestrated via JSON configuration files in the 'ok/' folder (or similar config dir)
+- Runs as 100 instances on a single 4-core CPU server fronted by NGINX
+- Is called synchronously by FOBO (Java Spring Boot) — a pattern we are moving away from
+- Processes job types: CATS-vs-MOTIF, SMS-REC, REC-11, GENERIC
+
+Your task in this first step is purely structural discovery. Please:
+
+1. List every Python file in the project with a one-line description of its purpose
+2. List every JSON config file — show its path and summarise what it configures
+3. Identify the main entry point (e.g. app.py, main.py, server.py, worker.py)
+4. Identify which file/module handles HTTP routing (Flask, FastAPI, Django, etc.)
+5. Identify which files contain Pandas DataFrames or data transformation logic
+6. Identify any scheduler, polling loop, or background worker code
+7. Identify any database access code — show the ORM or raw SQL being used
+8. Show the directory tree up to 3 levels deep
+9. Identify any environment/config loading patterns (dotenv, os.environ, etc.)
+
+Output your findings as a structured report with section headers.
+Label each file as one of: [ENTRY] [ROUTING] [PANDAS] [CONFIG] [DB] [WORKER] [UTIL] [TEST]"
+```
+
+-----
+
+## PROMPT 1 — JSON Config Orchestration Deep-Dive
+
+**Goal:** Fully understand how the JSON config files drive the reconciliation flow.
+
+```
+claude "You are a senior enterprise architect analysing the Titan reconciliation engine.
+
+CONTEXT FROM PRE-FLIGHT (paste your structure findings here):
+<PASTE_PRE_FLIGHT_OUTPUT_HERE>
+
+TASK — JSON Config Orchestration Analysis:
+
+The Titan engine uses JSON configuration files to orchestrate reconciliation flows.
+I need a complete reverse-engineering of this config-driven architecture.
+
+Please analyse every JSON config file and answer:
+
+1. CONFIG SCHEMA MAPPING
+   - What is the top-level schema of each JSON config file?
+   - Show every key/field with its data type and what it controls at runtime
+   - Are configs per-job-type (CATS-vs-MOTIF, SMS-REC, REC-11, GENERIC) or global?
+   - Are configs per-masterbook or per-reconciliation-type?
+
+2. ORCHESTRATION FLOW
+   - How does Titan read the JSON config? (at startup, per-request, cached?)
+   - Which Python module/function loads and parses the config?
+   - Show the exact code path from 'config is loaded' to 'reconciliation step is executed'
+   - Is there a config validator? If not, what happens with malformed config?
+
+3. STEP/STAGE DEFINITION
+   - Do the JSON configs define pipeline stages or steps?
+   - How are steps ordered? (array index, priority field, dependency graph?)
+   - Can steps be conditional? (if/else branching in config?)
+   - Can steps be skipped or overridden at runtime?
+
+4. CONFIG vs CODE COUPLING
+   - Which reconciliation behaviours are config-driven vs hardcoded in Python?
+   - Are there magic strings in Python that must match JSON config keys exactly?
+   - Are there undocumented config fields the code reads but no JSON file sets?
+
+5. RISK ASSESSMENT
+   - What happens if a config file is missing, corrupted, or has wrong field types?
+   - Is there any config hot-reload capability or does Titan need a restart?
+   - Are config files shared across instances or per-instance?
+
+6. PROPOSED IMPROVEMENT
+   - Given this config schema, design a migration path to make configs:
+     (a) DB-backed (stored in MADB as JSONB per job type)
+     (b) Hot-reloadable without restart
+     (c) Versioned with audit trail
+   Show a proposed MADB table schema for config storage.
+
+Output: Structured report. Include actual code snippets from the codebase to support each finding."
+```
+
+-----
+
+## PROMPT 2 — Entry Point & HTTP Layer Analysis
+
+**Goal:** Understand how FOBO calls arrive, how they’re dispatched, and where threads/workers are created.
+
+```
+claude "You are a senior enterprise architect and Python expert analysing the Titan engine.
+
+CONTEXT (paste findings from Prompt 1 + Pre-flight):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — Entry Point, HTTP Layer & Worker Dispatch:
+
+1. HTTP SERVER ANALYSIS
+   - What HTTP framework is Titan using? (FastAPI, Flask, aiohttp, Django, Gunicorn?)
+   - Show the exact route/endpoint that FOBO calls (path, HTTP method, request body schema)
+   - Is the server sync or async? (def vs async def, WSGI vs ASGI?)
+   - How many worker processes/threads does NGINX dispatch to per Titan instance?
+   - Show the NGINX config if present (worker_processes, worker_connections, upstream block)
+   - Show the Gunicorn/uvicorn config if present (workers, worker_class, timeout)
+
+2. REQUEST LIFECYCLE
+   - Trace a single request from HTTP receipt to response return
+   - Show every function call in the stack with file:line references
+   - Where does the JSON config get applied in this lifecycle?
+   - Where does Pandas processing begin and end?
+   - What does Titan return to FOBO? (JSON body schema, HTTP status codes used)
+
+3. SYNCHRONOUS vs ASYNC EVALUATION
+   - Is any part of the reconciliation running asynchronously within Titan?
+   - Are there any threading, multiprocessing, concurrent.futures, or asyncio usages?
+   - Are there any background threads spawned during a request?
+   - If entirely synchronous: calculate the theoretical max concurrent requests
+     given 100 instances on 4 cores, and compare to FOBO's submission rate
+
+4. TIMEOUT & ERROR HANDLING
+   - What HTTP timeouts are configured (client timeout, server timeout)?
+   - What happens on an unhandled exception — does Titan return 500 gracefully?
+   - Is there a circuit breaker or retry mechanism on the Titan side?
+   - What happens if a Titan instance crashes mid-reconciliation?
+
+5. WORKER POOL RECOMMENDATION
+   For each finding, recommend the optimal configuration:
+   - Gunicorn workers formula: should be 2×CPU+1 = 9 for a 4-core server
+   - Current instance count (100) vs recommended (~16) — show the math
+   - Impact of reducing instances on NGINX round-robin behaviour
+   - Recommended uvicorn async migration path if currently WSGI
+
+Output: Structured report with code snippets, config values found, and a 'What's Wrong / What to Fix' summary table."
+```
+
+-----
+
+## PROMPT 3 — Pandas Performance Anti-Pattern Audit
+
+**Goal:** Find every Pandas bottleneck causing the 5–10× throughput regression.
+
+```
+claude "You are a Python performance expert and senior enterprise architect.
+You specialise in Pandas anti-patterns that cause severe performance regression at scale.
+
+CONTEXT (paste all prior findings):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — Comprehensive Pandas Anti-Pattern Audit:
+
+Analyse every Python file that uses Pandas. For each anti-pattern found, report:
+  - File name and line number
+  - The actual code (quote it)
+  - Why it is an anti-pattern
+  - Performance impact (especially under CPU contention with 100 processes on 4 cores)
+  - The correct replacement code
+
+Anti-patterns to hunt for (check each explicitly):
+
+1. ITERROW / ITERTUPLES LOOPS
+   - Any for loop over df.iterrows() or df.itertuples()
+   - These are 100–1000× slower than vectorised operations
+   - Show replacement using .apply(), .map(), or vectorised numpy ops
+
+2. APPLY WITH LAMBDA ON LARGE DFs
+   - df.apply(lambda row: ..., axis=1) — effectively a Python loop
+   - Should be replaced with vectorised operations where possible
+
+3. REPEATED DATAFRAME COPIES
+   - Patterns like: result = df[df['col'] == val] inside a loop
+   - Multiple chained .copy() calls
+   - Excessive df.append() in a loop (should use pd.concat)
+
+4. CHAINED INDEXING / SETTINGWITHCOPYWARNING SOURCES
+   - df[...][...] = value patterns
+   - df.loc[...][...] patterns
+   - These cause silent bugs AND force extra copy allocations
+
+5. UNNECESSARY OBJECT DTYPE COLUMNS
+   - String columns stored as object dtype instead of pd.StringDtype() or category
+   - Datetime columns stored as object instead of datetime64
+   - These inflate memory usage 2–5× and slow comparisons
+
+6. MERGE / JOIN ANTI-PATTERNS
+   - pd.merge() inside a loop
+   - Merging on non-indexed columns (missing index on join key)
+   - Cross-joins or cartesian products from missing merge conditions
+
+7. READING ENTIRE TABLE THEN FILTERING IN PANDAS
+   - SELECT * FROM table followed by Python-level filtering
+   - Should push filters into SQL WHERE clause
+   - Especially dangerous with 15,000+ masterbooks
+
+8. DATAFRAME CONSTRUCTION IN A LOOP
+   - Building a DataFrame row-by-row using df.append() or repeated pd.concat
+   - Should collect into a list then pd.DataFrame(list) at the end
+
+9. MISSING DTYPE SPECIFICATION ON READ
+   - pd.read_sql() or pd.read_csv() without dtype= specified
+   - Pandas then infers types using expensive scanning
+   - Especially bad for large result sets from MADB
+
+10. MEMORY FRAGMENTATION
+    - Many small DataFrames created and abandoned in a single request
+    - No explicit del df or gc.collect() for large intermediate frames
+
+ADDITIONAL ANALYSIS:
+- Estimate total memory footprint of a single reconciliation job (one masterbook)
+- Given 100 concurrent instances, estimate total RAM pressure
+- Identify if any Pandas operation would benefit from chunked processing
+- Check for any use of Dask, Modin, or polars (good) vs pure Pandas on large frames (bad)
+
+Output: 
+  Section A — Anti-patterns found (with file:line, code, severity: CRITICAL/HIGH/MEDIUM)
+  Section B — Anti-patterns not found (confirms what is clean)
+  Section C — Top 3 highest-impact fixes ranked by expected performance gain
+  Section D — Estimated performance improvement if all fixes applied"
+```
+
+-----
+
+## PROMPT 4 — Database Access & MADB Query Analysis
+
+**Goal:** Find N+1 queries, missing indexes, lock contention, and slow query patterns inside Titan.
+
+```
+claude "You are a database performance expert and senior enterprise architect.
+
+CONTEXT (paste all prior findings):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — MADB Database Access Audit inside Titan:
+
+MADB is a PostgreSQL-compatible relational database used by both FOBO and Titan.
+Titan reads reconciliation inputs from MADB and writes results back to MADB.
+
+Analyse all database access code in Titan and report:
+
+1. CONNECTION MANAGEMENT
+   - How does Titan connect to MADB? (SQLAlchemy, psycopg2, raw connections?)
+   - Is a connection pool used? If so, show pool_size, max_overflow, timeout settings
+   - Are connections opened per-request or shared? (per-request = severe bottleneck under 100 instances)
+   - Is there any connection leak risk (connections not returned to pool on exception)?
+
+2. QUERY INVENTORY
+   List every SQL query in the codebase:
+   - The full SQL text (or ORM equivalent)
+   - The table(s) accessed
+   - Estimated row count / data volume
+   - Whether it has a WHERE clause with an indexed column
+   - Whether it is inside a loop (N+1 risk)
+
+3. N+1 QUERY DETECTION
+   - Find any query executed inside a Python loop or per-row
+   - Example: fetching a masterbook's config inside a for masterbook in masterbooks loop
+   - Show the code and the fix (batch fetch before the loop, or join in SQL)
+
+4. WRITE PATTERNS
+   - How does Titan write reconciliation results back to MADB?
+   - Is it row-by-row INSERT, batch INSERT, or COPY?
+   - Are there any missing COMMIT calls or autocommit issues?
+   - Are writes transactional? What happens if a write fails halfway?
+
+5. LOCK CONTENTION RISK
+   - Are there any SELECT FOR UPDATE usages?
+   - Are there any table-level locks or explicit LOCK TABLE calls?
+   - With 100 Titan instances all potentially writing to the same result tables,
+     assess the risk of write contention and deadlocks
+
+6. MISSING INDEX DETECTION
+   - For each query with a WHERE clause, check if the column is likely indexed
+   - Look for filter patterns on: masterbook_id, rec_date, status, job_type
+   - Recommend CREATE INDEX statements for any unindexed filter columns
+
+7. LARGE RESULT SET RISK
+   - Are there any queries that could return thousands of rows into a Pandas DataFrame?
+   - Is there pagination or LIMIT applied?
+   - Recommend chunked fetching using pd.read_sql with chunksize= for large reads
+
+8. PROPOSED DB SCHEMA FOR ASYNC QUEUE INTEGRATION
+   Given what you found about Titan's current DB schema and access patterns,
+   design the integration point for the new recon_job_queue table:
+   - How should Titan poll for PENDING jobs? (query + index)
+   - How should Titan claim a job atomically? (SELECT FOR UPDATE SKIP LOCKED)
+   - How should Titan write its result and mark the job COMPLETED?
+   - Show all SQL statements Titan would need in the new async model
+
+Output: Structured audit report. Flag CRITICAL issues (N+1, missing pool, no transactions) in red text or with [CRITICAL] label."
+```
+
+-----
+
+## PROMPT 5 — CPU Contention & Instance Sizing Analysis
+
+**Goal:** Quantify the CPU contention impact and produce a right-sizing recommendation.
+
+```
+claude "You are a systems performance engineer and enterprise architect.
+
+CONTEXT (paste all prior findings):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — CPU Contention Analysis & Instance Right-Sizing:
+
+The Titan server has: 4 CPU cores, 64+ GB RAM, 100 Python instances, NGINX load balancer.
+Throughput has regressed from 1–2 min per masterbook to 10+ minutes.
+
+1. CPU CONTENTION ANALYSIS
+   From the code, identify all CPU-intensive operations:
+   - Pandas merge, groupby, apply, sort operations (CPU-bound)
+   - Any regex operations on large DataFrames
+   - Any JSON serialisation/deserialisation of large payloads
+   - Any hashing, encryption, or checksum operations
+   - Any tight Python loops over large collections
+
+   For each CPU-intensive operation:
+   - Estimate relative CPU cost (low/medium/high/very high)
+   - Identify if it would benefit from parallelism within a single job
+   - Identify if it releases or holds the Python GIL
+
+2. GIL IMPACT ASSESSMENT
+   - Python's GIL means only one thread executes Python bytecode at a time per process
+   - 100 processes = 100 GILs = genuine parallelism possible, BUT only if OS scheduler
+     can give each process CPU time
+   - On 4 cores: at any moment, max 4 processes run; other 96 are context-switched out
+   - Calculate: if each reconciliation takes 10 min of CPU time and we have 4 cores,
+     what is the theoretical max throughput per hour?
+   - Compare to actual FOBO submission rate (15,000 masterbooks/day = ~625/hour)
+
+3. INSTANCE COUNT RIGHT-SIZING
+   Current: 100 instances on 4 cores
+   
+   Apply the following formulas and show the working:
+   
+   Formula A (CPU-bound workloads):
+     optimal_instances = num_cpu_cores × 1 (no benefit beyond core count for pure CPU work)
+   
+   Formula B (I/O-bound workloads, e.g. waiting on MADB):
+     optimal_instances = num_cpu_cores × (1 + wait_time / compute_time)
+   
+   Formula C (mixed workload):
+     If Titan spends X% time in Pandas (CPU) and Y% time in DB I/O:
+     optimal_instances = num_cpu_cores / X%
+   
+   Based on what you found in the codebase:
+   - Estimate the CPU% vs I/O% split for a typical reconciliation job
+   - Calculate recommended instance count using all three formulas
+   - Show the impact on context-switching overhead
+
+4. MEMORY ANALYSIS
+   - Estimate peak RAM per Titan instance (based on typical DataFrame sizes found in code)
+   - Calculate total RAM at 100 instances vs recommended instance count
+   - 64 GB RAM / recommended instances = RAM headroom per instance
+   - Are there any memory leaks? (objects growing unbounded, caches without eviction)
+
+5. PROFILING INSTRUMENTATION PLAN
+   Generate ready-to-use profiling code to insert into the Titan codebase:
+   
+   A) Per-stage timing decorator:
+      @time_stage decorator that logs: stage_name, masterbook_id, duration_ms, timestamp
+      Output format: JSON-compatible for log aggregation
+   
+   B) Memory snapshot at start/end of reconciliation:
+      Using tracemalloc or memory_profiler to capture peak memory per job
+   
+   C) CPU profiling wrapper:
+      cProfile integration that can be toggled via environment variable TITAN_PROFILE=1
+      Output: pstats sorted by cumulative time, top 20 functions
+   
+   D) MADB query timing:
+      SQLAlchemy event listener or psycopg2 cursor wrapper to log all queries >100ms
+
+6. REMEDIATION ROADMAP
+   Based on all findings, produce a prioritised action list:
+   
+   Priority 1 (This Week — No Infra Change):
+   - Instance count reduction recommendation with exact nginx upstream config change
+   - Gunicorn worker count optimisation
+   - Top Pandas anti-pattern fixes from Prompt 3
+   
+   Priority 2 (Next 2 Weeks — Code Changes):
+   - N+1 query fixes from Prompt 4
+   - Connection pool tuning
+   - Pandas dtype optimisation
+   
+   Priority 3 (Phase 2 — Architecture):
+   - Async queue integration (poll-based instead of synchronous HTTP)
+   - Chunked processing for large masterbooks
+   - Consider ProcessPoolExecutor for CPU-bound stages
+
+Output: Executive summary (3 paragraphs) + detailed technical findings + prioritised fix table."
+```
+
+-----
+
+## PROMPT 6 — Resilience & Failure Mode Audit
+
+**Goal:** Map every failure point in Titan and assess crash behaviour, retry logic, and data integrity.
+
+```
+claude "You are a resilience engineering expert and enterprise architect.
+
+CONTEXT (paste all prior findings):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — Failure Mode & Resilience Audit for Titan Engine:
+
+1. CRASH RECOVERY ANALYSIS
+   - What happens to an in-flight reconciliation if a Titan instance crashes?
+   - Is any state persisted before the crash point? Or is all work lost?
+   - Does FOBO have any awareness that Titan crashed? (timeout? error response?)
+   - Is there a supervisor process (supervisord, systemd, Docker restart policy)?
+   - Show the supervisor config if present
+
+2. ERROR HANDLING INVENTORY
+   - List every try/except block in the codebase
+   - For each: what exception is caught, what is done (log? re-raise? return error?)
+   - Are there bare except: or except Exception: clauses that swallow errors silently?
+   - Are HTTP 500 errors returned with enough detail for FOBO to distinguish
+     transient failures (retry) from permanent failures (dead-letter)?
+
+3. IDEMPOTENCY ASSESSMENT
+   - If Titan processes the same masterbook twice (e.g. FOBO retries after timeout),
+     does it produce duplicate results in MADB?
+   - Is there any idempotency key or deduplication logic?
+   - Are MADB writes using INSERT (fails on duplicate) or UPSERT (safe for retry)?
+   - Recommend: ON CONFLICT DO UPDATE pattern for safe re-processing
+
+4. PARTIAL FAILURE HANDLING
+   - If a reconciliation job has 10 stages and stage 7 fails:
+     - Are stages 1–6 rolled back?
+     - Is the partial result left in MADB?
+     - Can the job resume from stage 7 on retry?
+   - Is there any checkpointing/savepoint logic in the code?
+
+5. TIMEOUT HANDLING
+   - What timeout is set on the MADB connection?
+   - What timeout is set on any external HTTP calls Titan makes?
+   - If a MADB query hangs, does the Titan instance hang forever?
+   - Recommend: statement_timeout in PostgreSQL per session
+
+6. DATA INTEGRITY RISKS
+   - Are there any race conditions if two Titan instances process the same masterbook?
+   - Are result writes atomic (single transaction) or multi-step?
+   - If NGINX round-robins the same masterbook to two workers simultaneously,
+     what is the worst-case outcome in MADB?
+
+7. ASYNC QUEUE INTEGRATION RESILIENCE DESIGN
+   Based on your findings, design the resilience layer for Titan in the new async model:
+   
+   A) Job claim with lease expiry:
+      Titan claims a job with a 15-minute lease. If it crashes, lease expires
+      and FOBO's timeout detector returns job to PENDING. Show the SQL.
+   
+   B) Idempotent result write:
+      Titan writes result using INSERT ... ON CONFLICT (job_id) DO UPDATE
+      so re-processing never creates duplicate results. Show the SQL.
+   
+   C) Stage checkpointing (optional):
+      If reconciliation has N stages, Titan writes stage_progress JSONB to the
+      job row after each stage. On retry, it resumes from last checkpoint.
+      Show the schema addition and the Python code pattern.
+   
+   D) Dead-letter handling:
+      After max_retries exhausted, job moves to DEAD_LETTER status.
+      Show the SQL update and suggest a DLQ monitoring alert.
+
+Output: Resilience risk register table (Risk | Likelihood | Impact | Current Mitigation | Recommended Fix)
+followed by the SQL and code for items A–D."
+```
+
+-----
+
+## PROMPT 7 — Async Queue Migration Code Generation
+
+**Goal:** Generate production-ready Python code for Titan to participate in the DB-backed async queue.
+
+```
+claude "You are a senior Python engineer and enterprise architect.
+
+CONTEXT (paste all prior findings — this is the most important context block):
+<PASTE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — Generate Titan Async Queue Worker Code:
+
+Based on everything found in the Titan codebase, generate production-quality Python code
+that transforms Titan from a synchronous HTTP responder into an async queue worker.
+
+The queue table schema (already designed by FOBO team):
+  recon_job_queue:
+    job_id          UUID (PK)
+    masterbook_id   BIGINT
+    status          VARCHAR(20)  -- PENDING | PROCESSING | COMPLETED | FAILED | DEAD_LETTER
+    payload         JSONB        -- input params: rec_type, date_range, config_override
+    result          JSONB        -- output: MADB result location, summary stats
+    error_message   TEXT
+    retry_count     INT
+    max_retries     INT (default 3)
+    claimed_by      VARCHAR(100) -- e.g. 'titan-worker-{hostname}-{pid}'
+    lease_expires   TIMESTAMP
+    created_at      TIMESTAMP
+    completed_at    TIMESTAMP
+
+Generate the following modules, adapted to match patterns found in the existing codebase:
+
+MODULE 1: titan_queue_worker.py
+  - Main polling loop: runs every 5 seconds (configurable via env var TITAN_POLL_INTERVAL)
+  - Claims next PENDING job using SELECT FOR UPDATE SKIP LOCKED
+  - Calls existing reconciliation logic (reference actual function names found in codebase)
+  - Updates job to COMPLETED or FAILED with result/error
+  - Handles graceful shutdown on SIGTERM (finish current job, then exit)
+  - Logs: job_id, masterbook_id, status, duration_ms at each state transition
+  - worker_id format: f'titan-{socket.gethostname()}-{os.getpid()}'
+
+MODULE 2: titan_queue_dao.py (Data Access Object)
+  - claim_next_job(worker_id, lease_minutes=15) -> Optional[Job]
+  - mark_completed(job_id, result_json) -> None
+  - mark_failed(job_id, error_message, increment_retry=True) -> None
+  - extend_lease(job_id, additional_minutes=5) -> None  (for long-running jobs)
+  - get_job_by_id(job_id) -> Optional[Job]
+  
+  Use the same DB connection pattern found in the existing codebase.
+  All queries must use parameterised inputs (no f-string SQL).
+
+MODULE 3: titan_worker_supervisor.py
+  - Manages N worker processes (N configurable via env TITAN_WORKER_COUNT, default=4)
+  - Spawns workers using multiprocessing.Process
+  - Monitors worker health — restarts crashed workers after 5 seconds
+  - Exposes /health HTTP endpoint (minimal Flask/FastAPI) returning:
+    { 'status': 'healthy', 'workers': N, 'active_jobs': [...] }
+  - Graceful shutdown: SIGTERM → stop accepting new jobs → wait for active jobs → exit
+
+MODULE 4: config_loader.py (enhanced)
+  - Load JSON config from file (current behaviour — keep for backward compat)
+  - Add load_from_db(job_type, masterbook_id) that reads config from MADB JSONB column
+  - Merge: DB config overrides file config (per-masterbook customisation)
+  - Cache loaded configs with TTL=60s to avoid per-job DB reads
+  - Validate config against a schema (use jsonschema library)
+
+ALSO GENERATE:
+  - A requirements.txt delta (only new packages needed beyond what's already installed)
+  - Environment variable reference table (all TITAN_* env vars with defaults)
+  - A supervisord.conf snippet to run titan_worker_supervisor.py as a managed process
+  - Unit test stubs for titan_queue_dao.py (using pytest + unittest.mock)
+
+CONSTRAINTS:
+  - Match the existing coding style found in the codebase (naming conventions, imports, logging format)
+  - Use the same DB library already in use (SQLAlchemy / psycopg2 — use whichever is present)
+  - Do not introduce new infrastructure dependencies (no Redis, no Celery, no RabbitMQ)
+  - All code must be Python 3.8+ compatible
+  - Add type hints throughout
+  - Add docstrings to every public function
+
+Output: Full, runnable Python code for each module. Flag any assumption made about the
+existing codebase with a comment: # ASSUMPTION: <what was assumed>"
+```
+
+-----
+
+## PROMPT 8 — Architecture Decision Record (ADR) Generation
+
+**Goal:** Produce a formal ADR document summarising all findings and decisions for management review.
+
+```
+claude "You are an enterprise architect producing formal documentation.
+
+CONTEXT (paste the complete accumulated findings from all prior prompts):
+<PASTE_COMPLETE_ACCUMULATED_CONTEXT_HERE>
+
+TASK — Generate Architecture Decision Record (ADR) for Titan Engine Remediation:
+
+Produce a formal ADR document in the following structure:
+
+---
+ADR-TITAN-001: Titan Engine Performance Remediation and Async Queue Integration
+Status: PROPOSED
+Date: [today]
+Authors: [Enterprise Architecture Team]
+Reviewers: [FOBO Team, Titan Team]
+---
+
+SECTIONS REQUIRED:
+
+1. CONTEXT
+   Brief description of Titan's role, current infrastructure, and the performance regression.
+   (3–4 paragraphs, non-technical enough for a senior manager to follow)
+
+2. PROBLEM STATEMENT
+   Quantified statement of the issue:
+   - Throughput regression: 1–2 min → 10+ min per masterbook
+   - Root causes found (list each one discovered in prompts 1–6, with severity)
+   - Business impact: missed APAC deadlines, manual RTB interventions, volume growth risk
+
+3. OPTIONS CONSIDERED
+   Option A: Keep synchronous HTTP, tune instance count only
+   Option B: Async HTTP callback (webhook pattern)
+   Option C: DB-backed polling queue (MADB) — RECOMMENDED
+   Option D: Message broker (RabbitMQ/Kafka) — future state
+
+   For each option: pros, cons, effort estimate, risk level
+
+4. DECISION
+   We select Option C: DB-backed polling queue.
+   Rationale mapped to our priority order: Resilience → Simplicity → Latency → Throughput
+
+5. CONSEQUENCES
+   Positive consequences (what gets better)
+   Negative consequences / trade-offs (what gets harder or slower)
+   Risks and mitigations
+
+6. IMPLEMENTATION PLAN
+   Phase 0 (This week):   Instance right-sizing + Pandas quick wins
+   Phase 1 (Weeks 1–3):   Async queue worker (code generated in Prompt 7)
+   Phase 2 (Weeks 4–8):   Resilience hardening, monitoring, SLA alerting
+   Phase 3 (Future):      RabbitMQ migration if volume exceeds 100K/day
+
+7. METRICS FOR SUCCESS
+   - Titan p95 processing time returns to < 3 minutes
+   - Zero RejectedExecutionException in FOBO
+   - Zero missed APAC auto-post deadlines
+   - CPU utilisation per Titan instance < 70% under normal load
+   - Job loss on crash = 0 (all recovered via lease expiry)
+
+8. OPEN QUESTIONS
+   List any questions that remain unanswered after the codebase analysis.
+
+Format the output as clean Markdown suitable for pasting into Confluence or a Word document."
+```
+
+-----
+
+## QUICK REFERENCE: Running All Prompts in Sequence
+
+```bash
+# From your Titan project root (where the 'ok/' config folder lives)
+
+# Step 0: Structure discovery
+claude < titan_cli_prompts/00_preflight.txt > findings/00_structure.txt
+
+# Step 1: JSON config analysis
+claude < titan_cli_prompts/01_json_config.txt > findings/01_config.txt
+
+# Step 2: HTTP entry point
+claude < titan_cli_prompts/02_http_layer.txt > findings/02_http.txt
+
+# Step 3: Pandas audit
+claude < titan_cli_prompts/03_pandas_audit.txt > findings/03_pandas.txt
+
+# Step 4: DB analysis
+claude < titan_cli_prompts/04_db_audit.txt > findings/04_db.txt
+
+# Step 5: CPU + sizing
+claude < titan_cli_prompts/05_cpu_sizing.txt > findings/05_cpu.txt
+
+# Step 6: Resilience
+claude < titan_cli_prompts/06_resilience.txt > findings/06_resilience.txt
+
+# Step 7: Code generation
+claude < titan_cli_prompts/07_code_gen.txt > findings/07_generated_code.txt
+
+# Step 8: ADR document
+claude < titan_cli_prompts/08_adr.txt > findings/08_adr.md
+```
+
+-----
+
+## TIPS FOR BEST RESULTS
+
+|Tip                                 |Detail                                                                                                            |
+|------------------------------------|------------------------------------------------------------------------------------------------------------------|
+|**Paste context forward**           |Each prompt has a `<PASTE_..._HERE>` block. Always paste prior findings. Claude CLI has no memory between runs.   |
+|**Run from project root**           |Claude CLI automatically indexes files in the current directory.                                                  |
+|**Point explicitly at `ok/` folder**|Add `"The JSON config files are in the ok/ subdirectory."` to any prompt if auto-detection misses them.           |
+|**Save every output**               |Redirect to `.txt` files. You’ll need them for later prompts.                                                     |
+|**Iterate on Prompt 3**             |The Pandas audit is the highest-value prompt. If it misses something, rerun with `"Focus specifically on file X"`.|
+|**Use `--max-tokens`**              |For prompts 5–7 that generate code, add `--max-tokens 8000` to the CLI command.                                   |
+|**Ask for line numbers**            |If a finding is vague, follow up with `"Show me the exact file and line number for [finding]"`.                   |
