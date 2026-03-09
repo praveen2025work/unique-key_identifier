@@ -1,0 +1,964 @@
+# TITAN ENGINE — COMPREHENSIVE CODEBASE ANALYSIS
+
+## Claude CLI Master Prompt | Run this file from the Titan project root
+
+-----
+
+## HOW TO USE THIS FILE
+
+Place this file in the **root of the Titan codebase** (same level as your `ok/` config folder).
+
+Then run:
+
+```bash
+claude "$(cat TITAN_ANALYSIS_PROMPT.md)"
+```
+
+Or interactively in Claude CLI:
+
+```bash
+claude
+# Then paste the content of each STEP block one at a time when prompted
+```
+
+Claude CLI will automatically index all files in the current directory.
+Each step generates a **standalone HTML report file** in an `./analysis/` output folder.
+Run steps in order — each step reads prior HTML outputs for accumulated context.
+
+-----
+
+## GLOBAL CONTEXT (applies to all steps)
+
+You are acting as a senior enterprise architect, Java expert, Python expert, and performance engineer conducting a deep technical audit of the **Titan reconciliation engine**.
+
+**System background:**
+
+- Titan is a Python/Pandas reconciliation engine called by FOBO (Java Spring Boot orchestrator)
+- FOBO calls Titan **synchronously over HTTP** — each FOBO thread waits 10+ minutes per call
+- Titan runs as **100 instances on a single 4-core CPU server** fronted by NGINX reverse proxy
+- Titan reads orchestration flow from **JSON config files** in the `ok/` folder
+- Titan processes job types: `CATS-vs-MOTIF`, `SMS-REC`, `REC-11`, `GENERIC`
+- Titan reads from and writes results to **MADB** (PostgreSQL-compatible relational database)
+- Daily volume: ~15,000 masterbooks/day, growing to 30,000 within 12 months
+- Performance has **regressed 5–10×**: jobs that took 1–2 min now take 10+ min
+- Architecture goal: migrate Titan from sync HTTP responder → **async DB queue worker**
+
+**Output format for ALL steps:**
+Every step must produce a **complete, self-contained HTML file** saved to `./analysis/`.
+HTML files must follow the design rules in the HTML DESIGN SPEC at the bottom of this file.
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 0 — PROJECT STRUCTURE & ORIENTATION
+
+## ─────────────────────────────────────────────────────────
+
+**Run this first. It sets the foundation for all subsequent steps.**
+
+```
+Analyse the entire Titan codebase structure and produce a comprehensive orientation report.
+
+TASKS:
+
+1. DIRECTORY TREE
+   - Show full directory tree to 3 levels deep
+   - Exclude: __pycache__, .git, node_modules, *.pyc, venv
+
+2. FILE CLASSIFICATION
+   Classify every Python file as one or more of:
+   [ENTRY] Main entry point
+   [ROUTING] HTTP route handlers
+   [PANDAS] DataFrame / data transformation logic
+   [CONFIG] Configuration loading / parsing
+   [DB] Database access (queries, ORM, connections)
+   [WORKER] Background worker / polling / scheduler
+   [UTIL] Shared utilities / helpers
+   [TEST] Test files
+   [OTHER] Anything else
+
+   For each file: path, classification tags, one-line description of purpose
+
+3. JSON CONFIG INVENTORY
+   - List every JSON file in the ok/ folder (or wherever configs live)
+   - For each: filename, estimated purpose, top-level keys present
+
+4. DEPENDENCY INVENTORY
+   - Read requirements.txt / pyproject.toml / setup.py if present
+   - List every dependency with version and its role in Titan
+   - Flag: HTTP framework used, DB library used, any async libraries present
+
+5. ENTRY POINT CHAIN
+   - Identify the main entry point file and function
+   - Show the call chain from startup to "ready to accept requests"
+   - Show how the JSON config is loaded at startup (or per-request)
+
+6. QUICK HEALTH INDICATORS
+   Answer yes/no for each:
+   - Is there a connection pool configured?
+   - Is there any async/await code?
+   - Is there any multiprocessing or threading?
+   - Is there a supervisor config (supervisord.conf, Procfile)?
+   - Are there unit tests with meaningful coverage?
+   - Is there any logging configuration?
+   - Is there a health check endpoint?
+
+OUTPUT: Save as ./analysis/00_structure.html
+Use the HTML DESIGN SPEC at the bottom of this file.
+Include the directory tree in a <pre> code block.
+Include the file classification as a sortable HTML table.
+Include the health indicators as a green/red badge grid.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 1 — JSON CONFIG ORCHESTRATION DEEP-DIVE
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: STEP 0 complete. Read ./analysis/00_structure.html for context.**
+
+```
+Read ./analysis/00_structure.html for full codebase context before starting.
+
+Perform a complete reverse-engineering of the JSON config-driven orchestration system.
+
+TASKS:
+
+1. FULL SCHEMA MAPPING
+   For EVERY JSON config file found in ok/ (or equivalent):
+   - Show the complete schema as a formatted table:
+     Field name | Data type | Required/Optional | Default | What it controls at runtime
+   - Are configs per-job-type or global?
+   - Are configs per-masterbook, per-rec-type, or shared?
+   - Show one real example config (prettified JSON) from the codebase
+
+2. CONFIG LOADING MECHANICS
+   - Exact file and function that loads the config (show the code)
+   - When is config loaded: at startup (cached) or per-request (re-read)?
+   - Is there schema validation? If not: what breaks silently on bad config?
+   - Is there a config merging hierarchy? (e.g. defaults + overrides)
+
+3. ORCHESTRATION FLOW TRACE
+   Trace the exact execution path from config loaded → reconciliation complete:
+   - Show it as a numbered sequence: Step 1 → Step 2 → ... → Step N
+   - For each step: which Python function, which file:line, what the config key controls
+   - Highlight decision points where config values branch the execution
+
+4. CONFIG vs HARDCODE RATIO
+   - List every behaviour that is config-driven (flexible)
+   - List every behaviour that is hardcoded in Python (inflexible, needs code deploy to change)
+   - Assign a flexibility score: HIGH / MEDIUM / LOW
+
+5. RISKS & GAPS
+   - What happens when a config key is missing?
+   - What happens when a config file is corrupted?
+   - Is config hot-reloadable without restart?
+   - Are configs version-controlled? Shared across instances?
+
+6. IMPROVEMENT BLUEPRINT
+   Design the next-generation config system:
+   - MADB table schema to store configs as JSONB (with version history)
+   - Python module interface: load_config(job_type, masterbook_id) with TTL cache
+   - Migration path: file-based → DB-backed with zero-downtime cutover
+
+OUTPUT: Save as ./analysis/01_config_analysis.html
+Visualise the orchestration flow as an HTML step-by-step pipeline diagram using
+coloured boxes and arrows (CSS only, no external libraries).
+Include a config schema table for each JSON file.
+Include a RISK table: Risk | Likelihood | Impact | Current State | Fix.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 2 — HTTP LAYER & ENTRY POINT ANALYSIS
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read ./analysis/00_structure.html and ./analysis/01_config_analysis.html**
+
+```
+Read both prior HTML reports for context before starting.
+
+Analyse the full HTTP layer: how FOBO calls arrive, how they are dispatched,
+and where the synchronous bottleneck lives.
+
+TASKS:
+
+1. HTTP FRAMEWORK PROFILE
+   - Framework: Flask / FastAPI / Django / aiohttp / other?
+   - WSGI or ASGI? (sync or async server?)
+   - Show the exact endpoint FOBO calls:
+     Method | Path | Request body schema | Response schema | Status codes returned
+   - Show the route handler code in full
+
+2. SERVER CONFIGURATION
+   - NGINX: show upstream block, worker_processes, worker_connections, timeout values
+   - Gunicorn/uvicorn: show workers, worker_class, timeout, bind settings
+   - If supervisord: show the program config for Titan workers
+   - Calculate: with current config, what is max concurrent requests Titan can handle?
+
+3. FULL REQUEST LIFECYCLE TRACE
+   Trace a single reconciliation request end-to-end:
+   Step 1: HTTP request arrives at NGINX
+   Step 2: NGINX forwards to Titan instance
+   Step 3: Route handler invoked
+   Step 4: Config loaded (show which config)
+   Step 5: Data fetched from MADB
+   Step 6: Pandas processing begins
+   Step N: Response returned to FOBO
+   For each step: estimated time contribution (ms), blocking or non-blocking?
+
+4. SYNCHRONOUS BOTTLENECK ANALYSIS
+   - At exactly which line does the thread block waiting for work to complete?
+   - Is any part of the processing async within Titan?
+   - Draw the thread timeline: FOBO thread held for entire duration = confirmed?
+   - Calculate: if each job takes 10 min and FOBO submits 625/hour,
+     how many concurrent Titan instances are needed to keep up?
+
+5. TIMEOUT AUDIT
+   - HTTP client timeout (FOBO → Titan): what is configured?
+   - HTTP server timeout (NGINX, Gunicorn): what is configured?
+   - MADB query timeout: what is configured?
+   - What happens when a timeout fires mid-reconciliation?
+
+6. ASYNC MIGRATION IMPACT
+   Show what changes in the HTTP layer when Titan becomes a queue worker:
+   - The sync POST endpoint becomes: POST /submit → 202 Accepted + job_id
+   - A new GET /status/{job_id} endpoint is added
+   - Or: endpoint is removed entirely (Titan becomes a pure worker, no HTTP)
+   Recommend which model fits the existing FOBO ↔ Titan integration best.
+
+OUTPUT: Save as ./analysis/02_http_analysis.html
+Include a thread-timeline diagram using CSS bars (no JS charting libraries needed).
+Show: FOBO thread held → Titan processing → response returned, with time scale.
+Include a server config comparison table: Current vs Recommended.
+Traffic-light badge on each config value: GREEN (optimal) AMBER (suboptimal) RED (problematic).
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 3 — PANDAS PERFORMANCE ANTI-PATTERN AUDIT
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports. This is the highest-value step.**
+
+```
+Read all prior HTML reports before starting.
+
+Perform a comprehensive Pandas performance audit across every Python file.
+This is the most critical step — the 5–10× regression is likely rooted here.
+
+For EVERY anti-pattern category below, scan the entire codebase and report:
+  - Found / Not Found
+  - If found: exact file path + line number + the actual code snippet
+  - Severity: CRITICAL / HIGH / MEDIUM / LOW
+  - Performance impact explanation (why it is slow, especially under CPU contention)
+  - The correct replacement code (show before → after)
+
+ANTI-PATTERN CATEGORIES:
+
+1. ITERROWS / ITERTUPLES IN LOOPS [CRITICAL if found]
+   df.iterrows(), df.itertuples() inside for loops.
+   100–1000× slower than vectorised operations.
+   Fix: vectorised ops, .apply(), numpy where(), pd.Series.map()
+
+2. ROW-BY-ROW APPLY WITH PYTHON LOGIC [HIGH]
+   df.apply(lambda row: complex_python_logic, axis=1)
+   Effectively a Python loop — bypasses C-level Pandas optimisations.
+   Fix: vectorised column ops, np.where(), np.select(), str accessor methods
+
+3. DATAFRAME BUILT IN A LOOP [HIGH]
+   df.append() or pd.concat() called inside a loop.
+   Each call copies the entire DataFrame — O(n²) memory and CPU.
+   Fix: collect rows in a list, call pd.DataFrame(list) or pd.concat(list) once after the loop
+
+4. CHAINED INDEXING [MEDIUM–HIGH]
+   df[condition][column] = value or df.loc[...][...] patterns.
+   Causes SettingWithCopyWarning, silent bugs, and extra memory allocations.
+   Fix: use df.loc[condition, column] = value in a single indexing operation
+
+5. MISSING DTYPE SPECIFICATION [MEDIUM]
+   pd.read_sql() or pd.read_csv() without dtype= argument.
+   Pandas scans entire column to infer types — expensive on large result sets.
+   Fix: always pass dtype={'col': 'int64', 'col2': 'category'} explicitly
+
+6. STRING COLUMNS AS OBJECT DTYPE [MEDIUM]
+   String/categorical columns stored as object dtype instead of pd.StringDtype() or 'category'.
+   2–5× memory inflation, slow string comparisons.
+   Fix: cast with .astype('category') for low-cardinality columns, pd.StringDtype() for others
+
+7. MERGE / JOIN ANTI-PATTERNS [HIGH]
+   pd.merge() called inside a loop, or merging on unindexed columns.
+   Fix: pre-set index with df.set_index(key) before merge; move merges outside loops
+
+8. SELECT * THEN FILTER IN PYTHON [CRITICAL if found]
+   Fetching entire tables from MADB then filtering in Pandas.
+   Fix: push all filters into SQL WHERE clause; only fetch needed columns
+
+9. LARGE INTERMEDIATE DATAFRAMES NOT FREED [MEDIUM]
+   No del df or gc.collect() after large intermediate DataFrames are no longer needed.
+   With 100 instances, memory fragmentation accumulates.
+   Fix: explicit del for large frames; use context managers for chunked processing
+
+10. MISSING VECTORISED STRING OPERATIONS [MEDIUM]
+    Using Python string methods on a column instead of df['col'].str.method()
+    Fix: use .str accessor: df['col'].str.upper(), .str.contains(), .str.split()
+
+ADDITIONAL ANALYSIS:
+
+A. MEMORY FOOTPRINT ESTIMATE
+   - Estimate typical DataFrame size per reconciliation job (rows × columns × dtype bytes)
+   - Multiply by 100 concurrent instances = total RAM pressure
+   - Compare to available 64GB RAM — headroom or risk?
+
+B. CPU HOTSPOT CANDIDATES
+   - List the top 5 most CPU-intensive operations found (groupby, sort, merge, apply, etc.)
+   - Rank by expected CPU time contribution under load
+
+C. QUICK WINS SUMMARY
+   Top 3 changes that would give the biggest performance improvement with least code change.
+   Estimate performance gain for each (e.g. "removing iterrows from file X → estimated 3–5× speedup").
+
+OUTPUT: Save as ./analysis/03_pandas_audit.html
+Use a findings table with colour-coded severity rows:
+  CRITICAL = red row background tint, HIGH = orange tint, MEDIUM = yellow tint, LOW = grey tint
+For each finding: show the BAD CODE and FIXED CODE side by side in two <pre> blocks.
+Include a SUMMARY SCORECARD at the top: total issues by severity, estimated overall speedup range.
+Include a bar chart using pure CSS (width % bars) showing relative CPU cost of each hotspot.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 4 — DATABASE ACCESS & MADB QUERY AUDIT
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+
+```
+Read all prior HTML reports before starting.
+
+Audit all MADB database access within Titan.
+MADB is PostgreSQL-compatible. Titan reads reconciliation inputs and writes results.
+
+TASKS:
+
+1. CONNECTION MANAGEMENT AUDIT
+   - DB library in use: SQLAlchemy / psycopg2 / other?
+   - Connection pool configured? Show pool_size, max_overflow, timeout settings
+   - Are connections opened per-request or shared across requests?
+   - Is there a connection leak risk (not returned on exception)?
+   - Show the connection setup code in full
+
+2. COMPLETE QUERY INVENTORY
+   List EVERY SQL query or ORM query in the codebase as a table:
+   ID | File:Line | Operation (SELECT/INSERT/UPDATE) | Tables | WHERE clause | Inside loop? | Estimated rows
+
+3. N+1 QUERY DETECTION [CRITICAL]
+   Find any query executed per-row or inside a Python loop.
+   Example: fetching lookup data per masterbook inside a for loop.
+   For each N+1 found:
+   - Show the loop + query code
+   - Show the fix: batch fetch before the loop, or JOIN in SQL
+
+4. WRITE PATTERN ANALYSIS
+   - Are result writes row-by-row INSERT or batch INSERT?
+   - Is COPY (bulk load) used for large result sets?
+   - Are writes in explicit transactions or autocommit?
+   - If a write fails halfway through, what is left in MADB? Is it corrupt?
+
+5. MISSING INDEX DETECTION
+   For every WHERE clause found in queries:
+   - Column(s) filtered on
+   - Likely indexed? (masterbook_id, rec_date, status are common index candidates)
+   - Recommended: CREATE INDEX statement for any likely-missing index
+
+6. LOCK CONTENTION RISK
+   - Any SELECT FOR UPDATE or LOCK TABLE statements?
+   - With 100 Titan instances writing to the same result tables simultaneously:
+     assess deadlock risk and write contention severity
+   - Recommend row-level locking strategy
+
+7. LARGE RESULT SET RISK
+   - Any query that could return thousands of rows into a Pandas DataFrame?
+   - Is LIMIT or pagination used?
+   - Recommend: chunked fetching with pd.read_sql(..., chunksize=1000)
+
+8. ASYNC QUEUE INTEGRATION — SQL DESIGN
+   Design the exact SQL Titan needs for the new async worker model:
+
+   A) Claim next job atomically:
+   WITH next_job AS (
+     SELECT job_id FROM recon_job_queue
+     WHERE status = 'PENDING'
+     ORDER BY created_at ASC
+     LIMIT 1
+     FOR UPDATE SKIP LOCKED
+   )
+   UPDATE recon_job_queue
+   SET status = 'PROCESSING',
+       claimed_by = :worker_id,
+       lease_expires = NOW() + INTERVAL '15 minutes'
+   FROM next_job
+   WHERE recon_job_queue.job_id = next_job.job_id
+   RETURNING *;
+
+   Adapt this to use the same DB library already in the codebase.
+   Add: index recommendation for the claim query.
+
+   B) Write result and mark COMPLETED:
+   UPDATE recon_job_queue
+   SET status = 'COMPLETED',
+       result = :result_json,
+       completed_at = NOW()
+   WHERE job_id = :job_id AND claimed_by = :worker_id;
+
+   C) Mark FAILED with retry logic:
+   UPDATE recon_job_queue
+   SET status = CASE
+     WHEN retry_count + 1 >= max_retries THEN 'DEAD_LETTER'
+     ELSE 'PENDING'
+   END,
+   retry_count = retry_count + 1,
+   error_message = :error,
+   claimed_by = NULL,
+   lease_expires = NULL
+   WHERE job_id = :job_id;
+
+OUTPUT: Save as ./analysis/04_db_audit.html
+Include the full query inventory as a colour-coded table.
+N+1 queries get RED highlight with a before/after fix panel.
+Include the async queue SQL as syntax-highlighted code blocks.
+Include a recommended index list as a copy-paste ready SQL block.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 5 — CPU CONTENTION & INSTANCE SIZING ANALYSIS
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+
+```
+Read all prior HTML reports before starting.
+
+Quantify the CPU contention problem and produce a right-sizing recommendation
+backed by real numbers from the codebase analysis.
+
+TASKS:
+
+1. CPU WORKLOAD CLASSIFICATION
+   Based on all code found so far, classify each major operation:
+   Operation | Type (CPU-bound / IO-bound / Mixed) | Estimated % of total job time | GIL held?
+
+   CPU-bound examples: Pandas merge, groupby, sort, apply, regex on large frames
+   IO-bound examples: MADB queries, NGINX HTTP, file reads
+   GIL note: CPU-bound Python holds GIL; numpy/Pandas C extensions often release it
+
+2. THE CONTENTION MATHS
+   Show all working clearly:
+
+   Given:
+   - 4 CPU cores on the Titan server
+   - 100 Python processes
+   - Each reconciliation job: ~10 minutes elapsed, estimate X minutes actual CPU time
+
+   Calculate:
+   - CPU time available per process = 4 cores / 100 processes = 0.04 cores
+   - OS context switches per second (estimate based on process count)
+   - Effective throughput ceiling: jobs completable per hour at current config
+   - Required throughput: 15,000 jobs/day = 625/hour
+   - Gap: current ceiling vs required throughput
+
+3. RIGHT-SIZING FORMULAS
+   Apply all three formulas and show results:
+
+   Formula A — Pure CPU-bound:
+     optimal = num_cores × 1 = 4 instances
+     (no parallelism benefit beyond core count for pure CPU work)
+
+   Formula B — Pure IO-bound:
+     optimal = num_cores × (1 + avg_wait_time_ms / avg_compute_time_ms)
+     (fill CPU during DB wait time)
+
+   Formula C — Mixed workload (most likely):
+     estimate CPU% vs IO% from codebase findings
+     optimal = num_cores / CPU_fraction
+     e.g. if 60% CPU, 40% IO: optimal = 4 / 0.6 ≈ 7 instances
+
+   RECOMMENDATION: single recommended instance count with justification
+
+4. NGINX RECONFIGURATION
+   Show the exact nginx.conf upstream block change:
+   - Current: 100 worker entries
+   - Recommended: N worker entries (use calculated number)
+   - Include: keepalive connections, least_conn load balancing directive
+   - Include: health check (if nginx plus) or passive health check config
+
+5. GUNICORN / UVICORN RECONFIGURATION
+   Show the exact config change:
+   - Workers formula: 2 × num_cores + 1 = 9 for 4-core server
+   - worker_class: sync vs gevent vs uvicorn.workers.UvicornWorker
+   - timeout: set to match expected max job duration
+   - max_requests: set to prevent memory bloat from long-running workers
+
+6. PROFILING INSTRUMENTATION — READY-TO-USE CODE
+   Generate complete, copy-paste-ready Python code for:
+
+   A) Per-stage timing decorator:
+   import time, logging, functools
+   def timed_stage(stage_name):
+       def decorator(fn):
+           @functools.wraps(fn)
+           def wrapper(*args, **kwargs):
+               start = time.perf_counter()
+               try:
+                   result = fn(*args, **kwargs)
+                   duration_ms = (time.perf_counter() - start) * 1000
+                   logging.info(f'{{"stage":"{stage_name}","status":"ok","duration_ms":{duration_ms:.1f}}}')
+                   return result
+               except Exception as e:
+                   duration_ms = (time.perf_counter() - start) * 1000
+                   logging.error(f'{{"stage":"{stage_name}","status":"error","duration_ms":{duration_ms:.1f},"error":"{e}"}}')
+                   raise
+           return wrapper
+       return decorator
+
+   Adapt this decorator to match the actual function signatures found in the Titan codebase.
+   Show exactly which functions to decorate and where to add the decorator.
+
+   B) cProfile wrapper toggled by env var TITAN_PROFILE=1
+   C) MADB slow query logger (all queries > 100ms)
+   D) Memory snapshot at job start and end using tracemalloc
+
+7. EXPECTED IMPROVEMENT PROJECTION
+   After applying all fixes from Steps 3, 4, and 5:
+   - Estimated new job duration (minutes) — conservative and optimistic range
+   - Estimated new throughput (jobs/hour)
+   - Estimated CPU utilisation at 15,000/day volume
+   - Estimated CPU utilisation at 30,000/day volume
+
+OUTPUT: Save as ./analysis/05_cpu_sizing.html
+Show the contention maths in a large, prominent callout box.
+Include a visual comparison: Current Config vs Recommended Config as a side-by-side card layout.
+Include the profiling code in syntax-highlighted <pre> blocks with copy buttons (pure HTML/CSS).
+Include a projection table: metric × current × after-fixes (with green/red delta indicators).
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 6 — RESILIENCE & FAILURE MODE AUDIT
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+
+```
+Read all prior HTML reports before starting.
+
+Map every failure point in Titan and assess crash behaviour, data integrity, and recovery.
+
+TASKS:
+
+1. CRASH RECOVERY TODAY
+   - What happens to an in-flight reconciliation when a Titan instance crashes?
+   - Is any state persisted before the crash? Or is all work lost?
+   - Does FOBO know Titan crashed? (timeout? HTTP 5xx? silent hang?)
+   - Is there a supervisor process? Show its config and restart policy.
+   - After restart: does Titan pick up where it left off, or start from scratch?
+
+2. ERROR HANDLING INVENTORY
+   Scan every try/except block:
+   - File:line | Exception caught | Action taken (log? reraise? swallow? return error?)
+   - Flag any bare except: or except Exception: that swallow errors silently
+   - Flag any exception that returns HTTP 200 when it should return HTTP 500
+
+3. IDEMPOTENCY ASSESSMENT
+   If FOBO retries after a timeout, Titan may process the same masterbook twice.
+   - Are MADB writes INSERT (fails on duplicate) or UPSERT (safe to retry)?
+   - Is there any deduplication key or idempotency check?
+   - What is the worst-case outcome of double-processing one masterbook?
+
+4. PARTIAL FAILURE ANALYSIS
+   If a 10-stage reconciliation fails at stage 7:
+   - Are stages 1–6 results left in MADB (partial/dirty data)?
+   - Is there a rollback / compensating transaction?
+   - Can the job resume from stage 7 on retry (checkpointing)?
+
+5. RISK REGISTER
+   Produce a complete risk register table:
+   Risk ID | Risk Description | Probability (H/M/L) | Impact (H/M/L) | Current Mitigation | Recommended Fix
+
+   Must include at minimum:
+   R1: Instance crash mid-reconciliation — work lost
+   R2: MADB connection pool exhausted — all instances hang
+   R3: Double-processing of same masterbook — duplicate results
+   R4: NGINX routes same masterbook to two instances simultaneously
+   R5: Config file corrupted — all instances fail to start
+   R6: MADB write fails after Titan processing complete — result lost
+   R7: Titan lease expires but instance is still processing — job reclaimed prematurely
+
+6. ASYNC QUEUE RESILIENCE DESIGN
+   For the new async worker model, generate complete SQL and Python for:
+
+   A) Atomic job claim with lease expiry (prevents double-processing):
+   Show the SELECT FOR UPDATE SKIP LOCKED pattern with lease_expires timestamp.
+
+   B) Lease heartbeat (for long-running jobs that need more than 15 minutes):
+   Python function that extends the lease every 5 minutes while job is running.
+   Include: background thread or asyncio task design.
+
+   C) Idempotent result write using ON CONFLICT:
+   INSERT INTO recon_job_queue (job_id, result, status, completed_at)
+   VALUES (:job_id, :result, 'COMPLETED', NOW())
+   ON CONFLICT (job_id) DO UPDATE SET
+     result = EXCLUDED.result,
+     status = 'COMPLETED',
+     completed_at = EXCLUDED.completed_at
+   WHERE recon_job_queue.status != 'COMPLETED';
+
+   D) Dead-letter queue handling after max_retries:
+   Show the SQL update + recommend a monitoring alert query.
+
+   E) Startup recovery (reclaim orphaned jobs on Titan restart):
+   UPDATE recon_job_queue SET status = 'PENDING', claimed_by = NULL
+   WHERE claimed_by LIKE :this_worker_pattern AND status = 'PROCESSING';
+
+OUTPUT: Save as ./analysis/06_resilience.html
+Risk register must be a styled HTML table with colour-coded probability × impact cells.
+HIGH×HIGH = red, HIGH×MEDIUM = orange, LOW×LOW = green.
+Show the resilience design SQL and Python as ready-to-copy code blocks.
+Include a BEFORE / AFTER architecture narrative comparing current fragility vs hardened design.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 7 — ASYNC QUEUE WORKER CODE GENERATION
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports. This step generates production code.**
+
+```
+Read all prior HTML reports before starting. This is the implementation step.
+
+Generate production-quality Python code that transforms Titan from a synchronous
+HTTP responder into a DB-backed async queue worker.
+
+The new recon_job_queue table schema:
+  job_id          UUID PRIMARY KEY
+  masterbook_id   BIGINT NOT NULL
+  status          VARCHAR(20)   -- PENDING | PROCESSING | COMPLETED | FAILED | DEAD_LETTER
+  payload         JSONB         -- {rec_type, date_range, masterbook_id, config_override}
+  result          JSONB         -- {madb_result_ref, summary_stats, row_count}
+  error_message   TEXT
+  retry_count     INT DEFAULT 0
+  max_retries     INT DEFAULT 3
+  claimed_by      VARCHAR(100)  -- 'titan-{hostname}-{pid}'
+  lease_expires   TIMESTAMP
+  created_at      TIMESTAMP DEFAULT NOW()
+  completed_at    TIMESTAMP
+
+GENERATE THESE MODULES:
+(Match naming conventions, imports, logging style found in the existing codebase)
+
+MODULE 1: titan_queue_dao.py
+  Purpose: All SQL interactions with recon_job_queue
+  Functions:
+  - claim_next_job(conn, worker_id: str, lease_minutes: int = 15) -> Optional[dict]
+  - mark_completed(conn, job_id: str, result: dict, worker_id: str) -> bool
+  - mark_failed(conn, job_id: str, error: str, worker_id: str) -> str  # returns new status
+  - extend_lease(conn, job_id: str, worker_id: str, additional_minutes: int = 10) -> bool
+  - reclaim_orphaned_jobs(conn, worker_pattern: str) -> int  # returns count reclaimed
+  - get_dead_letter_jobs(conn) -> list[dict]
+  Requirements: parameterised SQL only, no f-string SQL injection risk
+  Use the same DB library found in the existing codebase
+
+MODULE 2: titan_queue_worker.py
+  Purpose: Main polling loop — claims and processes jobs
+  - worker_id = f'titan-{socket.gethostname()}-{os.getpid()}'
+  - Poll interval: env var TITAN_POLL_INTERVAL_SECONDS (default: 5)
+  - On each poll: call claim_next_job → if job found, process it → mark complete/failed
+  - Call the EXISTING reconciliation function (reference the actual function name found in codebase)
+  - Lease heartbeat: background thread extends lease every TITAN_LEASE_HEARTBEAT_SECONDS (default: 300)
+  - Graceful shutdown: catch SIGTERM → set shutdown_flag → finish current job → exit cleanly
+  - Structured logging: every state transition logged as JSON:
+    {"event":"job_claimed","job_id":"...","masterbook_id":...,"worker_id":"...","ts":"..."}
+    {"event":"job_completed","job_id":"...","duration_ms":...,"worker_id":"...","ts":"..."}
+    {"event":"job_failed","job_id":"...","error":"...","retry_count":...,"ts":"..."}
+
+MODULE 3: titan_config_loader.py (enhanced version of existing config loader)
+  Purpose: Unified config loading — file-based + DB-backed with cache
+  - load_from_file(config_path: str) -> dict   (existing behaviour, keep for compat)
+  - load_from_db(conn, job_type: str, masterbook_id: int) -> dict
+  - load_config(job_type: str, masterbook_id: int) -> dict
+    (tries DB first, falls back to file, merges: DB overrides file)
+  - Internal TTL cache: 60 seconds (use functools.lru_cache or a simple dict + timestamp)
+  - validate_config(config: dict) -> None   (raises ConfigValidationError on bad schema)
+
+MODULE 4: titan_worker_supervisor.py
+  Purpose: Manages N worker processes and exposes health endpoint
+  - N workers: env var TITAN_WORKER_COUNT (default: use CPU count × 2, max 16)
+  - Launch workers with multiprocessing.Process
+  - Health monitor loop: check each worker every 10 seconds, restart if dead
+  - Minimal HTTP health endpoint on port TITAN_HEALTH_PORT (default: 8099):
+    GET /health → {"status":"healthy","workers":N,"uptime_seconds":X}
+    GET /health/jobs → {"active_jobs":[{"job_id":"...","worker_id":"...","started_at":"..."}]}
+  - Graceful shutdown: SIGTERM → stop spawning → wait for workers to finish → exit
+
+ALSO GENERATE:
+  - requirements_delta.txt: only NEW pip packages needed beyond what's already installed
+  - env_vars_reference.md: table of all TITAN_* environment variables with defaults and descriptions
+  - supervisord_titan.conf: supervisord config to run titan_worker_supervisor.py as a managed service
+  - test_titan_queue_dao.py: pytest unit tests for all DAO functions using unittest.mock
+
+CODE QUALITY REQUIREMENTS:
+  - Python 3.8+ compatible
+  - Full type hints on all functions
+  - Docstring on every public function
+  - No hardcoded credentials or hostnames
+  - All SQL parameterised (no f-string SQL)
+  - ASSUMPTION comments where existing code details were inferred
+
+OUTPUT: Save as ./analysis/07_generated_code.html
+Organise each module as a clearly labelled section with syntax-highlighted <pre> blocks.
+Include a MODULE DEPENDENCY DIAGRAM showing how the 4 modules relate to each other and
+to existing Titan code (CSS-only box diagram).
+Include a MIGRATION CHECKLIST: ordered steps to deploy the new async worker alongside
+the existing synchronous HTTP handler (so both can run during transition period).
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 8 — CONSOLIDATED FINDINGS & ARCHITECTURE DECISION RECORD
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read ALL prior HTML reports (Steps 0–7). This is the final summary.**
+
+```
+Read ALL prior HTML analysis reports (./analysis/00_structure.html through
+./analysis/07_generated_code.html) before producing this final report.
+
+Produce the final consolidated report combining all findings into one executive-ready document.
+
+SECTIONS REQUIRED:
+
+1. EXECUTIVE SUMMARY (non-technical, 3 paragraphs)
+   What Titan does, what went wrong, what the fix is, and what the outcome will be.
+   A senior manager who has not read any prior report must understand this section.
+
+2. ROOT CAUSE ANALYSIS — RANKED BY IMPACT
+   All root causes found across all steps, ranked by performance impact:
+   Rank | Root Cause | Category | Severity | Estimated Contribution to Regression | Fix Location
+
+3. ARCHITECTURE DECISION RECORD (ADR-TITAN-001)
+   Title: Titan Engine — Async Queue Worker Migration
+   Status: PROPOSED
+   Date: [today]
+
+   Context: (3 sentences)
+   Problem: (quantified: 1–2 min → 10+ min, 5–10× regression)
+   Options Considered:
+     A: Keep sync HTTP, tune instances only
+     B: Async HTTP callback (webhook)
+     C: DB-backed polling queue (MADB) — SELECTED
+     D: Message broker (RabbitMQ) — future state
+   For each option: Pros | Cons | Effort | Risk
+   Decision: Option C — justification aligned to priority order:
+     Resilience → Simplicity → Latency → Throughput
+   Consequences: positive + trade-offs
+   Risks and mitigations (from Step 6 risk register)
+
+4. PHASED IMPLEMENTATION PLAN
+   Phase 0 (This Week — Config only):
+     - Reduce Titan instances from 100 to [recommended N]
+     - Apply top Pandas quick wins from Step 3
+     - Deploy profiling instrumentation from Step 5
+   
+   Phase 1 (Weeks 1–3 — Async Queue):
+     - Deploy recon_job_queue table to MADB
+     - Deploy titan_queue_worker.py alongside existing HTTP handler
+     - FOBO switches to queue-based submission
+     - Decommission synchronous HTTP endpoint
+   
+   Phase 2 (Weeks 4–8 — Hardening):
+     - Full resilience measures from Step 6
+     - Monitoring and SLA alerting
+     - Load testing at 30,000/day volume
+   
+   Phase 3 (Future — if volume > 100K/day):
+     - RabbitMQ migration to replace DB polling
+
+5. SUCCESS METRICS
+   Metric | Current State | Target After Phase 1 | Target After Phase 2
+   Titan p95 job duration | 10+ min | < 3 min | < 2 min
+   FOBO RejectedExecutionException/day | hundreds | 0 | 0
+   APAC auto-post deadline misses/week | multiple | 0 | 0
+   Job loss on instance crash | 100% | 0% | 0%
+   CPU utilisation per instance | ~100% | < 70% | < 60%
+
+6. QUICK WINS CHECKLIST (for this week)
+   A checklist any team member can pick up immediately:
+   [ ] Change NGINX upstream: reduce from 100 → N instances
+   [ ] Update Gunicorn worker count: 2×cores+1 = 9
+   [ ] Fix top iterrows anti-pattern in [file:line] (Step 3 finding)
+   [ ] Fix N+1 query in [file:line] (Step 4 finding)
+   [ ] Add db connection pool: pool_size=10, max_overflow=5 (Step 4 finding)
+   [ ] Deploy timing decorator to [top 3 functions] (Step 5 code)
+   [ ] Add dtype spec to [pd.read_sql calls found] (Step 3 finding)
+
+7. NAVIGATION INDEX
+   Links to all generated HTML reports:
+   00_structure.html — Project structure & health indicators
+   01_config_analysis.html — JSON config orchestration
+   02_http_analysis.html — HTTP layer & thread timeline
+   03_pandas_audit.html — Pandas anti-pattern findings
+   04_db_audit.html — MADB query audit
+   05_cpu_sizing.html — CPU contention & instance sizing
+   06_resilience.html — Failure mode risk register
+   07_generated_code.html — Production async worker code
+
+OUTPUT: Save as ./analysis/08_final_report.html
+
+DESIGN REQUIREMENTS FOR THIS FILE:
+- This is the most important document — make it visually polished and navigable
+- Include a fixed left-side navigation sidebar with anchor links to each section
+- The executive summary must be in a prominent hero banner at the top
+- The ADR must be in a formal document-style bordered box
+- The implementation plan must be shown as a visual timeline/roadmap (CSS only)
+- The success metrics table must use green/red delta indicators
+- The quick wins checklist must be interactive: clicking items marks them with a strikethrough
+  (use pure HTML checkboxes with CSS — no JavaScript needed)
+- Include a print-friendly CSS media query so the document prints cleanly
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## HTML DESIGN SPEC — APPLIES TO ALL GENERATED HTML FILES
+
+## ─────────────────────────────────────────────────────────
+
+All HTML reports generated by the above steps MUST follow this design specification exactly.
+
+```
+HTML STRUCTURE REQUIREMENTS:
+
+Every HTML file must be fully self-contained (no external CSS/JS dependencies).
+No CDN links. No external fonts. No JavaScript frameworks.
+Pure HTML + CSS only. Optionally: minimal vanilla JavaScript for interactivity.
+
+COLOUR PALETTE:
+  Background:       #ffffff  (page background — no coloured backgrounds)
+  Surface:          #f8f9fa  (cards, panels)
+  Border:           #e2e8f0  (default borders)
+  Text primary:     #1a202c
+  Text secondary:   #4a5568
+  Text muted:       #718096
+  Accent blue:      #3182ce  (headings, links, info)
+  Accent green:     #38a169  (success, good, OK)
+  Accent orange:    #d69e2e  (warning, medium risk)
+  Accent red:       #e53e3e  (error, critical, bad)
+  Accent purple:    #805ad5  (Titan/Python related)
+  Left border accent: 3px solid [colour] on card left edge (not background fill)
+
+TYPOGRAPHY:
+  Body font: system-ui, -apple-system, sans-serif
+  Code font: 'Courier New', Courier, monospace
+  Page heading (h1): 28px, font-weight 800, color #1a202c
+  Section heading (h2): 20px, font-weight 700, color #2d3748, border-bottom 2px solid #e2e8f0
+  Card title: 14px, font-weight 700, letter-spacing 0.05em, text-transform uppercase
+
+LAYOUT:
+  Max width: 1200px, centred, padding 0 24px
+  Header: full-width banner, white background, 3px solid blue top border, contains title + subtitle + meta
+  Sections: separated by 40px vertical spacing
+  Cards: white background, 1px solid #e2e8f0 border, border-radius 8px, padding 20px
+         3px left border in section accent colour
+  Tables: full width, border-collapse collapse, alternating row bg (#f8f9fa on even rows)
+  Table header: background #f1f5f9, font-weight 700, text-transform uppercase, font-size 11px
+
+CODE BLOCKS:
+  <pre> blocks: background #1a202c (dark), color #e2e8f0, padding 16px, border-radius 6px
+  Font: monospace, font-size 13px, line-height 1.6, overflow-x auto
+  Add a small label above each code block: language and filename
+
+SEVERITY BADGES:
+  .badge-critical { background: #fff5f5; color: #e53e3e; border: 1px solid #e53e3e; }
+  .badge-high     { background: #fffaf0; color: #d69e2e; border: 1px solid #d69e2e; }
+  .badge-medium   { background: #fffff0; color: #b7791f; border: 1px solid #b7791f; }
+  .badge-low      { background: #f0fff4; color: #38a169; border: 1px solid #38a169; }
+  .badge-ok       { background: #f0fff4; color: #38a169; border: 1px solid #38a169; }
+  All badges: border-radius 4px, padding 2px 8px, font-size 11px, font-weight 700
+
+HEADER TEMPLATE (use this in every HTML file):
+  <header>
+    <div class="step-badge">STEP N OF 8</div>
+    <h1>[Report Title]</h1>
+    <p class="subtitle">[One-line description]</p>
+    <div class="meta">
+      Titan Engine Analysis | Generated by Claude CLI |
+      Part of FOBO ↔ Titan Architecture Review
+    </div>
+  </header>
+
+FOOTER (every file):
+  <footer>
+    <p>Titan Engine Codebase Analysis | FOBO Architecture Review | Internal Use Only</p>
+    <p>Generated: [date] | Run next: [link or name of next step]</p>
+  </footer>
+
+NAVIGATION (between reports):
+  Include a small navigation bar at the top of every file showing all 9 reports (00–08)
+  with the current report highlighted. Use relative href links.
+  e.g.: 00 Structure | 01 Config | 02 HTTP | 03 Pandas | 04 DB | 05 CPU | 06 Resilience | 07 Code | 08 Final
+```
+
+-----
+
+## OUTPUT FOLDER STRUCTURE
+
+After all steps complete, your `./analysis/` folder should contain:
+
+```
+analysis/
+├── 00_structure.html          ← Project map, file classifications, health indicators
+├── 01_config_analysis.html    ← JSON config schema, orchestration flow diagram
+├── 02_http_analysis.html      ← HTTP layer, thread timeline, server config audit
+├── 03_pandas_audit.html       ← Anti-pattern findings with before/after code fixes
+├── 04_db_audit.html           ← Query inventory, N+1 findings, async SQL design
+├── 05_cpu_sizing.html         ← Contention maths, sizing recommendation, profiling code
+├── 06_resilience.html         ← Risk register, failure modes, resilience SQL/Python
+├── 07_generated_code.html     ← Production async worker modules, ready to copy
+└── 08_final_report.html       ← Executive summary, ADR, roadmap, quick wins checklist
+```
+
+Share `08_final_report.html` with management.
+Share individual step reports with the relevant engineering teams.
+All files open directly in any browser — no server needed.
+
+-----
+
+*TITAN_ANALYSIS_PROMPT.md | Place in Titan project root | Run with: claude “$(cat TITAN_ANALYSIS_PROMPT.md)”*
