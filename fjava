@@ -1,0 +1,1023 @@
+# FOBO SERVICE — COMPREHENSIVE CODEBASE ANALYSIS
+
+## Claude CLI Master Prompt | Run this file from the FOBO project root
+
+-----
+
+## HOW TO USE THIS FILE
+
+Place this file in the **root of the FOBO codebase** (e.g. alongside `src/`, `pom.xml`).
+
+Run all steps at once:
+
+```bash
+claude "$(cat FOBO_ANALYSIS_PROMPT.md)"
+```
+
+Or interactively — paste each STEP block one at a time in a Claude CLI session:
+
+```bash
+claude
+# Paste each STEP block when ready, in order from STEP 0 to STEP 8
+```
+
+Claude CLI automatically indexes all files in the current directory.
+Each step saves a **standalone HTML report** to `./analysis/`.
+Steps must be run **in order** — each reads prior reports for cumulative context.
+All HTML files open directly in any browser. No server needed.
+
+-----
+
+## GLOBAL CONTEXT (applies to all steps)
+
+You are acting as a senior enterprise architect, Java expert, and Spring Boot specialist
+conducting a deep technical audit of the **FOBO Service**.
+
+**System background:**
+
+- FOBO (Front Office / Back Office Reconciliation Service) is a **Java Spring Boot** application
+- FOBO orchestrates a 5-stage reconciliation lifecycle per masterbook
+- FOBO runs as **5 load-balanced instances** on-premise
+- FOBO uses **ThreadPoolTaskExecutor** with 4 pools:
+  - 3 dedicated pools (one per high-volume rec type: CATS-vs-MOTIF, SMS-REC, REC-11)
+  - 1 generic shared pool for remaining ~16 rec types
+  - Each pool: core/max threads = 20, queue capacity = 500 (being raised to 4,000)
+- FOBO calls Titan Engine **synchronously via HTTP** — each thread is held for 10+ minutes
+- This synchronous hold is the **root cause** of RejectedExecutionException floods
+- FOBO also integrates with **FAST service** (async callback for adjustment posting)
+- FOBO reads/writes to **MADB** (PostgreSQL-compatible relational database)
+- Daily volume: ~15,000 masterbooks/day, growing to 30,000 within 12 months
+- Regional processing order: **APAC → EMEA → AMER** (APAC close deadline: 15:30 SGT)
+- Priority tiers: P1 Auto-Post → P2 APAC Override → P3–P5 Standard
+- Architecture goal: replace synchronous HTTP call to Titan with **DB-backed async queue**
+
+**The 5-stage reconciliation lifecycle:**
+
+1. SOD Trigger    — Motif SOD fires HTTP call to FOBO per masterbook
+1. Titan Rec      — FOBO calls Titan synchronously; Titan writes output to MADB
+1. Break Creation — FOBO reads Titan output, splits by variance type, matches rules
+1. PNL Scenarios  — Historical adjustment amounts factored into current adjustment
+1. Auto-Post      — Qualifying breaks posted via FAST (async with callback)
+
+**Output format for ALL steps:**
+Every step produces a **complete, self-contained HTML file** saved to `./analysis/`.
+Follow the HTML DESIGN SPEC at the bottom of this file exactly.
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 0 — PROJECT STRUCTURE & ORIENTATION
+
+## ─────────────────────────────────────────────────────────
+
+**Run this first. It sets the foundation for all subsequent steps.**
+
+```
+Analyse the entire FOBO codebase structure and produce a comprehensive orientation report.
+
+TASKS:
+
+1. BUILD & PROJECT STRUCTURE
+   - Read pom.xml or build.gradle — list all dependencies with versions and purpose
+   - Show directory tree to 3 levels deep (exclude: target/, .git/, .idea/, *.class)
+   - Identify Spring Boot version and Java version
+   - List all Spring starters in use (web, data-jpa, scheduling, actuator, security, etc.)
+
+2. FILE & CLASS CLASSIFICATION
+   Classify every meaningful Java class/file as one or more of:
+   [CONTROLLER]  REST controllers — HTTP endpoint handlers
+   [SERVICE]     Business logic / service layer
+   [REPOSITORY]  Database access — JPA, JDBC, NamedParameterJdbcTemplate
+   [CONFIG]      Spring configuration classes (@Configuration, @Bean)
+   [THREADPOOL]  Thread pool declarations and executors
+   [SCHEDULER]   @Scheduled or TaskScheduler usage
+   [MODEL]       Domain entities, DTOs, enums
+   [CLIENT]      External HTTP clients (RestTemplate, WebClient, Feign)
+   [UTIL]        Utility / helper classes
+   [TEST]        Test classes
+
+   For each: class name, package, classification tags, one-line description
+
+3. THREAD POOL INVENTORY
+   Find EVERY ThreadPoolTaskExecutor / ThreadPoolExecutor / ExecutorService declaration:
+   - Bean name, class, corePoolSize, maxPoolSize, queueCapacity, threadNamePrefix
+   - Where is it used? Which service classes inject and submit to it?
+   - Which rec types are mapped to which pool?
+
+4. EXTERNAL INTEGRATION MAP
+   List every external system FOBO calls and how:
+   - Titan Engine: URL, HTTP method, timeout config, called via which class
+   - FAST Service: URL, HTTP method, async/sync, callback mechanism
+   - MADB: datasource config, connection pool (HikariCP?), pool size
+   - Motif SOD: how does it call FOBO? Which endpoint?
+   - Any other integrations?
+
+5. CONFIGURATION INVENTORY
+   - List all application.properties / application.yml files (including profile-specific)
+   - Key config values: server.port, thread pool sizes, timeouts, datasource settings
+   - Any @Value or @ConfigurationProperties classes — list all injected properties
+
+6. QUICK HEALTH INDICATORS
+   Answer yes/no for each:
+   - Is Spring Actuator enabled and exposing health/metrics endpoints?
+   - Is there a circuit breaker (Resilience4j, Hystrix)?
+   - Is RestTemplate or WebClient used for Titan calls? (important: RestTemplate = blocking)
+   - Is @Async used anywhere?
+   - Is @Transactional used on long-running methods? (dangerous with thread pools)
+   - Is there a graceful shutdown configured (spring.lifecycle.timeout-per-shutdown-phase)?
+   - Is there any retry mechanism (@Retryable, manual retry loop)?
+   - Is MDC (Mapped Diagnostic Context) used for correlation IDs in logging?
+
+OUTPUT: Save as ./analysis/00_structure.html
+Include directory tree in a <pre> block.
+Include class classification as a sortable HTML table.
+Include thread pool inventory as a prominent card grid — one card per pool.
+Health indicators as green/red badge grid.
+Dependency table: dependency | version | purpose | risk (outdated/CVE if known).
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 1 — THREAD POOL EXHAUSTION ROOT CAUSE ANALYSIS
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read ./analysis/00_structure.html**
+
+```
+Read ./analysis/00_structure.html before starting.
+
+This is the core problem analysis. The thread pool exhaustion is causing hundreds of
+RejectedExecutionExceptions per day. Trace every contributing factor.
+
+TASKS:
+
+1. THREAD POOL CONFIGURATION AUDIT
+   For every ThreadPoolTaskExecutor found in STEP 0:
+   - Show the exact @Bean definition code
+   - Current config: corePoolSize | maxPoolSize | queueCapacity | keepAliveSeconds
+   - After the hotfix (queue 500 → 4,000): recalculate total capacity
+   - Thread capacity maths per pool:
+       max_concurrent_tasks = maxPoolSize (threads running simultaneously)
+       max_queued_tasks     = queueCapacity (tasks waiting for a thread)
+       total_capacity       = maxPoolSize + queueCapacity
+   - 5 instances × total_capacity per pool = cluster-wide capacity
+   - Compare to daily volume (15,000 masterbooks/day ÷ business hours = tasks/hour)
+
+2. THE SYNCHRONOUS HTTP ANTI-PATTERN — EXACT CODE PATH
+   Trace the exact code path where FOBO calls Titan synchronously:
+   - Which controller receives the SOD trigger?
+   - Which service method submits the task to the thread pool?
+   - Which method makes the HTTP call to Titan? (RestTemplate.postForEntity? WebClient.block()?)
+   - Show the exact code — the line where the thread BLOCKS waiting for Titan
+   - How long does this blocking call hold the thread? (10+ minutes at current Titan speed)
+
+3. CASCADE FAILURE SEQUENCE
+   Model the cascade step by step with real numbers:
+   Step 1: Titan slows from 2 min → 10 min per job
+   Step 2: Each FOBO thread held for 10 min → only 6 jobs/thread/hour (was 30)
+   Step 3: 20 threads × 6 jobs/hour = 120 jobs/hour per pool per instance
+   Step 4: 5 instances × 120 = 600 jobs/hour cluster capacity
+   Step 5: Actual demand = 15,000/day ÷ 6 business hours APAC = 2,500/hour peak
+   Step 6: Queue fills in: queueCapacity ÷ (demand - capacity) = N minutes → overflow
+   Step 7: Task #(queueCapacity+1) throws RejectedExecutionException
+   Step 8: Orchestration UI shows failure, RTB alerted, manual re-trigger required
+   Use actual numbers from the codebase to populate this model.
+
+4. REJECTEDEXECUTIONHANDLER ANALYSIS
+   - What RejectedExecutionHandler is configured? (AbortPolicy / CallerRunsPolicy / DiscardPolicy?)
+   - AbortPolicy (default): throws RejectedExecutionException — loudly fails
+   - CallerRunsPolicy: runs on caller thread — blocks the HTTP request thread instead
+   - Show the exact code and explain the consequence of the current choice
+   - Recommend: what handler is appropriate for the async queue model?
+
+5. @TRANSACTIONAL RISK DETECTION
+   - Are any @Transactional methods used on code that submits to the thread pool?
+   - Are transactions held open while waiting for Titan to respond?
+   - MADB connection pool impact: if a DB transaction is open per task,
+     calculate: 20 threads × 10 min open transaction = 200 min of DB connection time
+   - Is there a connection pool exhaustion risk in addition to thread pool exhaustion?
+
+6. COMPLETABLEFUTURE / @ASYNC USAGE
+   - Is CompletableFuture used anywhere in the async chain? Show where.
+   - Is @Async annotation used? On which methods and with which executor?
+   - If the application restarts mid-processing: what happens to in-flight CompletableFutures?
+   - Confirm: all in-flight work is lost on restart — no crash recovery exists today
+
+7. IMPACT QUANTIFICATION
+   Produce a table:
+   Impact | Current State | After Queue Hotfix | After Full Async Fix
+   RejectedExecutionException/day | hundreds | 0 | 0
+   Thread pool utilisation % | ~100% blocked | ~100% (still blocked, just queued) | ~10%
+   Crash recovery | None | None | Full (ACID DB)
+   APAC deadline misses/week | multiple | reduced | 0
+   Max volume supportable | ~2,500/hr | ~12,000/hr | 30,000+/day easily
+
+OUTPUT: Save as ./analysis/01_threadpool_analysis.html
+Show the cascade failure as a numbered visual sequence with CSS step boxes and arrows.
+Show the thread capacity maths prominently in a large callout box.
+Include a before/after comparison table for the queue hotfix.
+The @Transactional risk section must be a RED warning card if found.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 2 — HTTP CLIENT & EXTERNAL INTEGRATION AUDIT
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+
+```
+Read all prior HTML reports before starting.
+
+Audit every external HTTP integration in FOBO: Titan, FAST, and any others.
+
+TASKS:
+
+1. TITAN HTTP CLIENT DEEP-DIVE
+   - Which HTTP client class calls Titan? (RestTemplate, WebClient, HttpClient, Feign?)
+   - Show the full client configuration: timeout, retry, connection pool, keep-alive
+   - Is it a shared bean or instantiated per-request? (per-request = no connection reuse)
+   - What is the configured HTTP timeout? Is it less than 10 minutes?
+     If timeout < 10 min: FOBO will abort calls that Titan hasn't finished — data loss risk
+     If timeout > 10 min or none: thread held for full Titan duration — confirmed bottleneck
+   - Show the exact request/response serialisation — what does FOBO send to Titan?
+   - What does Titan return? How is the response body parsed?
+   - What happens on HTTP 5xx from Titan? Is there retry logic?
+   - What happens on connection timeout? Is there retry logic?
+
+2. FAST SERVICE INTEGRATION
+   - How does FOBO post adjustments to FAST? Sync or async?
+   - If async: what is the callback mechanism? (webhook endpoint? polling?)
+   - Show the callback receiver endpoint in FOBO — what does it do on receipt?
+   - Is the callback stateless? (i.e. safe if FOBO restarts between FAST call and callback?)
+   - What happens if FAST is down? Does FOBO queue the adjustment for retry?
+
+3. MOTIF SOD INBOUND INTEGRATION
+   - Which FOBO controller/endpoint receives the SOD trigger from Motif?
+   - Show the @RequestMapping or @PostMapping — path, method, request body schema
+   - How quickly does FOBO return a response to Motif? (before or after Titan completes?)
+   - If Motif has a response timeout: is FOBO at risk of timing out on the inbound call too?
+   - What HTTP status does FOBO return to Motif? 200 OK after full processing? Or 202 Accepted immediately?
+
+4. CONNECTION POOL ANALYSIS (HikariCP)
+   - Show the HikariCP (or DBCP2) configuration: maximumPoolSize, connectionTimeout, idleTimeout
+   - With 20 threads per pool × 4 pools = 80 potential concurrent DB users per FOBO instance
+   - Is the HikariCP pool large enough to serve all threads? (pool < threads = contention)
+   - Are there any @Transactional methods that hold connections across the Titan HTTP call?
+     This would mean: 1 DB connection held per Titan job = 20 connections blocked per pool
+
+5. HTTP CLIENT MODERNISATION RECOMMENDATION
+   For each HTTP client found, assess:
+   - RestTemplate: synchronous, blocking — should be replaced with WebClient for reactive use
+   - WebClient with .block(): still blocking — same problem as RestTemplate
+   - WebClient with reactive chain: truly non-blocking — thread freed immediately
+   - Feign: synchronous by default; async Feign available but complex
+   Recommend: for the async queue model, the Titan HTTP client is REMOVED entirely.
+   FOBO only writes to MADB (INSERT job). No HTTP to Titan at all.
+   Show what the new code path looks like: controller → service → INSERT → return job_id
+
+6. TIMEOUT MATRIX
+   Produce a timeout configuration table:
+   Integration | Client Timeout | Server Timeout | What happens on timeout | Risk level
+
+OUTPUT: Save as ./analysis/02_http_audit.html
+Show the current Titan call code and the replacement INSERT code side by side.
+Include a connection pool maths box: threads vs pool size vs risk.
+Include the timeout matrix as a colour-coded table.
+Flag any integration with no timeout configured as a RED critical finding.
+```
+
+-----
+
+## ─────────────────────────────────────────────────────────
+
+## STEP 3 — MADB DATABASE ACCESS AUDIT
+
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+
+```
+Read all prior HTML reports before starting.
+
+Audit all MADB database access in FOBO. MADB is PostgreSQL-compatible.
+
+TASKS:
+
+1. DATA ACCESS LAYER CLASSIFICATION
+   - JPA/Hibernate? JDBC Template? NamedParameterJdbcTemplate? QueryDSL? MyBatis? Mix?
+   - Show the data source configuration (host masked, but show pool settings)
+   - List every @Repository interface or class
+   - List every @Entity class with table name and key columns
+
+2. COMPLETE QUERY INVENTORY
+   List every database query as a table:
+   ID | Class:Method | Operation | Table(s) | WHERE columns | Returns | Inside loop?
+
+3. N+1 QUERY DETECTION [CRITICAL]
+   - Find any JPA lazy loading that triggers N+1 selects
+     (e.g. @OneToMany without fetch = EAGER, or accessing a collection outside transaction)
+   - Find any query executed inside a for loop or stream iteration
+   - For each N+1: show the code, explain the problem, show the fix
+     (JOIN FETCH in JPQL, or batch fetch, or single query with JOIN)
+
+4. MISSING INDEX DETECTION
+   - For every WHERE clause or JOIN condition found: identify the column
+   - Is it likely indexed? (primary keys yes, foreign keys maybe, arbitrary columns maybe not)
+   - For masterbook_id, status, rec_date, rec_type: these must be indexed
+   - Produce CREATE INDEX statements for any suspected missing indexes
+
+5. TRANSACTION BOUNDARY ANALYSIS
+   - List every @Transactional method: class, method, propagation, timeout if set
+   - Are any transactions spanning across the Titan HTTP call?
+     (This means: DB connection held for 10+ minutes = CRITICAL)
+   - Are there nested transactions? (@Transactional inside @Transactional)
+   - Are any transactions on the wrong layer? (should be service, not controller)
+
+6. MADB WRITE PATTERNS FOR NEW ASYNC QUEUE
+   Design the exact Java/Spring code FOBO needs to interact with recon_job_queue:
+
+   A) Submit job (INSERT — called when SOD trigger received):
+   ```sql
+   INSERT INTO recon_job_queue
+     (job_id, masterbook_id, status, payload, priority, auto_post_eligible,
+      runtime_category, region, created_at)
+   VALUES
+     (:jobId, :masterbookId, 'PENDING', :payload::jsonb, :priority, :autoPostEligible,
+      :runtimeCategory, :region, NOW())
+   RETURNING job_id;
+```
+
+B) Poll for completed jobs (@Scheduled every 5 seconds):
+
+```sql
+SELECT job_id, masterbook_id, result, status
+FROM recon_job_queue
+WHERE status = 'COMPLETED'
+  AND processed_by_fobo = FALSE
+ORDER BY completed_at ASC
+LIMIT 50
+FOR UPDATE SKIP LOCKED;
+```
+
+C) Timeout detector (@Scheduled every 60 seconds):
+
+```sql
+UPDATE recon_job_queue
+SET status = CASE
+  WHEN retry_count + 1 >= max_retries THEN 'DEAD_LETTER'
+  ELSE 'PENDING'
+END,
+retry_count = retry_count + 1,
+claimed_by = NULL,
+lease_expires = NULL
+WHERE status = 'PROCESSING'
+  AND lease_expires < NOW();
+```
+
+D) Startup recovery (reclaim this instance’s orphaned jobs on boot):
+
+```sql
+UPDATE recon_job_queue
+SET status = 'PENDING', claimed_by = NULL, lease_expires = NULL
+WHERE claimed_by = :thisInstanceId
+  AND status IN ('SUBMITTED', 'PROCESSING');
+```
+
+Show all SQL adapted to use NamedParameterJdbcTemplate or Spring Data JPA,
+matching whatever data access pattern is found in the existing codebase.
+
+1. PRIORITY QUEUE SQL DESIGN
+   The new queue must respect APAC → EMEA → AMER close order and P1–P5 priority tiers.
+   Design the priority-aware claim query:
+   
+   ```sql
+   SELECT job_id FROM recon_job_queue
+   WHERE status = 'PENDING'
+   ORDER BY
+     priority ASC,              -- P1=1, P2=2, P3=3, P4=4, P5=5
+     region_close_order ASC,    -- APAC=1, EMEA=2, AMER=3
+     created_at ASC             -- FIFO within same priority+region
+   LIMIT 1
+   FOR UPDATE SKIP LOCKED;
+   ```
+   
+   Recommend the composite index needed to make this query fast:
+   CREATE INDEX idx_queue_priority ON recon_job_queue (priority, region_close_order, created_at)
+   WHERE status = ‘PENDING’;
+
+OUTPUT: Save as ./analysis/03_db_audit.html
+Query inventory as a colour-coded table (red = N+1 or inside loop).
+Transaction boundary table — highlight in red any transaction spanning Titan HTTP call.
+All SQL blocks syntax-highlighted and copy-paste ready.
+Missing index list as a ready-to-run SQL block.
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## STEP 4 — SPRING CONFIGURATION & SCHEDULER AUDIT
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+```
+
+Read all prior HTML reports before starting.
+
+Audit all Spring configuration, @Scheduled usage, application properties,
+and Spring lifecycle management.
+
+TASKS:
+
+1. APPLICATION PROPERTIES FULL AUDIT
+   Read all application.properties / application.yml files (including profile variants).
+   Produce a complete properties table:
+   Property | Current Value | Recommended Value | Risk if wrong
+   
+   Focus on:
+- server.tomcat.threads.max (or server.tomcat.max-threads)
+- spring.task.execution.pool.* (thread pool auto-config)
+- spring.datasource.hikari.maximum-pool-size
+- spring.datasource.hikari.connection-timeout
+- spring.lifecycle.timeout-per-shutdown-phase
+- logging.level.* settings
+- Any fobo.* or custom application properties
+1. @SCHEDULED AUDIT
+- Is @EnableScheduling present? On which class?
+- List every @Scheduled method: class, method, cron/fixedDelay/fixedRate, what it does
+- IMPORTANT: by default, Spring uses a single-threaded scheduler for @Scheduled
+  If multiple @Scheduled methods exist, they share ONE thread and can block each other
+- Is a custom TaskScheduler configured with a thread pool? If not: flag as risk
+- For the async queue model, these new @Scheduled jobs are needed:
+  completionPoller: every 5 seconds → check COMPLETED jobs → trigger auto-post
+  timeoutDetector: every 60 seconds → find expired leases → reset to PENDING
+  slaMonitor: every 5 minutes → alert on jobs stuck in PENDING beyond SLA threshold
+- Show how to configure a dedicated TaskScheduler bean with pool size = 3
+1. SPRING LIFECYCLE & GRACEFUL SHUTDOWN
+- Is server.shutdown=graceful configured?
+- Is spring.lifecycle.timeout-per-shutdown-phase set? (default 30s — too short if jobs take 10 min)
+- On shutdown: what happens to tasks currently executing in the thread pools?
+- On shutdown: what happens to tasks queued but not yet started?
+- For the async queue model: on shutdown, in-flight jobs are safe (they’ll be reclaimed
+  by the timeout detector). Show the graceful shutdown config for the new model.
+1. SPRING PROFILES & ENVIRONMENT CONFIG
+- Which Spring profiles exist? (dev, test, prod, apac, emea, amer?)
+- Are any thread pool sizes or timeouts different per profile?
+- Is there a way to change queue capacity without redeploying? (@RefreshScope? Config server?)
+1. LOGGING CONFIGURATION AUDIT
+- Is structured/JSON logging configured? (logback-spring.xml, log4j2.xml)
+- Is correlation ID (MDC: masterbook_id, job_id, rec_type) propagated through async threads?
+  WARNING: MDC is thread-local — when a task crosses thread pool boundaries, MDC is lost
+  unless explicitly copied. Show if this is handled.
+- Is there request/response logging for the Titan HTTP calls?
+- Recommend: structured log format with fields:
+  {timestamp, level, masterbook_id, job_id, rec_type, region, stage, duration_ms, status}
+1. ACTUATOR & OBSERVABILITY
+- Which Actuator endpoints are exposed? (/health, /metrics, /threaddump, /env?)
+- Is /threaddump available? This is the fastest way to confirm thread pool exhaustion live.
+- Is Micrometer configured? Are thread pool metrics exported?
+  (executor.pool.size, executor.queued, executor.completed are key metrics)
+- Recommend: custom metrics for the async queue:
+  fobo.queue.pending.count (gauge)
+  fobo.queue.completed.rate (counter)
+  fobo.queue.failed.rate (counter)
+  fobo.queue.processing.duration (timer)
+
+OUTPUT: Save as ./analysis/04_spring_config.html
+Properties table with traffic-light badges: GREEN (good) AMBER (review) RED (problem).
+@Scheduled inventory table.
+Include the new TaskScheduler bean configuration as a ready-to-copy Java code block.
+Include the graceful shutdown config as a ready-to-copy properties block.
+Include the MDC propagation risk as a WARNING card if MDC is found without async copy.
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## STEP 5 — RECONCILIATION BUSINESS LOGIC AUDIT
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+```
+
+Read all prior HTML reports before starting.
+
+Audit the 5-stage reconciliation business logic for correctness, resilience,
+and readiness for the async queue migration.
+
+TASKS:
+
+1. STAGE-BY-STAGE CODE TRACE
+   For each of the 5 stages, find the implementing class and method, then report:
+   Stage | Class | Method | Duration estimate | DB reads | DB writes | External calls | Thread pool used
+   
+   Stage 1: SOD Trigger ingestion
+   Stage 2: Titan reconciliation call (the synchronous HTTP — this becomes the queue INSERT)
+   Stage 3: Break creation (read Titan output, split by PV/PNL/Cash, rule matching)
+   Stage 4: PNL scenario computation (historical adjustment amounts)
+   Stage 5: Auto-post to FAST (async callback)
+1. MASTERBOOK STATE MACHINE
+   FOBO tracks masterbook processing state. Find the state machine:
+- What are all possible statuses? (NEW, SUBMITTED, TITAN_EXEC_COMPLETE, RULES_MATCHED,
+  POSTING_UNDERWAY, COMPLETE, FAILED, TIMED_OUT — or whatever is in the code)
+- Show the state transition diagram as a flow
+- Which transitions write to MADB?
+- What happens to a masterbook stuck in NEW? (currently: no auto-recovery)
+- What happens to a masterbook stuck in SUBMITTED? (no FOBO node watching it)
+1. BREAK CREATION LOGIC (Stage 3)
+- How does FOBO read Titan’s output from MADB?
+- How does it split rows by variance type (PV, PNL, Cash)?
+- How does rule matching work — is it config-driven or hardcoded?
+- Is the break creation logic idempotent?
+  (if called twice for same masterbook: duplicate breaks or safe re-run?)
+- Does it run inside a transaction? Should it?
+1. PRIORITY & REGIONAL SCHEDULING LOGIC
+- How does FOBO currently prioritise which masterbooks to process first?
+- Is there any APAC → EMEA → AMER ordering today? Or pure FIFO?
+- Is P1 Auto-Post eligibility checked before submission? Which class decides?
+- Where is the 15:30 SGT APAC deadline logic (if any)?
+- For the async queue: the priority must be written into the job row at INSERT time
+  Show: how to calculate priority and region from masterbook metadata
+1. AUTO-POST ELIGIBILITY & FAST INTEGRATION (Stage 5)
+- Which masterbooks are eligible for auto-post? How is eligibility determined?
+- Show the FAST call: endpoint, payload, HTTP method
+- What is the callback endpoint on FOBO that FAST calls with the posting result?
+- Is the callback handler idempotent? (FAST might retry the callback)
+- In the async queue model: auto-post is triggered by the FOBO completion poller
+  when it finds a COMPLETED job. Show how eligibility check maps to the new flow.
+1. IDEMPOTENCY ASSESSMENT
+   For each stage, assess: what happens if it runs twice for the same masterbook?
+   Stage | Idempotent? | Duplicate risk | Fix needed
+   Show any INSERT statements that should be UPSERT for safe re-processing.
+
+OUTPUT: Save as ./analysis/05_business_logic.html
+Stage-by-stage table as the centrepiece of the report.
+State machine shown as a visual flow using CSS boxes and arrows.
+Idempotency assessment as a traffic-light table.
+Priority/region logic section with a worked example:
+masterbook X → P1 auto-post eligible, APAC region → priority=1, region_close_order=1
+masterbook Y → standard, EMEA region → priority=3, region_close_order=2
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## STEP 6 — RESILIENCE & FAILURE MODE AUDIT
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports.**
+```
+
+Read all prior HTML reports before starting.
+
+Map every failure point in FOBO and assess crash behaviour, recovery gaps, and data integrity.
+
+TASKS:
+
+1. CRASH RECOVERY TODAY
+- What happens to tasks in the thread pool queue when a FOBO instance crashes?
+  (Answer: all lost — queue is in-memory only)
+- What happens to tasks currently executing (thread mid-flight)?
+  (Answer: lost — no checkpoint, no resume)
+- What happens to masterbooks in SUBMITTED state when the instance that submitted dies?
+  (Answer: stuck in SUBMITTED forever — no watchdog)
+- Does the load balancer detect the crashed FOBO instance and stop routing to it?
+- How long does restart take? What is the downtime window?
+1. ERROR HANDLING INVENTORY
+   Scan every try/catch block:
+   File:Class:Method | Exception caught | Response to caller | Logged? | Recovery action?
+   Flag: any exception swallowed silently (caught but not re-thrown or logged)
+   Flag: any place where a failure returns HTTP 200 to Motif SOD (false success)
+1. RETRY LOGIC AUDIT
+- Is @Retryable (Spring Retry) used anywhere? Show config: attempts, backoff, exceptions
+- Is there manual retry logic (for loops, retry counts)?
+- For the Titan HTTP call: is there retry on 5xx? On connection timeout?
+- Problem: retrying a synchronous 10-minute call means holding a thread for 20–30 minutes
+- In the async queue model: retry is handled by the timeout detector — no code retry needed
+1. FULL RISK REGISTER
+   Produce a risk register covering every failure mode:
+   Risk ID | Description | Probability | Impact | Current Mitigation | Recommended Fix
+   
+   Must include at minimum:
+   R01: FOBO instance crash — all in-flight and queued tasks lost, no recovery
+   R02: Thread pool queue full — RejectedExecutionException, masterbook dropped
+   R03: Titan timeout — thread held beyond configured timeout, partial processing
+   R04: Titan returns 5xx — FOBO retries and holds thread again
+   R05: MADB connection pool exhausted — all threads waiting for DB connection
+   R06: @Transactional holding DB connection across Titan HTTP call
+   R07: Masterbook stuck in SUBMITTED — no watchdog to detect and recover
+   R08: FAST callback lost — FOBO restarted between calling FAST and receiving callback
+   R09: Duplicate break creation — stage 3 runs twice, duplicate rows in MADB
+   R10: APAC deadline missed — no priority scheduling, standard jobs ahead of P1
+   R11: MDC correlation ID lost across thread pool boundary — logs unreadable
+   R12: Load balancer routes same masterbook to two FOBO instances simultaneously
+1. RESILIENCE DESIGN FOR ASYNC QUEUE MODEL
+   For each risk R01–R12, show the fix in the async queue model:
+   
+   R01 fix — Crash recovery:
+   Jobs in recon_job_queue with status=PROCESSING and lease_expires < NOW()
+   are automatically reset to PENDING by the timeout detector.
+   No work is lost. DB is the source of truth.
+   
+   R07 fix — Orphan detection (startup recovery):
+   On FOBO startup:
+   UPDATE recon_job_queue SET status=‘PENDING’, claimed_by=NULL
+   WHERE claimed_by = :thisInstanceId AND status IN (‘SUBMITTED’,‘PROCESSING’);
+   
+   R08 fix — FAST callback safety:
+   The FAST callback handler must be idempotent:
+   UPDATE masterbook_state SET status=‘AUTO_POSTED’, updated_at=NOW()
+   WHERE masterbook_id=:id AND status != ‘AUTO_POSTED’;
+   
+   Show Java Spring code for startup recovery using ApplicationRunner or @PostConstruct.
+   Show the idempotent FAST callback handler.
+
+OUTPUT: Save as ./analysis/06_resilience.html
+Risk register as a full-width HTML table with colour-coded cells:
+Probability × Impact: HIGH×HIGH = red bg, MEDIUM×HIGH = orange bg, LOW×LOW = green bg
+Each risk row must have the ‘Recommended Fix’ column populated.
+Show the startup recovery code as a ready-to-copy Java block.
+Show the FAST callback idempotency code.
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## STEP 7 — ASYNC QUEUE IMPLEMENTATION CODE GENERATION
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read all prior HTML reports. This step generates production Java code.**
+```
+
+Read all prior HTML reports before starting.
+
+Generate production-quality Java Spring Boot code that replaces the synchronous Titan HTTP call
+with a DB-backed async job queue using MADB and SELECT FOR UPDATE SKIP LOCKED.
+
+Match all naming conventions, package structures, annotation styles, and logging patterns
+found in the existing FOBO codebase.
+
+The recon_job_queue table schema (MADB):
+job_id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
+masterbook_id       BIGINT NOT NULL
+status              VARCHAR(20) NOT NULL DEFAULT ‘PENDING’
+payload             JSONB         – {recType, dateRange, masterbookId, configOverride}
+result              JSONB         – {madbResultRef, summaryStats, rowCount}
+error_message       TEXT
+priority            INT DEFAULT 3 – 1=P1 AutoPost, 2=APAC Override, 3-5=Standard
+region_close_order  INT DEFAULT 2 – 1=APAC, 2=EMEA, 3=AMER
+auto_post_eligible  BOOLEAN DEFAULT FALSE
+runtime_category    VARCHAR(10)   – LOW / MEDIUM / HIGH (historical classification)
+retry_count         INT DEFAULT 0
+max_retries         INT DEFAULT 3
+claimed_by          VARCHAR(100)  – ‘fobo-instance-{hostname}-{port}’
+lease_expires       TIMESTAMP
+processed_by_fobo   BOOLEAN DEFAULT FALSE
+created_at          TIMESTAMP DEFAULT NOW()
+completed_at        TIMESTAMP
+updated_at          TIMESTAMP DEFAULT NOW()
+
+GENERATE THESE CLASSES:
+
+CLASS 1: ReconJobQueueDao.java
+Package: match existing DAO/repository package
+Use NamedParameterJdbcTemplate (or JPA — match what’s in the codebase)
+Methods:
+
+- UUID submitJob(ReconJobRequest request) — INSERT and return job_id
+- List<ReconJob> pollCompletedJobs(int limit) — SELECT FOR UPDATE SKIP LOCKED on COMPLETED
+- void markProcessedByFobo(UUID jobId) — set processed_by_fobo=true after auto-post triggered
+- int resetExpiredJobs() — UPDATE expired PROCESSING jobs back to PENDING or DEAD_LETTER
+- int reclaimOrphanedJobs(String instanceId) — on startup, reset this instance’s stuck jobs
+- List<ReconJob> findSlaBreaches(int pendingThresholdMinutes) — for SLA alerting
+
+CLASS 2: ReconJobQueueService.java
+@Service — business logic layer over the DAO
+Methods:
+
+- UUID submitReconciliationJob(MasterbookTrigger trigger)
+  Replaces the old synchronous Titan HTTP call.
+  Builds payload JSON from trigger.
+  Calculates priority and region_close_order from masterbook metadata.
+  Calls dao.submitJob() — thread freed in <10ms.
+  Returns job_id to caller (returned to Motif SOD as correlation ID).
+- void processCompletedJobs()
+  Called by @Scheduled completionPoller every 5 seconds.
+  Calls dao.pollCompletedJobs(50).
+  For each completed job: triggers auto-post workflow if auto_post_eligible.
+  Marks processed_by_fobo=true.
+- void detectAndResetTimeouts()
+  Called by @Scheduled timeoutDetector every 60 seconds.
+  Calls dao.resetExpiredJobs().
+  Logs count of jobs reset with WARN level.
+- void performStartupRecovery(String instanceId)
+  Called once on startup via ApplicationRunner.
+  Calls dao.reclaimOrphanedJobs(instanceId).
+  Logs count of recovered jobs.
+
+CLASS 3: ReconQueueScheduler.java
+@Component with @EnableScheduling
+Uses a dedicated TaskScheduler bean (NOT the default single-threaded one):
+
+```java
+@Bean
+public TaskScheduler queueTaskScheduler() {
+    ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+    scheduler.setPoolSize(3);
+    scheduler.setThreadNamePrefix("fobo-queue-scheduler-");
+    scheduler.setWaitForTasksToCompleteOnShutdown(true);
+    scheduler.setAwaitTerminationSeconds(60);
+    return scheduler;
+}
+```
+
+Three @Scheduled methods:
+
+- completionPoller: fixedDelay = ${fobo.queue.poll.interval.ms:5000}
+- timeoutDetector: fixedDelay = ${fobo.queue.timeout.check.interval.ms:60000}
+- slaMonitor: fixedDelay = ${fobo.queue.sla.check.interval.ms:300000}
+  → logs WARNING if any job has been PENDING for > ${fobo.queue.sla.pending.threshold.minutes:15}
+
+CLASS 4: ReconQueueStartupRecovery.java
+Implements ApplicationRunner (runs after Spring context fully started)
+
+- Builds instanceId: “fobo-” + InetAddress.getLocalHost().getHostName() + “:” + serverPort
+- Calls reconJobQueueService.performStartupRecovery(instanceId)
+- Logs recovered job count at INFO level
+
+CLASS 5: ReconJobRequest.java and ReconJob.java
+POJOs / records for the queue row:
+
+- ReconJobRequest: fields needed to INSERT a job
+- ReconJob: full row returned from SELECT
+  Use Jackson annotations for JSONB serialisation/deserialisation if needed.
+
+ALSO GENERATE:
+
+- V1__create_recon_job_queue.sql: Flyway/Liquibase migration script for the table + indexes
+- application-queue.properties: all new fobo.queue.* properties with defaults and comments
+- ReconJobQueueDaoTest.java: JUnit 5 + Mockito unit tests for all DAO methods
+- ReconJobQueueServiceTest.java: integration test stubs using @SpringBootTest + @DataJpaTest
+
+CODE QUALITY REQUIREMENTS:
+
+- Java 11+ compatible (use var, records if the codebase already uses them)
+- Full Javadoc on every public class and method
+- SLF4J logging with MDC: always log masterbookId, jobId, recType, region
+- No hardcoded strings — use @Value or properties for all configurable values
+- All SQL parameterised — no string concatenation in queries
+- ASSUMPTION comments where existing codebase details were inferred
+
+OUTPUT: Save as ./analysis/07_generated_code.html
+Each class as a clearly labelled section with syntax-highlighted Java code blocks.
+Include a CLASS DEPENDENCY DIAGRAM showing how the 4 new classes relate to each other
+and to existing FOBO classes (CSS box diagram).
+Include a MIGRATION CHECKLIST: ordered steps to deploy the async queue alongside
+the existing sync HTTP path (feature flag approach — both can run during transition).
+Include the DB migration SQL as a ready-to-copy block.
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## STEP 8 — CONSOLIDATED FINDINGS & ARCHITECTURE DECISION RECORD
+## ─────────────────────────────────────────────────────────
+
+**Prerequisite: Read ALL prior HTML reports (Steps 0–7). This is the final summary.**
+```
+
+Read ALL prior HTML reports (./analysis/00_structure.html through
+./analysis/07_generated_code.html) before starting.
+
+Produce the definitive consolidated report: executive summary, ADR, roadmap, and quick-wins.
+
+SECTIONS REQUIRED:
+
+1. EXECUTIVE SUMMARY (non-technical, 3 paragraphs)
+   What FOBO does, what went wrong, what the fix is, and what changes.
+   A senior manager who has not read any prior report must fully understand this.
+   Include key numbers: 5–10× regression, 15K → 30K volume, 3-phase fix.
+1. ROOT CAUSE CATALOGUE — RANKED BY IMPACT
+   All root causes found across all 8 analysis steps:
+   Rank | Root Cause | Category | Severity | Estimated Business Impact | Fix Phase
+1. ARCHITECTURE DECISION RECORD — ADR-FOBO-001
+   Title: FOBO Service — Synchronous Titan HTTP Replaced with DB-Backed Async Queue
+   Status: PROPOSED | Date: [today]
+   
+   Context:
+   Problem (quantified):
+   Options Considered:
+   A: Keep sync HTTP, expand thread pool only
+   B: Async HTTP callback (webhook to Titan)
+   C: DB-backed polling queue via MADB — SELECTED
+   D: RabbitMQ message broker — future state
+   For each option: Pros | Cons | Effort | Risk | Infra needed
+   
+   Decision: Option C
+   Rationale: aligned to priority order Resilience → Simplicity → Latency → Throughput
+   
+   Consequences (positive + trade-offs):
+   Risks and mitigations (from Step 6 risk register summary):
+1. PHASED IMPLEMENTATION ROADMAP
+   Phase 0 (This Weekend — Config change only, zero risk):
+- Raise ThreadPoolTaskExecutor queue: 500 → 4,000 per instance
+- Verify HikariCP pool size matches thread count
+- Enable /threaddump and thread pool Actuator metrics
+   
+   Phase 1 (Weeks 1–3 — Core async queue):
+- Deploy Flyway migration: create recon_job_queue table
+- Deploy ReconJobQueueDao + Service + Scheduler + StartupRecovery
+- Feature-flag: route 5% of APAC masterbooks through queue, validate
+- Ramp to 100% over week 2–3
+- Decommission synchronous Titan HTTP call
+   
+   Phase 2 (Weeks 4–8 — Production hardening):
+- SLA alerting (slaMonitor → PagerDuty/Splunk alert)
+- Retry with exponential backoff on DEAD_LETTER jobs
+- Dead-letter queue dashboard
+- PostgreSQL LISTEN/NOTIFY to replace polling (sub-second latency)
+- Prometheus metrics + Grafana dashboard
+- Archival job: move COMPLETED jobs > 7 days to recon_job_archive table
+   
+   Phase 3 (Future — only if volume exceeds 100K/day):
+- RabbitMQ migration: Spring AMQP on FOBO, pika on Titan
+- Evaluate Q3 2026 based on volume telemetry
+1. SUCCESS METRICS TABLE
+   Metric | Current | After Phase 0 | After Phase 1 | After Phase 2
+   RejectedExecutionException/day | hundreds | 0 | 0 | 0
+   Thread pool utilisation | ~100% blocked | ~100% queued | ~10% | ~10%
+   Job loss on instance crash | 100% | 100% | 0% | 0%
+   APAC deadline misses/week | multiple | fewer | 0 | 0
+   Max volume supported/day | ~10K | ~20K | 30K+ | 100K+
+   Mean job processing latency | 10+ min | 10+ min | <3 min | <2 min
+   Crash recovery time | manual | manual | automatic | automatic + alert
+1. QUICK WINS THIS WEEK — INTERACTIVE CHECKLIST
+   A checklist any engineer on the team can action immediately:
+   [ ] Raise queueCapacity 500 → 4,000 in Spring config (no deploy — config push only)
+   [ ] Confirm HikariCP maximumPoolSize >= (corePoolSize × number of pools) per instance
+   [ ] Enable spring.shutdown=graceful
+   [ ] Expose /actuator/threaddump and /actuator/metrics endpoints
+   [ ] Add MDC propagation to thread pool task decorator (MDCTaskDecorator)
+   [ ] Review @Transactional boundaries — remove any spanning the Titan HTTP call
+   [ ] Add structured logging with masterbook_id and rec_type fields
+   [ ] Tag any masterbook HTTP handler to return 202 Accepted immediately (not after full processing)
+1. NAVIGATION INDEX
+   Links to all generated HTML reports:
+   00_structure.html          — Project map, dependency tree, health indicators
+   01_threadpool_analysis.html — Thread pool exhaustion cascade, capacity maths
+   02_http_audit.html         — HTTP client audit, timeout matrix
+   03_db_audit.html           — MADB query inventory, N+1 findings, queue SQL
+   04_spring_config.html      — Properties audit, @Scheduled, observability
+   05_business_logic.html     — 5-stage reconciliation, state machine, idempotency
+   06_resilience.html         — Risk register, failure modes, resilience code
+   07_generated_code.html     — Production Java async queue implementation
+   08_final_report.html       — This document (executive summary + ADR + roadmap)
+
+OUTPUT: Save as ./analysis/08_final_report.html
+
+DESIGN REQUIREMENTS FOR THIS FILE:
+
+- Fixed left-side navigation sidebar with anchor links to every section
+- Executive summary in a prominent hero banner at the top with 4 key stat boxes
+- ADR in a formal document-style bordered box with clear decision highlight
+- Implementation roadmap as a horizontal timeline with 4 phases (CSS only)
+- Success metrics table with green/red/amber delta indicators per cell
+- Quick wins checklist: HTML checkboxes — checking an item adds strikethrough via CSS
+- Print-friendly CSS @media print so it outputs cleanly for management distribution
+- Navigation bar at top linking all 9 reports (00–08), current highlighted
+
+```
+---
+
+## ─────────────────────────────────────────────────────────
+## HTML DESIGN SPEC — APPLIES TO ALL GENERATED HTML FILES
+## ─────────────────────────────────────────────────────────
+
+Every HTML report MUST follow this spec exactly. All files are fully self-contained.
+No external CSS. No external JS. No CDN links. Pure HTML + CSS + minimal vanilla JS.
+```
+
+COLOUR PALETTE:
+Page background:  #ffffff   (no coloured page backgrounds)
+Surface / card:   #f8f9fa
+Border:           #e2e8f0
+Text primary:     #1a202c
+Text secondary:   #4a5568
+Text muted:       #718096
+Accent blue:      #3182ce   (FOBO / Java / info elements)
+Accent green:     #38a169   (success, OK, good)
+Accent orange:    #d69e2e   (warning, medium severity)
+Accent red:       #e53e3e   (critical, error, bad)
+Accent purple:    #805ad5   (Titan / Python references)
+Card left border: 3px solid [colour] — NO filled coloured backgrounds on cards
+
+TYPOGRAPHY:
+Body: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-size: 15px
+Code: ‘Courier New’, Courier, monospace; font-size: 13px
+h1:  28px, font-weight: 800, color: #1a202c
+h2:  20px, font-weight: 700, color: #2d3748, padding-bottom: 8px,
+border-bottom: 2px solid #e2e8f0, margin-top: 40px
+h3:  15px, font-weight: 700, color: #4a5568, text-transform: uppercase,
+letter-spacing: 0.06em
+
+LAYOUT:
+max-width: 1200px, margin: 0 auto, padding: 0 24px 60px
+Header: full-width top banner, white bg, 4px solid blue top border
+Cards: bg #ffffff, border 1px solid #e2e8f0, border-radius 8px, padding 20px,
+box-shadow: 0 1px 3px rgba(0,0,0,0.06)
+left border accent: border-left: 3px solid [colour]
+Tables: width 100%, border-collapse collapse
+thead: bg #f1f5f9, font-weight 700, font-size 11px, text-transform uppercase
+tbody tr:nth-child(even): bg #f8f9fa
+td, th: padding 10px 14px, border-bottom: 1px solid #e2e8f0
+
+CODE BLOCKS:
+background: #1e2736, color: #e2e8f0
+padding: 16px 20px, border-radius: 6px, overflow-x: auto
+font-family: monospace, font-size: 13px, line-height: 1.7
+Label above each block: small grey text showing language + filename
+
+SEVERITY BADGES (inline, in tables):
+.badge { border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.badge-critical { background: #fff5f5; color: #e53e3e; border: 1px solid #e53e3e; }
+.badge-high     { background: #fffaf0; color: #d69e2e; border: 1px solid #d69e2e; }
+.badge-medium   { background: #fefce8; color: #b7791f; border: 1px solid #b7791f; }
+.badge-low      { background: #f0fff4; color: #38a169; border: 1px solid #38a169; }
+.badge-ok       { background: #f0fff4; color: #38a169; border: 1px solid #38a169; }
+.badge-info     { background: #ebf8ff; color: #3182ce; border: 1px solid #3182ce; }
+
+STANDARD HEADER (every file):
+
+  <header style="border-top: 4px solid #3182ce; padding: 32px 24px 24px; margin-bottom: 40px;">
+    <div style="font-size:11px; font-weight:700; color:#3182ce; letter-spacing:0.1em;
+                text-transform:uppercase; margin-bottom:8px;">STEP N OF 8 — FOBO Service Analysis</div>
+    <h1 style="margin:0 0 8px;">[Report Title]</h1>
+    <p style="color:#4a5568; margin:0 0 16px; font-size:15px;">[One-line description]</p>
+    <div style="font-size:12px; color:#718096;">
+      FOBO Service | Java Spring Boot | 5 Instances | ThreadPoolTaskExecutor |
+      Generated by Claude CLI | FOBO ↔ Titan Architecture Review
+    </div>
+  </header>
+
+NAVIGATION BAR (top of every file — links to all 9 reports, current highlighted):
+
+  <nav style="background:#f1f5f9; border-bottom:1px solid #e2e8f0;
+              padding:10px 24px; font-size:12px; font-weight:600;">
+    <a href="00_structure.html">00 Structure</a> |
+    <a href="01_threadpool_analysis.html">01 Thread Pool</a> |
+    <a href="02_http_audit.html">02 HTTP</a> |
+    <a href="03_db_audit.html">03 Database</a> |
+    <a href="04_spring_config.html">04 Spring Config</a> |
+    <a href="05_business_logic.html">05 Business Logic</a> |
+    <a href="06_resilience.html">06 Resilience</a> |
+    <a href="07_generated_code.html">07 Code</a> |
+    <a href="08_final_report.html">08 Final Report</a>
+    [current page link gets: style="color:#1a202c; text-decoration:none; pointer-events:none;"]
+  </nav>
+
+FOOTER (every file):
+
+  <footer style="border-top:1px solid #e2e8f0; margin-top:60px; padding:20px 24px;
+                 font-size:12px; color:#718096; display:flex; justify-content:space-between;">
+    <span>FOBO Service Codebase Analysis | FOBO ↔ Titan Architecture Review | Internal Use Only</span>
+    <span>Generated: [date] | Next: [next step name and filename]</span>
+  </footer>
+```
+
+-----
+
+## OUTPUT FOLDER STRUCTURE
+
+After all 9 steps complete, your `./analysis/` folder contains:
+
+```
+analysis/
+├── 00_structure.html           ← Project map, class index, dependency tree, health badges
+├── 01_threadpool_analysis.html ← Thread pool exhaustion cascade, capacity maths, impact table
+├── 02_http_audit.html          ← HTTP client audit, timeout matrix, connection pool analysis
+├── 03_db_audit.html            ← Query inventory, N+1 findings, async queue SQL, indexes
+├── 04_spring_config.html       ← Properties audit, @Scheduled review, observability gaps
+├── 05_business_logic.html      ← 5-stage lifecycle, state machine, idempotency, priority logic
+├── 06_resilience.html          ← Risk register, crash recovery gaps, resilience code
+├── 07_generated_code.html      ← Production Java async queue classes (copy-paste ready)
+└── 08_final_report.html        ← Executive ADR, roadmap timeline, success metrics, checklist
+```
+
+**Audience guide:**
+
+- Share `08_final_report.html` with management and product owners
+- Share `01_threadpool_analysis.html` + `07_generated_code.html` with the FOBO dev team
+- Share `03_db_audit.html` with the DBA / MADB team
+- Share `06_resilience.html` in the architecture review meeting
+- All files open directly in Chrome, Edge, Firefox — no server, no build step
+
+-----
+
+*FOBO_ANALYSIS_PROMPT.md | Place in FOBO project root | Run with: claude “$(cat FOBO_ANALYSIS_PROMPT.md)”*
