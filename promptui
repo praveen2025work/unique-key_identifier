@@ -1,0 +1,220 @@
+# FOBO Reconciliation Queue Monitor — Claude CLI Prompt
+
+# Copy the prompt below and run it in your org’s Claude CLI session.
+
+# Paste it exactly as-is. The DB schema and requirements are embedded.
+
+-----
+
+## PROMPT (copy from here)
+
+```
+You are an expert React + TypeScript developer. Build a production-grade
+Queue Monitoring Dashboard for an operations team. This is a read-only
+monitoring UI — no forms, no edits. Data comes from a single database table.
+
+---
+
+## TABLE: MSBK_BUS_DTL (PostgreSQL-compatible, called MADB internally)
+
+Columns and their meaning:
+
+| Column            | Type        | Description                                      |
+|-------------------|-------------|--------------------------------------------------|
+| MSBK_BUS_DTL_ID   | BIGINT PK   | Unique row ID                                    |
+| BUS_DATE          | DATE        | Business date of the reconciliation run          |
+| MSBK_ID           | BIGINT      | Master book ID (links to the book being recon'd) |
+| REC_ID            | BIGINT      | Reconciliation ID                                |
+| REC_SUBCATEGORY_ID| BIGINT      | Reconciliation sub-category ID                   |
+| STATUS            | VARCHAR     | Job status: COMPLETE, PROCESSING, PENDING, FAILED|
+| EXPN              | VARCHAR     | Explanation / rec type (e.g. CATS-vs-MOTIF)      |
+| EXPNCOUNT         | INT         | Number of exceptions / breaks found              |
+| START_TIME        | TIMESTAMP   | When processing started                          |
+| END_TIME          | TIMESTAMP   | When processing ended (null if still running)    |
+| SERVICE_NAME      | VARCHAR     | Service that processed it (e.g. FOBO Service)    |
+| ISHOLIDAY         | CHAR(1)     | 'Y' or 'N' — whether BUS_DATE is a holiday       |
+| REGN_ID           | VARCHAR     | Region: APAC, EMEA, AMER                         |
+| IN_MOTIF          | CHAR(1)     | 'Y' or 'N' — whether book exists in MOTIF system |
+| BUSINESSAREANAME  | VARCHAR     | Business area name (e.g. FI Credit, Municipals)  |
+| HIERARCHYLEVEL    | VARCHAR     | Hierarchy level name (e.g. EM LATAM, US HG)      |
+| HIERARCHYLEVEL7   | VARCHAR     | Sub-hierarchy level 7 detail                     |
+| LASTUPDATE        | TIMESTAMP   | When this row was last updated                   |
+| LASTUPDATEDBY     | VARCHAR     | User or service that last updated this row       |
+
+Sample data (from a real query result):
+- MSBK_BUS_DTL_ID=3542, BUS_DATE=5/16/2025, STATUS=COMPLETE, REGN_ID=AMER, BUSINESSAREANAME="Securitized Products Origination Primary CMBS"
+- MSBK_BUS_DTL_ID=6289, BUS_DATE=5/16/2025, STATUS=COMPLETE, EXPNCOUNT=114, REGN_ID=APAC, BUSINESSAREANAME=Syndicate, HIERARCHYLEVEL="Asia Loans"
+- MSBK_BUS_DTL_ID=7701, BUS_DATE=5/16/2025, STATUS=COMPLETE, EXPNCOUNT=39, REGN_ID=AMER, BUSINESSAREANAME=Municipals, HIERARCHYLEVEL="Municipal Second"
+
+---
+
+## WHAT TO BUILD
+
+A single-page React + TypeScript dashboard with these sections:
+
+### 1. Top KPI Bar (6 cards)
+Show counts for: COMPLETE | PROCESSING | PENDING | FAILED | HOLIDAY (ISHOLIDAY=Y) | IN_MOTIF (IN_MOTIF=Y)
+Each card shows: count + label. Use color only in text and left border accent (3px). White card background.
+
+### 2. Filter Bar
+Dropdowns to filter the table by:
+- STATUS (All / COMPLETE / PROCESSING / PENDING / FAILED)
+- REGN_ID (All / APAC / EMEA / AMER)
+- ISHOLIDAY (All / Y / N)
+- IN_MOTIF (All / Y / N)
+- BUS_DATE (date picker or text input)
+- BUSINESSAREANAME (dropdown, populated from data)
+Live filter — updates table instantly as user changes dropdowns.
+
+### 3. Main Data Table
+Columns to show (in this order):
+MSBK_BUS_DTL_ID | BUS_DATE | MSBK_ID | REGN_ID | BUSINESSAREANAME | HIERARCHYLEVEL | HIERARCHYLEVEL7 | STATUS | EXPN | EXPNCOUNT | START_TIME | END_TIME | Duration | ISHOLIDAY | IN_MOTIF | LASTUPDATEDBY | LASTUPDATE
+
+Rules:
+- STATUS: render as a colored badge (COMPLETE=green, PROCESSING=blue, PENDING=amber, FAILED=red). Color in text and border only, white/near-white background.
+- REGN_ID: render as a small region badge (APAC=blue, EMEA=green, AMER=purple).
+- ISHOLIDAY / IN_MOTIF: render Y/N as small badges.
+- Duration: calculate as END_TIME - START_TIME. Show as "Xm Ys". If END_TIME is null, show elapsed since START_TIME with a live blinking indicator.
+- EXPNCOUNT: if > 0 show in amber, if 0 show muted grey.
+- Timestamps: format as "DD MMM HH:mm:ss".
+- Clicking any row opens a side drawer showing all fields for that row in a clean label/value layout.
+- Table is sortable on all columns. Click column header to sort asc/desc.
+- Show total row count below filter bar.
+
+### 4. Summary Charts (below table)
+Three horizontal bar charts side by side:
+- Jobs by REGN_ID
+- Jobs by STATUS
+- Jobs by BUSINESSAREANAME (top 10)
+Use CSS bars only — no chart library needed. Show count and percentage label on each bar.
+
+---
+
+## MOCK DATA
+
+Use this mock data array for development. Type it as TypeScript interfaces.
+Generate 20 realistic rows based on the sample data above. Include:
+- Mix of all STATUS values (mostly COMPLETE, a few PROCESSING/PENDING, one FAILED)
+- Mix of REGN_ID: APAC, EMEA, AMER
+- Realistic BUSINESSAREANAME values: "FI Credit", "Municipals", "Syndicate", "EM LATAM", "Securitized Products Origination", "Asia Loans"
+- HIERARCHYLEVEL values matching business areas: "US HG", "EM LATAM", "Municipal Second", "Asia Loans", "Agency RMBS Trz"
+- HIERARCHYLEVEL7 values as sub-detail strings
+- BUS_DATE = "2025-05-16" for all rows
+- START_TIME between 02:00 and 14:30 on 2025-05-18
+- END_TIME = START_TIME + random 1–15 minutes (null for PROCESSING rows)
+- EXPNCOUNT: 0 for most, 5–200 for a few
+- ISHOLIDAY = 'N' for all
+- IN_MOTIF = 'Y' for 70%, 'N' for 30%
+- LASTUPDATEDBY = "FOBO Service" for most, one or two showing a username like "jsmith"
+- LASTUPDATE = same as END_TIME (or now for PROCESSING)
+
+---
+
+## DESIGN RULES (strict)
+
+1. NO colored backgrounds anywhere — surfaces are white (#ffffff) or near-white (#f8f8f8).
+2. Color appears ONLY in: text, thin left-border accents (3px), tag borders, bar chart fills.
+3. Typography: use 'Inter' or system-ui. Monospace (font-family: monospace) for IDs, timestamps, counts.
+4. Compact, dense layout — ops teams have lots of data to scan. No wasted space.
+5. Table rows alternate between #ffffff and #fafafa for readability.
+6. The side drawer slides in from the right on row click.
+7. Auto-refresh toggle in the top bar (simulated — just re-randomizes PROCESSING rows every 30s).
+8. No external UI libraries. Tailwind is fine if available, otherwise plain CSS-in-JS or styled-components.
+9. Single file preferred: one .tsx file with embedded styles.
+10. Export as default function component named `ReconQueueDashboard`.
+
+---
+
+## DELIVERABLE
+
+Produce:
+1. `ReconQueueDashboard.tsx` — the full component
+2. `types.ts` — TypeScript interfaces for the data model
+3. `mockData.ts` — the 20-row mock dataset
+
+Make the code clean, well-commented, and ready for a real API swap (replace mockData with a fetch() call to `/api/recon/queue?busDate=YYYY-MM-DD`).
+```
+
+-----
+
+## FOLLOW-UP PROMPTS (run these after the first output)
+
+### Prompt 2 — Wire up real API
+
+```
+Now replace the mock data with a real API call.
+Add a custom hook `useReconQueue(busDate: string)` that:
+- Fetches from GET /api/recon/queue?busDate={busDate}
+- Returns { data, loading, error }
+- Polls every 30 seconds automatically
+- Shows a loading skeleton on first load
+- Shows an error banner (dismissible) if fetch fails
+- Maps the raw API response (column names as returned by JDBC from MADB) to the TypeScript interface
+
+Assume the API returns JSON with uppercase column names exactly matching the DB:
+MSBK_BUS_DTL_ID, BUS_DATE, MSBK_ID, REC_ID, REC_SUBCATEGORY_ID, STATUS,
+EXPN, EXPNCOUNT, START_TIME, END_TIME, SERVICE_NAME, ISHOLIDAY, REGN_ID,
+IN_MOTIF, BUSINESSAREANAME, HIERARCHYLEVEL, HIERARCHYLEVEL7, LASTUPDATE, LASTUPDATEDBY
+```
+
+### Prompt 3 — Spring Boot backend endpoint
+
+```
+Now write the Spring Boot REST controller and service that powers this dashboard.
+
+- Controller: GET /api/recon/queue?busDate=yyyy-MM-dd
+- Service: queries MSBK_BUS_DTL table using Spring JDBC (JdbcTemplate)
+- RowMapper: maps ResultSet to MsbkBusDtl Java record with all 19 columns
+- Returns List<MsbkBusDtl> as JSON
+- Add a GET /api/recon/queue/summary endpoint that returns counts grouped by STATUS, REGN_ID, and BUSINESSAREANAME (for the chart section)
+- Use @CrossOrigin so the React dev server on :3000 can call it
+- Java record fields should be camelCase (msbkBusDtlId, busDate, etc.)
+```
+
+### Prompt 4 — Add export and alerting
+
+```
+Add two features to ReconQueueDashboard.tsx:
+
+1. CSV Export button in the filter bar
+   - Exports currently filtered rows (not all rows) to CSV
+   - Filename: recon_queue_{busDate}_{timestamp}.csv
+   - All 19 columns, with human-readable headers
+
+2. SLA Alert Banner
+   - Any row where STATUS = 'PROCESSING' and elapsed time > 15 minutes
+     should trigger a red dismissible banner at the top of the page:
+     "⚠ {N} jobs exceed 15-minute SLA: MB-{MSBK_ID}, ..."
+   - Banner updates live with the auto-refresh cycle
+```
+
+-----
+
+## SCHEMA REFERENCE (keep this handy)
+
+```sql
+-- Table: MSBK_BUS_DTL
+SELECT
+  MSBK_BUS_DTL_ID,     -- PK
+  BUS_DATE,            -- Business date
+  MSBK_ID,             -- Master book ID
+  REC_ID,              -- Reconciliation ID
+  REC_SUBCATEGORY_ID,  -- Sub-category ID
+  STATUS,              -- COMPLETE | PROCESSING | PENDING | FAILED
+  EXPN,                -- Rec type description
+  EXPNCOUNT,           -- Exception count (breaks)
+  START_TIME,          -- Processing start
+  END_TIME,            -- Processing end (null = still running)
+  SERVICE_NAME,        -- Processing service name
+  ISHOLIDAY,           -- Y/N
+  REGN_ID,             -- APAC | EMEA | AMER
+  IN_MOTIF,            -- Y/N — exists in MOTIF system
+  BUSINESSAREANAME,    -- Business area
+  HIERARCHYLEVEL,      -- Hierarchy level name
+  HIERARCHYLEVEL7,     -- Sub-hierarchy level 7
+  LASTUPDATE,          -- Row last updated timestamp
+  LASTUPDATEDBY        -- Who/what last updated row
+FROM MSBK_BUS_DTL
+WHERE BUS_DATE = :busDate
+ORDER BY START_TIME DESC;
+```
