@@ -1,0 +1,1482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Meridian Gateway — Product Development Lifecycle</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Fira+Code:wght@300;400;500&family=Lora:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f7f8fc;
+    --surface: #ffffff;
+    --surface2: #eef1f8;
+    --border: rgba(30,64,120,0.12);
+    --blue: #1a5cb8;
+    --blue-dim: rgba(26,92,184,0.08);
+    --cyan: #0e8a7a;
+    --amber: #b45309;
+    --green: #15803d;
+    --red: #b91c1c;
+    --violet: #6d28d9;
+    --muted: #64748b;
+    --text: #1e293b;
+    --bright: #0f172a;
+
+    --p0: #1a5cb8; /* Discovery */
+    --p1: #0e8a7a; /* Foundation */
+    --p2: #6d28d9; /* Core Build */
+    --p3: #b45309; /* Hardening */
+    --p4: #15803d; /* GA */
+    --p5: #b91c1c; /* Scale */
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Top accent stripe */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--p0), var(--p1), var(--p2), var(--p3), var(--p4), var(--p5));
+    z-index: 200;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(26,92,184,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,92,184,0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 3rem 3rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    background: var(--surface);
+    box-shadow: 0 1px 0 var(--border);
+  }
+
+  .header-left { max-width: 600px; }
+
+  .header-eyebrow {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .header-eyebrow::before {
+    content: '//';
+    opacity: 0.4;
+  }
+
+  h1 {
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--bright);
+    letter-spacing: -0.02em;
+  }
+
+  h1 span { color: var(--blue); }
+
+  .header-sub {
+    margin-top: 0.8rem;
+    font-family: 'Lora', serif;
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  .header-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+    flex-shrink: 0;
+  }
+
+  .meta-pill {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .meta-pill.active {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* ── PHASE TIMELINE STRIP ── */
+  .timeline-strip {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    overflow-x: auto;
+    padding: 1.5rem 3rem;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+    background: var(--surface);
+  }
+  .timeline-strip::-webkit-scrollbar { display: none; }
+
+  .phase-tab {
+    flex-shrink: 0;
+    padding: 0.8rem 1.6rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    background: none;
+    outline: none;
+    text-align: left;
+  }
+
+  .phase-tab.active {
+    border-color: var(--tab-color, var(--blue));
+    background: rgba(26,92,184,0.05);
+  }
+
+  .phase-tab-num {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    color: var(--tab-color, var(--muted));
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+
+  .phase-tab-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .phase-tab-dur {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  .phase-tab::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--tab-color, transparent);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+  }
+  .phase-tab.active::after,
+  .phase-tab:hover::after { transform: scaleX(1); }
+
+  /* connector */
+  .tab-connector {
+    display: flex;
+    align-items: center;
+    padding: 0 0.2rem;
+    color: var(--border);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  main {
+    position: relative;
+    z-index: 10;
+    padding: 2.5rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── PHASE PANEL ── */
+  .phase-panel {
+    display: none;
+    animation: panelIn 0.35s ease both;
+    padding: 2rem 0;
+  }
+  .phase-panel.active { display: block; }
+
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Phase Header */
+  .phase-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 2rem;
+    align-items: start;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .phase-num-big {
+    font-family: 'Fira Code', monospace;
+    font-size: 4rem;
+    font-weight: 300;
+    line-height: 1;
+    color: var(--phase-color, var(--blue));
+    opacity: 0.15;
+  }
+
+  .phase-title-block {}
+
+  .phase-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--phase-color, var(--blue));
+    border: 1px solid var(--phase-color, var(--blue));
+    padding: 0.3rem 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .phase-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--phase-color, var(--blue));
+  }
+
+  .phase-title {
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
+    font-weight: 800;
+    color: var(--bright);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .phase-goal {
+    font-family: 'Lora', serif;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    line-height: 1.6;
+    font-style: italic;
+    max-width: 55ch;
+  }
+
+  .phase-kpis {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    text-align: right;
+  }
+
+  .kpi {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+  .kpi-val {
+    color: var(--phase-color, var(--blue));
+    font-size: 1.1rem;
+    display: block;
+    font-weight: 500;
+  }
+  .kpi-label { color: var(--muted); text-transform: uppercase; }
+
+  /* ── MAIN GRID ── */
+  .phase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .phase-grid.two-col { grid-template-columns: 1fr 1fr; }
+  .phase-grid.four-col { grid-template-columns: repeat(4, 1fr); }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .card:hover { border-color: rgba(26,92,184,0.3); box-shadow: 0 4px 20px rgba(26,92,184,0.06); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--phase-color, var(--blue));
+    opacity: 0.8;
+  }
+
+  .card-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--phase-color, var(--blue));
+    margin-bottom: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--bright);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .card-body {
+    font-family: 'Lora', serif;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  /* checklist */
+  .checklist {
+    list-style: none;
+    margin-top: 0.8rem;
+  }
+  .checklist li {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(26,92,184,0.07);
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    line-height: 1.4;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '▸';
+    color: var(--phase-color, var(--blue));
+    flex-shrink: 0;
+    margin-top: 0.05rem;
+  }
+  .checklist li.done::before { content: '✓'; color: var(--green); }
+  .checklist li.warn::before { content: '⚠'; color: var(--amber); }
+  .checklist li.blocker::before { content: '✕'; color: var(--red); }
+
+  /* sprint row */
+  .sprint-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+  }
+  .sprint-table th {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .sprint-table td {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.7rem;
+    padding: 0.55rem 0.8rem;
+    border-bottom: 1px solid rgba(26,92,184,0.06);
+    color: var(--text);
+    vertical-align: top;
+  }
+  .sprint-table tr:hover td { background: rgba(26,92,184,0.03); }
+
+  .sprint-label {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid;
+  }
+  .sprint-label.arch { border-color: var(--blue); color: var(--blue); }
+  .sprint-label.build { border-color: var(--violet); color: var(--violet); }
+  .sprint-label.test { border-color: var(--amber); color: var(--amber); }
+  .sprint-label.infra { border-color: var(--cyan); color: var(--cyan); }
+  .sprint-label.sec { border-color: var(--red); color: var(--red); }
+  .sprint-label.rel { border-color: var(--green); color: var(--green); }
+
+  /* bar chart inline */
+  .bar-wrap { margin-top: 1rem; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+  }
+  .bar-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    width: 140px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(26,92,184,0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--phase-color, var(--blue));
+    border-radius: 0;
+    transition: width 0.8s ease;
+    opacity: 0.7;
+  }
+  .bar-pct {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    color: var(--muted);
+    width: 30px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* risk matrix */
+  .risk-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(26,92,184,0.07);
+  }
+  .risk-item:last-child { border-bottom: none; }
+  .risk-sev {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 0.2rem 0.5rem;
+    flex-shrink: 0;
+    border: 1px solid;
+    text-transform: uppercase;
+    align-self: flex-start;
+    margin-top: 0.1rem;
+  }
+  .risk-sev.high { border-color: var(--red); color: var(--red); }
+  .risk-sev.med  { border-color: var(--amber); color: var(--amber); }
+  .risk-sev.low  { border-color: var(--green); color: var(--green); }
+
+  .risk-text { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .risk-text strong { color: var(--text); font-weight: 600; }
+
+  /* team card */
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  .team-member {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 0.9rem;
+  }  .team-role {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--phase-color, var(--blue));
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+  .team-name {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--bright);
+    line-height: 1.2;
+  }
+  .team-focus {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+  }
+
+  /* deliverable tags */
+  .deliverables {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.8rem;
+  }
+  .del-tag {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .del-tag.primary {
+    border-color: var(--phase-color, var(--blue));
+    color: var(--phase-color, var(--blue));
+  }
+
+  /* milestone timeline inline */
+  .milestones {
+    position: relative;
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+  }
+  .milestones::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0.4rem; bottom: 0.4rem;
+    width: 1px;
+    background: rgba(26,92,184,0.2);
+  }
+  .milestone {
+    position: relative;
+    padding: 0.5rem 0 0.5rem 1rem;
+  }
+  .milestone::before {
+    content: '';
+    position: absolute;
+    left: -1.6rem;
+    top: 0.75rem;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--phase-color, var(--blue));
+    opacity: 0.6;
+  }
+  .milestone.gate::before {
+    border-radius: 0;
+    background: var(--amber);
+    opacity: 1;
+  }
+  .ms-week {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.58rem;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .ms-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bright);
+    margin-top: 0.1rem;
+  }
+  .ms-desc {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    line-height: 1.4;
+  }
+
+  /* ── PROGRESS OVERVIEW BAR ── */
+  .progress-overview {
+    display: flex;
+    height: 5px;
+    gap: 2px;
+    margin: 0;
+    position: relative;
+    z-index: 10;
+    background: var(--surface2);
+  }
+
+  .prog-seg {
+    height: 100%;
+    flex: 1;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .prog-seg:hover { opacity: 0.8; }
+
+  /* stack col */
+  .stack-col { background: var(--surface); }
+
+  /* gate banner light */
+  .gate-banner {
+    background: rgba(180,83,9,0.05);
+    border: 1px solid rgba(180,83,9,0.25);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .gate-banner-icon { font-size: 1.2rem; }
+  .gate-banner-text {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: var(--amber);
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+  }
+  .gate-banner-text strong { color: #92400e; }
+
+  /* ── FULL-WIDTH CARD ── */
+  .card-full { grid-column: 1 / -1; }
+
+  /* nav buttons */
+  .phase-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .nav-btn {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.6rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    background: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .nav-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(26,92,184,0.04); }
+  .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .nav-btn.next { border-color: var(--phase-color, var(--blue)); color: var(--phase-color, var(--blue)); }
+  .nav-btn.next:hover { background: rgba(26,92,184,0.05); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-eyebrow">Meridian Gateway · Product SDLC</div>
+    <h1>Development <span>Lifecycle</span></h1>
+    <p class="header-sub">Six phases from architecture discovery to scaled enterprise deployment — built for regulated financial institutions</p>
+  </div>
+  <div class="header-meta">
+    <div class="meta-pill">Total: ~18 months</div>
+    <div class="meta-pill">6 phases · 36 sprints</div>
+    <div class="meta-pill active">● v1.0 Roadmap Active</div>
+  </div>
+</header>
+
+<!-- Progress bar -->
+<div class="progress-overview" id="progressBar">
+  <div class="prog-seg" style="background:var(--p0)" onclick="showPhase(0)" title="Phase 0"></div>
+  <div class="prog-seg" style="background:var(--p1)" onclick="showPhase(1)" title="Phase 1"></div>
+  <div class="prog-seg" style="background:var(--p2)" onclick="showPhase(2)" title="Phase 2"></div>
+  <div class="prog-seg" style="background:var(--p3)" onclick="showPhase(3)" title="Phase 3"></div>
+  <div class="prog-seg" style="background:var(--p4)" onclick="showPhase(4)" title="Phase 4"></div>
+  <div class="prog-seg" style="background:var(--p5)" onclick="showPhase(5)" title="Phase 5"></div>
+</div>
+
+<!-- Timeline tabs -->
+<div class="timeline-strip" id="timelineTabs">
+
+  <button class="phase-tab active" style="--tab-color:var(--p0)" onclick="showPhase(0)">
+    <div class="phase-tab-num">Phase 0</div>
+    <div class="phase-tab-name">Discovery &amp; Strategy</div>
+    <div class="phase-tab-dur">Weeks 1–4</div>
+  </button>
+  <div class="tab-connector">→</div>
+
+  <button class="phase-tab" style="--tab-color:var(--p1)" onclick="showPhase(1)">
+    <div class="phase-tab-num">Phase 1</div>
+    <div class="phase-tab-name">Foundation &amp; Scaffold</div>
+    <div class="phase-tab-dur">Weeks 5–12</div>
+  </button>
+  <div class="tab-connector">→</div>
+
+  <button class="phase-tab" style="--tab-color:var(--p2)" onclick="showPhase(2)">
+    <div class="phase-tab-num">Phase 2</div>
+    <div class="phase-tab-name">Core Gateway Build</div>
+    <div class="phase-tab-dur">Weeks 13–28</div>
+  </button>
+  <div class="tab-connector">→</div>
+
+  <button class="phase-tab" style="--tab-color:var(--p3)" onclick="showPhase(3)">
+    <div class="phase-tab-num">Phase 3</div>
+    <div class="phase-tab-name">Hardening &amp; Compliance</div>
+    <div class="phase-tab-dur">Weeks 29–40</div>
+  </button>
+  <div class="tab-connector">→</div>
+
+  <button class="phase-tab" style="--tab-color:var(--p4)" onclick="showPhase(4)">
+    <div class="phase-tab-num">Phase 4</div>
+    <div class="phase-tab-name">Pilot &amp; GA</div>
+    <div class="phase-tab-dur">Weeks 41–52</div>
+  </button>
+  <div class="tab-connector">→</div>
+
+  <button class="phase-tab" style="--tab-color:var(--p5)" onclick="showPhase(5)">
+    <div class="phase-tab-num">Phase 5</div>
+    <div class="phase-tab-name">Scale &amp; Evolution</div>
+    <div class="phase-tab-dur">Weeks 53–72</div>
+  </button>
+
+</div>
+
+<main>
+
+  <!-- ════════════════════════════ PHASE 0 ════════════════════════════ -->
+  <div class="phase-panel active" id="phase-0" style="--phase-color:var(--p0)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">00</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 0 · Weeks 1–4</div>
+        <div class="phase-title">Discovery &amp; Strategy</div>
+        <div class="phase-goal">Define the product, validate the market, establish architecture principles, and get executive buy-in before a single line of code is written.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">4</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">3</span><span class="kpi-label">Deliverables</span></div>
+        <div class="kpi"><span class="kpi-val">1</span><span class="kpi-label">Gate Review</span></div>
+      </div>
+    </div>
+
+    <div class="gate-banner">
+      <div class="gate-banner-icon">🚦</div>
+      <div class="gate-banner-text"><strong>Entry Gate:</strong> Executive sponsor confirmed · Budget allocated · Product owner assigned</div>
+    </div>
+
+    <div class="phase-grid">
+      <div class="card">
+        <div class="card-label">Objective 01</div>
+        <div class="card-title">Market &amp; Stakeholder Discovery</div>
+        <div class="card-body">Interview Bank CTOs, CROs, and Compliance leads. Identify top 5 pain points with current LLM sprawl. Map competitor landscape (Kong, LiteLLM, TrueFoundry).</div>
+        <ul class="checklist">
+          <li>10+ CTO/CIO stakeholder interviews</li>
+          <li>Regulatory pain point mapping (SR 11-7, SOX, DORA)</li>
+          <li>Competitor feature gap analysis</li>
+          <li>Pricing model research (per-token vs. flat SaaS)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Objective 02</div>
+        <div class="card-title">Architecture Blueprint &amp; ADRs</div>
+        <div class="card-body">Produce the Architecture Decision Records for every major technical choice — language, framework, data plane, control plane separation, and deployment model.</div>
+        <ul class="checklist">
+          <li>ADR-001: Java Spring Boot vs .NET Core for gateway core</li>
+          <li>ADR-002: Reactive (WebFlux) vs thread-per-request</li>
+          <li>ADR-003: Vector DB selection (pgvector vs Pinecone)</li>
+          <li>ADR-004: On-prem vs cloud-native deployment topology</li>
+          <li>ADR-005: Multi-tenant data isolation strategy</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Objective 03</div>
+        <div class="card-title">Product Spec &amp; PRD</div>
+        <div class="card-body">Write the Product Requirements Document covering MVP scope, feature prioritisation (MoSCoW), non-functional requirements (latency, throughput, availability), and SLA targets.</div>
+        <ul class="checklist">
+          <li>MVP feature list (MoSCoW prioritised)</li>
+          <li>NFR: &lt;5ms gateway overhead, 99.99% uptime</li>
+          <li>Multi-tenant isolation requirements</li>
+          <li>Compliance checklist (SOX, SR 11-7, DORA)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-grid two-col">
+      <div class="card">
+        <div class="card-label">Team Formation</div>
+        <div class="card-title">Founding Team &amp; Roles</div>
+        <div class="team-grid">
+          <div class="team-member">
+            <div class="team-role">Lead</div>
+            <div class="team-name">Solutions Architect</div>
+            <div class="team-focus">Product vision · ADRs</div>
+          </div>
+          <div class="team-member">
+            <div class="team-role">Engineering</div>
+            <div class="team-name">Backend Lead (Java)</div>
+            <div class="team-focus">Gateway core design</div>
+          </div>
+          <div class="team-member">
+            <div class="team-role">Product</div>
+            <div class="team-name">Product Owner</div>
+            <div class="team-focus">PRD · Backlog</div>
+          </div>
+          <div class="team-member">
+            <div class="team-role">Domain</div>
+            <div class="team-name">Compliance SME</div>
+            <div class="team-focus">Regulatory mapping</div>
+          </div>
+          <div class="team-member">
+            <div class="team-role">Design</div>
+            <div class="team-name">UX Lead</div>
+            <div class="team-focus">Admin portal UX</div>
+          </div>
+          <div class="team-member">
+            <div class="team-role">Offshore</div>
+            <div class="team-name">IBM Dev Pod (4)</div>
+            <div class="team-focus">Sprint delivery</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Phase 0 Exit Gate</div>
+        <div class="card-title">Deliverables &amp; Gate Criteria</div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="ms-week">Week 1</div>
+            <div class="ms-title">Stakeholder interviews complete</div>
+            <div class="ms-desc">10 CTOs/CROs interviewed · pain points documented</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 2</div>
+            <div class="ms-title">ADRs drafted &amp; reviewed</div>
+            <div class="ms-desc">All 5 ADRs signed off by Architecture Board</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 3</div>
+            <div class="ms-title">PRD v1.0 published</div>
+            <div class="ms-desc">MVP scope locked · NFRs baselined</div>
+          </div>
+          <div class="milestone gate">
+            <div class="ms-week">Week 4 — GATE</div>
+            <div class="ms-title">Executive Go/No-Go</div>
+            <div class="ms-desc">Budget approved · Team confirmed · Phase 1 kickoff</div>
+          </div>
+        </div>
+        <div class="deliverables">
+          <span class="del-tag primary">PRD v1.0</span>
+          <span class="del-tag primary">5x ADRs</span>
+          <span class="del-tag primary">Arch Blueprint</span>
+          <span class="del-tag">Competitor Matrix</span>
+          <span class="del-tag">Interview Synthesis</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" disabled>← Previous</button>
+      <button class="nav-btn next" onclick="showPhase(1)">Phase 1: Foundation → </button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════ PHASE 1 ════════════════════════════ -->
+  <div class="phase-panel" id="phase-1" style="--phase-color:var(--p1)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">01</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 1 · Weeks 5–12</div>
+        <div class="phase-title">Foundation &amp; Scaffold</div>
+        <div class="phase-goal">Build the skeleton. CI/CD pipelines, monorepo structure, auth wiring, dev/staging environments, and the first deployable "hello world" gateway request.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">8</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">4</span><span class="kpi-label">Sprints</span></div>
+        <div class="kpi"><span class="kpi-val">PoC</span><span class="kpi-label">Exit Artifact</span></div>
+      </div>
+    </div>
+
+    <div class="phase-grid four-col">
+      <div class="card">
+        <div class="card-label">Sprint 1 · Wk 5–6</div>
+        <div class="card-title">Repo &amp; CI/CD Setup</div>
+        <ul class="checklist">
+          <li>Monorepo (Nx / Turborepo)</li>
+          <li>GitHub Actions pipelines</li>
+          <li>Docker Compose dev env</li>
+          <li>SonarQube + Checkmarx</li>
+          <li>Branch protection rules</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-label">Sprint 2 · Wk 7–8</div>
+        <div class="card-title">Gateway Skeleton</div>
+        <ul class="checklist">
+          <li>Spring Boot 3 + WebFlux</li>
+          <li>OpenAI-compatible /v1/messages</li>
+          <li>Provider adapter interface</li>
+          <li>First end-to-end proxy call</li>
+          <li>Latency baseline measurement</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-label">Sprint 3 · Wk 9–10</div>
+        <div class="card-title">Auth &amp; Tenancy</div>
+        <ul class="checklist">
+          <li>OAuth2 / JWT filter chain</li>
+          <li>Tenant isolation (header-based)</li>
+          <li>RBAC schema design</li>
+          <li>API key management service</li>
+          <li>Vault integration (secrets)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-label">Sprint 4 · Wk 11–12</div>
+        <div class="card-title">Environments &amp; PoC</div>
+        <ul class="checklist">
+          <li>Dev / Staging / Prod topology</li>
+          <li>Kubernetes manifests (Helm)</li>
+          <li>PoC demo: P&L use case</li>
+          <li>Internal stakeholder review</li>
+          <li>Performance baseline report</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-grid two-col">
+      <div class="card">
+        <div class="card-label">Technical Effort Distribution</div>
+        <div class="card-title">Capacity Allocation</div>
+        <div class="bar-wrap">
+          <div class="bar-row"><div class="bar-label">Gateway Core (Java)</div><div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><div class="bar-pct">70%</div></div>
+          <div class="bar-row"><div class="bar-label">Auth / Tenancy</div><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><div class="bar-pct">50%</div></div>
+          <div class="bar-row"><div class="bar-label">Infrastructure</div><div class="bar-track"><div class="bar-fill" style="width:40%"></div></div><div class="bar-pct">40%</div></div>
+          <div class="bar-row"><div class="bar-label">Testing / QA</div><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div><div class="bar-pct">30%</div></div>
+          <div class="bar-row"><div class="bar-label">Admin UI Wireframes</div><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><div class="bar-pct">20%</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Risks &amp; Mitigations</div>
+        <div class="card-title">Phase 1 Risk Register</div>
+        <div class="risk-item">
+          <div class="risk-sev high">High</div>
+          <div class="risk-text"><strong>Provider API breaking changes</strong> — Pin provider SDK versions; adapter pattern isolates blast radius</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-sev med">Med</div>
+          <div class="risk-text"><strong>Latency overhead &gt;5ms</strong> — WebFlux reactive stack selected; establish perf gates in CI from Sprint 1</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-sev low">Low</div>
+          <div class="risk-text"><strong>Offshore team ramp-up</strong> — 2-week overlap pairing sessions; CLAUDE.md build spec pre-written</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" onclick="showPhase(0)">← Phase 0</button>
+      <button class="nav-btn next" onclick="showPhase(2)">Phase 2: Core Build →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════ PHASE 2 ════════════════════════════ -->
+  <div class="phase-panel" id="phase-2" style="--phase-color:var(--p2)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">02</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 2 · Weeks 13–28</div>
+        <div class="phase-title">Core Gateway Build</div>
+        <div class="phase-goal">Build all six control planes. This is the highest-velocity phase — 8 sprints delivering routing, PII redaction, RAG, audit logging, HITL, and the admin dashboard.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">16</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">8</span><span class="kpi-label">Sprints</span></div>
+        <div class="kpi"><span class="kpi-val">Beta</span><span class="kpi-label">Exit Artifact</span></div>
+      </div>
+    </div>
+
+    <div class="card card-full" style="margin-bottom:1.5rem">
+      <div class="card-label">Sprint Delivery Plan — 8 Sprints × 2 Weeks</div>
+      <div class="card-title" style="margin-bottom:1rem">Core Module Build Sequence</div>
+      <table class="sprint-table">
+        <thead>
+          <tr>
+            <th>Sprint</th>
+            <th>Weeks</th>
+            <th>Module</th>
+            <th>Key Deliverables</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>S5</td>
+            <td>13–14</td>
+            <td>Intelligent Model Router</td>
+            <td>Cost/capability routing matrix · Fallback chain · Load balancer · A/B routing flag</td>
+            <td><span class="sprint-label build">Build</span></td>
+          </tr>
+          <tr>
+            <td>S6</td>
+            <td>15–16</td>
+            <td>PII Redaction Engine</td>
+            <td>Presidio integration · Custom NER rules · Pre/post-flight filter · Bank-specific entity types</td>
+            <td><span class="sprint-label sec">Security</span></td>
+          </tr>
+          <tr>
+            <td>S7</td>
+            <td>17–18</td>
+            <td>RAG Orchestration Layer</td>
+            <td>pgvector setup · Hybrid retrieval (BM25 + semantic) · Metadata filter · Context injection pipeline</td>
+            <td><span class="sprint-label arch">Arch</span></td>
+          </tr>
+          <tr>
+            <td>S8</td>
+            <td>19–20</td>
+            <td>Audit &amp; Observability</td>
+            <td>Immutable log schema · Cryptographic hashing · Splunk connector · OpenTelemetry tracing</td>
+            <td><span class="sprint-label sec">Compliance</span></td>
+          </tr>
+          <tr>
+            <td>S9</td>
+            <td>21–22</td>
+            <td>HITL Checkpoint Engine</td>
+            <td>Confidence threshold triggers · Approval workflow API · SME portal integration · Escalation rules</td>
+            <td><span class="sprint-label build">Build</span></td>
+          </tr>
+          <tr>
+            <td>S10</td>
+            <td>23–24</td>
+            <td>Admin Dashboard (Next.js)</td>
+            <td>Routing rule builder UI · Audit log explorer · Cost per BU dashboard · RBAC management</td>
+            <td><span class="sprint-label build">UI</span></td>
+          </tr>
+          <tr>
+            <td>S11</td>
+            <td>25–26</td>
+            <td>Multi-Tenant &amp; API SDK</td>
+            <td>Tenant isolation hardening · TypeScript SDK (npm) · Python SDK · Java client library</td>
+            <td><span class="sprint-label arch">Arch</span></td>
+          </tr>
+          <tr>
+            <td>S12</td>
+            <td>27–28</td>
+            <td>Integration &amp; Beta Prep</td>
+            <td>End-to-end regression suite · Load tests (10k req/min) · Beta env setup · Docs v1</td>
+            <td><span class="sprint-label test">Test</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="phase-grid">
+      <div class="card">
+        <div class="card-label">Testing Strategy</div>
+        <div class="card-title">Quality Gates Per Sprint</div>
+        <ul class="checklist">
+          <li>Unit test coverage ≥ 80% (JUnit 5 / Vitest)</li>
+          <li>Integration tests against mock LLM providers</li>
+          <li>Contract tests (Pact) for all provider adapters</li>
+          <li>Security scan (Checkmarx) on every PR</li>
+          <li>Performance regression gate: p99 &lt; 5ms overhead</li>
+          <li>SonarQube Quality Gate enforced in CI</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Architecture Patterns</div>
+        <div class="card-title">Key Design Decisions Executed</div>
+        <ul class="checklist">
+          <li>Hexagonal architecture — ports &amp; adapters for all LLM providers</li>
+          <li>Filter chain pattern for control planes (ordered, composable)</li>
+          <li>Event sourcing for audit log (append-only, Kafka-backed)</li>
+          <li>Sidecar pattern for PII redaction (Presidio as separate container)</li>
+          <li>CQRS for admin portal (command vs read model separation)</li>
+          <li>Circuit breaker (Resilience4j) per provider endpoint</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Non-Functional Targets</div>
+        <div class="card-title">Performance Benchmarks</div>
+        <div class="bar-wrap">
+          <div class="bar-row"><div class="bar-label">Gateway Overhead</div><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><div class="bar-pct">&lt;5ms</div></div>
+          <div class="bar-row"><div class="bar-label">Throughput (req/min)</div><div class="bar-track"><div class="bar-fill" style="width:80%"></div></div><div class="bar-pct">50k</div></div>
+          <div class="bar-row"><div class="bar-label">Availability SLA</div><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><div class="bar-pct">99.99%</div></div>
+          <div class="bar-row"><div class="bar-label">PII Redaction Accuracy</div><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><div class="bar-pct">99.5%</div></div>
+          <div class="bar-row"><div class="bar-label">Test Coverage Floor</div><div class="bar-track"><div class="bar-fill" style="width:80%"></div></div><div class="bar-pct">80%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" onclick="showPhase(1)">← Phase 1</button>
+      <button class="nav-btn next" onclick="showPhase(3)">Phase 3: Hardening →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════ PHASE 3 ════════════════════════════ -->
+  <div class="phase-panel" id="phase-3" style="--phase-color:var(--p3)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">03</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 3 · Weeks 29–40</div>
+        <div class="phase-title">Hardening &amp; Compliance</div>
+        <div class="phase-goal">Make it bank-grade. Security penetration testing, SR 11-7 model risk documentation, SOX audit trail certification, DORA resilience testing, and disaster recovery validation.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">12</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">6</span><span class="kpi-label">Sprints</span></div>
+        <div class="kpi"><span class="kpi-val">Cert</span><span class="kpi-label">Exit Artifact</span></div>
+      </div>
+    </div>
+
+    <div class="gate-banner">
+      <div class="gate-banner-icon">⚠️</div>
+      <div class="gate-banner-text"><strong>Critical Phase:</strong> No shortcuts here. Every bank CTO will ask "did it pass pen test?" before signing. This phase is the product's license to operate in regulated environments.</div>
+    </div>
+
+    <div class="phase-grid">
+      <div class="card">
+        <div class="card-label">Security Track</div>
+        <div class="card-title">Penetration Testing &amp; Threat Model</div>
+        <ul class="checklist">
+          <li>STRIDE threat modelling for all gateway surfaces</li>
+          <li>External pen test (CREST-certified vendor)</li>
+          <li>Prompt injection attack simulation</li>
+          <li>API fuzzing (OWASP ZAP + custom LLM payloads)</li>
+          <li>Dependency vulnerability scan (Snyk / OWASP Dep-Check)</li>
+          <li>Secrets scanning — zero secrets in codebase</li>
+          <li class="warn">All Critical/High findings must be remediated before Phase 4</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Regulatory Track</div>
+        <div class="card-title">Compliance Certification Workstreams</div>
+        <ul class="checklist">
+          <li><strong>SR 11-7</strong> — Model inventory, validation docs, ongoing monitoring plan</li>
+          <li><strong>SOX</strong> — Audit trail certification: hash integrity verified, retention proven</li>
+          <li><strong>DORA</strong> — ICT resilience testing: failover &lt;30s, RTO/RPO documented</li>
+          <li><strong>GDPR/CCPA</strong> — DPA templates, data residency controls, right-to-erasure tested</li>
+          <li><strong>Basel III</strong> — Operational risk taxonomy mapped to AI failure modes</li>
+          <li class="warn">External legal review of data processing agreements</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Resilience Track</div>
+        <div class="card-title">Chaos Engineering &amp; DR Validation</div>
+        <ul class="checklist">
+          <li>Chaos Monkey: random provider failure injection</li>
+          <li>Network partition simulation (split-brain gateway)</li>
+          <li>Provider outage: auto-failover verified &lt;500ms</li>
+          <li>Disaster recovery drill: full restore from backup</li>
+          <li>Backup/restore RTO target: &lt;4 hours</li>
+          <li>Multi-region active-passive topology validated</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-grid two-col">
+      <div class="card">
+        <div class="card-label">Sprint Plan</div>
+        <div class="card-title">Hardening Sprint Breakdown</div>
+        <table class="sprint-table">
+          <thead><tr><th>Sprint</th><th>Focus</th><th>Gate</th></tr></thead>
+          <tbody>
+            <tr><td>S13</td><td>Threat modelling + STRIDE complete</td><td><span class="sprint-label sec">Sec</span></td></tr>
+            <tr><td>S14</td><td>Pen test execution + findings remediation</td><td><span class="sprint-label sec">Sec</span></td></tr>
+            <tr><td>S15</td><td>SR 11-7 docs + SOX audit trail cert</td><td><span class="sprint-label test">Compliance</span></td></tr>
+            <tr><td>S16</td><td>DORA resilience + chaos engineering</td><td><span class="sprint-label infra">Infra</span></td></tr>
+            <tr><td>S17</td><td>Load testing at 3× expected prod volume</td><td><span class="sprint-label test">Perf</span></td></tr>
+            <tr><td>S18</td><td>Final hardening + Phase 4 readiness review</td><td><span class="sprint-label rel">Gate</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Exit Criteria</div>
+        <div class="card-title">Phase 3 Completion Gate</div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="ms-week">Week 32</div>
+            <div class="ms-title">Zero open Critical/High security findings</div>
+            <div class="ms-desc">Pen test report signed off by CISO</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 36</div>
+            <div class="ms-title">SR 11-7 &amp; SOX documentation approved</div>
+            <div class="ms-desc">Model Risk Management framework validated by MRM team</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 38</div>
+            <div class="ms-title">Chaos &amp; DR tests passed</div>
+            <div class="ms-desc">Failover &lt;500ms · RTO &lt;4hr documented</div>
+          </div>
+          <div class="milestone gate">
+            <div class="ms-week">Week 40 — GATE</div>
+            <div class="ms-title">Compliance Board Sign-off</div>
+            <div class="ms-desc">CRO + CISO + Legal approved for Pilot deployment</div>
+          </div>
+        </div>
+        <div class="deliverables">
+          <span class="del-tag primary">Pen Test Report</span>
+          <span class="del-tag primary">SR 11-7 Package</span>
+          <span class="del-tag primary">SOX Cert</span>
+          <span class="del-tag primary">DORA Evidence</span>
+          <span class="del-tag">DR Runbook</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" onclick="showPhase(2)">← Phase 2</button>
+      <button class="nav-btn next" onclick="showPhase(4)">Phase 4: Pilot &amp; GA →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════ PHASE 4 ════════════════════════════ -->
+  <div class="phase-panel" id="phase-4" style="--phase-color:var(--p4)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">04</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 4 · Weeks 41–52</div>
+        <div class="phase-title">Pilot &amp; General Availability</div>
+        <div class="phase-goal">Deploy to 2–3 pilot bank clients. Collect real-world telemetry, run hypercare support, iterate on feedback, and execute controlled GA launch with SLA-backed contracts.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">12</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">3</span><span class="kpi-label">Pilot Clients</span></div>
+        <div class="kpi"><span class="kpi-val">v1.0</span><span class="kpi-label">GA Release</span></div>
+      </div>
+    </div>
+
+    <div class="phase-grid">
+      <div class="card">
+        <div class="card-label">Pilot Strategy</div>
+        <div class="card-title">Controlled Rollout Plan</div>
+        <div class="card-body">Select 2–3 design-partner banks with highest pain. Deploy in shadow mode (read-only beside existing LLM calls) before cutting over traffic.</div>
+        <ul class="checklist">
+          <li>Design partner selection (1 regional bank, 1 investment bank, 1 fintech)</li>
+          <li>Shadow mode deployment — zero production risk</li>
+          <li>Weekly feedback loops with pilot CTOs</li>
+          <li>Dedicated Slack channel per pilot client</li>
+          <li>SLA: 99.9% uptime in pilot (no financial penalty yet)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">GA Launch Checklist</div>
+        <div class="card-title">General Availability Readiness</div>
+        <ul class="checklist">
+          <li>Public API documentation (docs.meridian.io)</li>
+          <li>Pricing model finalised (per-token tiers + enterprise flat)</li>
+          <li>Support SLA tiers defined (Standard / Premier / Dedicated)</li>
+          <li>Runbook library published (20+ operational runbooks)</li>
+          <li>On-call rotation established (PagerDuty)</li>
+          <li>Status page live (status.meridian.io)</li>
+          <li>Customer success team hired (2 x CSM)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Hypercare Model</div>
+        <div class="card-title">Post-Deployment Support Structure</div>
+        <ul class="checklist">
+          <li>4-week hypercare per pilot client (dedicated engineer)</li>
+          <li>Daily standup with client platform team</li>
+          <li>Real-time observability dashboard shared with client</li>
+          <li>Incident response SLA: P1 &lt;15min acknowledgement</li>
+          <li>Weekly executive report to client CTO during hypercare</li>
+        </ul>
+
+        <div class="milestones" style="margin-top:1rem">
+          <div class="milestone">
+            <div class="ms-week">Week 41–44</div>
+            <div class="ms-title">Pilot Deployment (Shadow Mode)</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 45–48</div>
+            <div class="ms-title">Live Traffic Cutover (Pilot Clients)</div>
+          </div>
+          <div class="milestone">
+            <div class="ms-week">Week 49–51</div>
+            <div class="ms-title">Feedback Iteration &amp; GA Prep</div>
+          </div>
+          <div class="milestone gate">
+            <div class="ms-week">Week 52 — GA</div>
+            <div class="ms-title">v1.0 General Availability Launch</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-grid two-col">
+      <div class="card">
+        <div class="card-label">Success Metrics — Pilot</div>
+        <div class="card-title">KPIs to Validate Before GA</div>
+        <div class="bar-wrap">
+          <div class="bar-row"><div class="bar-label">Gateway uptime</div><div class="bar-track"><div class="bar-fill" style="width:99%"></div></div><div class="bar-pct">99.9%</div></div>
+          <div class="bar-row"><div class="bar-label">Overhead p99</div><div class="bar-track"><div class="bar-fill" style="width:25%"></div></div><div class="bar-pct">&lt;5ms</div></div>
+          <div class="bar-row"><div class="bar-label">PII Zero-Leak Rate</div><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><div class="bar-pct">100%</div></div>
+          <div class="bar-row"><div class="bar-label">Cost reduction vs direct</div><div class="bar-track"><div class="bar-fill" style="width:35%"></div></div><div class="bar-pct">25–35%</div></div>
+          <div class="bar-row"><div class="bar-label">Pilot CTO NPS</div><div class="bar-track"><div class="bar-fill" style="width:80%"></div></div><div class="bar-pct">≥ 60</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Commercial Model</div>
+        <div class="card-title">Pricing at GA</div>
+        <ul class="checklist">
+          <li><strong>Starter:</strong> $2,500/mo · 5M tokens/mo · 3 models · community support</li>
+          <li><strong>Professional:</strong> $12,000/mo · 50M tokens · unlimited models · email SLA</li>
+          <li><strong>Enterprise:</strong> Custom · unlimited · dedicated infra · 24/7 support + CSM</li>
+          <li><strong>On-Prem:</strong> Annual license · air-gapped deployment · MNPI-safe</li>
+          <li class="warn">Compliance add-on: SOX/SR 11-7 reporting module (+$3k/mo)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" onclick="showPhase(3)">← Phase 3</button>
+      <button class="nav-btn next" onclick="showPhase(5)">Phase 5: Scale →</button>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════ PHASE 5 ════════════════════════════ -->
+  <div class="phase-panel" id="phase-5" style="--phase-color:var(--p5)">
+
+    <div class="phase-header">
+      <div class="phase-num-big">05</div>
+      <div class="phase-title-block">
+        <div class="phase-badge">Phase 5 · Weeks 53–72</div>
+        <div class="phase-title">Scale &amp; Evolution</div>
+        <div class="phase-goal">From product to platform. Multi-region deployment, marketplace of domain-specific RAG packs, agentic AI orchestration, and positioning for Series A / acqui-hire optionality.</div>
+      </div>
+      <div class="phase-kpis">
+        <div class="kpi"><span class="kpi-val">20</span><span class="kpi-label">Weeks</span></div>
+        <div class="kpi"><span class="kpi-val">v2.0</span><span class="kpi-label">Platform Release</span></div>
+        <div class="kpi"><span class="kpi-val">10+</span><span class="kpi-label">Enterprise Clients</span></div>
+      </div>
+    </div>
+
+    <div class="phase-grid">
+      <div class="card">
+        <div class="card-label">Platform Expansion</div>
+        <div class="card-title">v2.0 Feature Roadmap</div>
+        <ul class="checklist">
+          <li><strong>Agentic Orchestration</strong> — Multi-step AI agent workflows with tool use (MCP)</li>
+          <li><strong>Domain RAG Packs</strong> — Pre-built vector corpora: Basel docs, IFRS standards, FRB guidance</li>
+          <li><strong>Fine-Tune Manager</strong> — Manage and route to bank's own fine-tuned models</li>
+          <li><strong>Semantic Cache</strong> — 40%+ cost reduction via embedding similarity cache (Redis)</li>
+          <li><strong>AI Cost Ledger</strong> — Token cost allocated per business unit, per desk, per use case</li>
+          <li><strong>Marketplace</strong> — Third-party control plane plugins (custom PII detectors, domain classifiers)</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Geographic Scale</div>
+        <div class="card-title">Multi-Region Deployment</div>
+        <ul class="checklist">
+          <li>Active-active: US-East · EU-West (GDPR data residency)</li>
+          <li>Active-passive: APAC (Singapore) for APAC banking clients</li>
+          <li>Air-gapped on-prem option for MNPI / classified data desks</li>
+          <li>GovCloud variant for regulated public sector banks</li>
+          <li>Edge gateway node for ultra-low latency trading use cases</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Strategic Optionality</div>
+        <div class="card-title">Growth &amp; Exit Positioning</div>
+        <ul class="checklist">
+          <li><strong>EB-1A Evidence:</strong> Product is a publishable platform — conference talks, papers, Forbes article</li>
+          <li><strong>IP Portfolio:</strong> File provisional patents on HITL routing algorithm and compliance audit trail schema</li>
+          <li><strong>Acqui-hire Signal:</strong> Target acquirers: JPMorgan Chase AI, Palantir FS, FIS, Finastra</li>
+          <li><strong>Series A Narrative:</strong> $X ARR · Y enterprise banks · Z% of regulated AI traffic controlled</li>
+          <li class="warn">Open-source core strategy: drive adoption, monetise compliance layer</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-grid two-col">
+      <div class="card">
+        <div class="card-label">18-Month KPI Summary</div>
+        <div class="card-title">End-State Targets at Week 72</div>
+        <div class="bar-wrap">
+          <div class="bar-row"><div class="bar-label">Enterprise Clients</div><div class="bar-track"><div class="bar-fill" style="width:67%"></div></div><div class="bar-pct">10+</div></div>
+          <div class="bar-row"><div class="bar-label">Monthly Token Volume</div><div class="bar-track"><div class="bar-fill" style="width:75%"></div></div><div class="bar-pct">1B+</div></div>
+          <div class="bar-row"><div class="bar-label">Models Supported</div><div class="bar-track"><div class="bar-fill" style="width:80%"></div></div><div class="bar-pct">100+</div></div>
+          <div class="bar-row"><div class="bar-label">ARR Target</div><div class="bar-track"><div class="bar-fill" style="width:60%"></div></div><div class="bar-pct">$3M+</div></div>
+          <div class="bar-row"><div class="bar-label">NPS (Enterprise)</div><div class="bar-track"><div class="bar-fill" style="width:70%"></div></div><div class="bar-pct">≥ 70</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Continuous SDLC at Scale</div>
+        <div class="card-title">Ongoing Engineering Rhythm</div>
+        <ul class="checklist">
+          <li><strong>2-week sprints</strong> — PI planning quarterly (SAFe-lite for enterprise clients)</li>
+          <li><strong>Feature flags</strong> — All new features behind LaunchDarkly flags, gradual rollout</li>
+          <li><strong>Canary releases</strong> — 1% → 10% → 50% → 100% traffic progression</li>
+          <li><strong>SLA-gated deploys</strong> — Automated rollback if p99 latency spikes &gt;10ms</li>
+          <li><strong>Quarterly compliance review</strong> — Regulatory landscape scan + control plane updates</li>
+          <li><strong>Annual pen test</strong> — External CREST vendor, recurring SOC 2 Type II</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-nav">
+      <button class="nav-btn" onclick="showPhase(4)">← Phase 4</button>
+      <button class="nav-btn" disabled style="opacity:0.3">End of Roadmap ✓</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const phases = document.querySelectorAll('.phase-panel');
+  const tabs = document.querySelectorAll('.phase-tab');
+
+  function showPhase(n) {
+    phases.forEach((p, i) => p.classList.toggle('active', i === n));
+    tabs.forEach((t, i) => t.classList.toggle('active', i === n));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
