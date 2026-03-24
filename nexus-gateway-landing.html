@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Meridian — LLM Orchestration Gateway for Financial Services</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --ink: #0a0d14;
+    --paper: #f5f2ec;
+    --gold: #c9a84c;
+    --gold-light: #e8d49a;
+    --gold-dim: #7a6030;
+    --slate: #1e2433;
+    --slate-mid: #2e3650;
+    --muted: #8a8f9e;
+    --line: rgba(201,168,76,0.2);
+    --accent-blue: #2a4a7f;
+    --accent-teal: #1a6b6b;
+    --danger: #8b2020;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Instrument Sans', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE TEXTURE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.5;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.4rem 3rem;
+    background: rgba(10,13,20,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+  }
+
+  .nav-logo span {
+    color: var(--paper);
+    font-weight: 300;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-decoration: none;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--gold); }
+
+  .nav-cta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.4rem;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .nav-cta:hover { background: var(--gold); color: var(--ink); }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8rem 3rem 5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 80%);
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: -10%;
+    right: -5%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-glow-2 {
+    position: absolute;
+    bottom: -20%;
+    left: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(42,74,127,0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: fadeUp 0.8s ease both;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(3.2rem, 7vw, 6.5rem);
+    font-weight: 300;
+    line-height: 1.0;
+    letter-spacing: -0.01em;
+    max-width: 14ch;
+    animation: fadeUp 0.9s 0.1s ease both;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-subtitle {
+    margin-top: 2rem;
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: var(--muted);
+    max-width: 52ch;
+    line-height: 1.7;
+    animation: fadeUp 1s 0.2s ease both;
+  }
+
+  .hero-actions {
+    margin-top: 3rem;
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    animation: fadeUp 1s 0.3s ease both;
+  }
+
+  .btn-primary {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.9rem 2.2rem;
+    background: var(--gold);
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover::after { opacity: 0.1; }
+
+  .btn-ghost {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.9rem 2.2rem;
+    border: 1px solid rgba(138,143,158,0.4);
+    color: var(--muted);
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--paper); color: var(--paper); }
+
+  .hero-stat-row {
+    margin-top: 5rem;
+    display: flex;
+    gap: 4rem;
+    border-top: 1px solid var(--line);
+    padding-top: 2.5rem;
+    animation: fadeUp 1s 0.4s ease both;
+  }
+
+  .hero-stat .num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 400;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .hero-stat .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.4rem;
+  }
+
+  /* ── MARQUEE ── */
+  .marquee-strip {
+    background: var(--slate);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+    padding: 0.8rem 0;
+  }
+
+  .marquee-inner {
+    display: flex;
+    gap: 3rem;
+    white-space: nowrap;
+    animation: marquee 30s linear infinite;
+  }
+
+  .marquee-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+  .marquee-item::before { content: '◆'; color: var(--gold); font-size: 0.45rem; }
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* ── SECTION COMMONS ── */
+  section { padding: 7rem 3rem; }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    font-weight: 300;
+    line-height: 1.15;
+    max-width: 20ch;
+  }
+
+  .section-title em { font-style: italic; color: var(--gold); }
+
+  /* ── ARCHITECTURE SECTION ── */
+  .arch-section {
+    background: var(--slate);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .arch-section::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(135deg, transparent 40%, rgba(201,168,76,0.03) 100%);
+    pointer-events: none;
+  }
+
+  .arch-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    margin-bottom: 4rem;
+  }
+
+  .arch-desc {
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.8;
+    padding-top: 2.5rem;
+  }
+
+  /* ── ARCHITECTURE DIAGRAM ── */
+  .arch-diagram {
+    position: relative;
+    background: rgba(10,13,20,0.6);
+    border: 1px solid var(--line);
+    padding: 2.5rem;
+    overflow: hidden;
+  }
+
+  .arch-diagram::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .diag-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Consumer Layer */
+  .consumer-layer {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .consumer-node {
+    background: rgba(42,74,127,0.25);
+    border: 1px solid rgba(42,74,127,0.5);
+    padding: 0.6rem 0.5rem;
+    text-align: center;
+  }
+
+  .consumer-node .cn-icon { font-size: 1.1rem; margin-bottom: 0.2rem; }
+  .consumer-node .cn-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    color: #7aa3d4;
+    text-transform: uppercase;
+  }
+
+  /* Arrow down */
+  .diag-arrow {
+    text-align: center;
+    color: var(--gold-dim);
+    font-size: 1.2rem;
+    margin: 0.3rem 0;
+    letter-spacing: 2px;
+  }
+
+  /* Gateway box */
+  .gateway-box {
+    border: 1px solid var(--gold);
+    background: rgba(201,168,76,0.04);
+    padding: 1.5rem;
+    margin-bottom: 1.2rem;
+    position: relative;
+  }
+
+  .gateway-box::before {
+    content: 'MERIDIAN GATEWAY';
+    position: absolute;
+    top: -0.55rem;
+    left: 1.5rem;
+    background: var(--slate);
+    padding: 0 0.6rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    color: var(--gold);
+  }
+
+  .gateway-controls {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.6rem;
+  }
+
+  .ctrl-block {
+    background: rgba(10,13,20,0.6);
+    border: 1px solid rgba(201,168,76,0.15);
+    padding: 0.8rem 0.5rem;
+    text-align: center;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+  }
+
+  .ctrl-block:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  .ctrl-block .cb-icon { font-size: 1.2rem; margin-bottom: 0.3rem; }
+  .ctrl-block .cb-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    color: var(--gold-light);
+    text-transform: uppercase;
+    line-height: 1.3;
+  }
+
+  .ctrl-block .cb-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--muted);
+    margin-top: 0.15rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Model layer */
+  .model-layer {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+  }
+
+  .model-node {
+    background: rgba(26,107,107,0.18);
+    border: 1px solid rgba(26,107,107,0.45);
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    position: relative;
+  }
+
+  .model-node.premium { border-color: rgba(201,168,76,0.45); background: rgba(201,168,76,0.06); }
+
+  .model-node .mn-icon { font-size: 1.1rem; margin-bottom: 0.2rem; }
+  .model-node .mn-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
+    color: #7acfcf;
+    text-transform: uppercase;
+  }
+  .model-node.premium .mn-label { color: var(--gold-light); }
+
+  .model-node .mn-tag {
+    display: inline-block;
+    margin-top: 0.2rem;
+    padding: 0.1rem 0.3rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.45rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(26,107,107,0.4);
+    color: var(--muted);
+  }
+  .model-node.premium .mn-tag { border-color: rgba(201,168,76,0.3); }
+
+  /* Diag legend */
+  .diag-legend {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── CONTROL PLANES SECTION ── */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 3.5rem;
+  }
+
+  .ctrl-card {
+    background: var(--ink);
+    padding: 2.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+
+  .ctrl-card:hover { background: rgba(30,36,51,0.8); }
+
+  .ctrl-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 2px;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .ctrl-card:hover::after { transform: scaleX(1); }
+
+  .ctrl-card-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3.5rem;
+    font-weight: 300;
+    color: rgba(201,168,76,0.15);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+
+  .ctrl-card-icon { font-size: 1.6rem; margin-bottom: 1rem; }
+
+  .ctrl-card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    margin-bottom: 0.8rem;
+    line-height: 1.2;
+  }
+
+  .ctrl-card-desc {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .ctrl-card-tags {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.6rem;
+    border: 1px solid rgba(201,168,76,0.2);
+    color: var(--gold-dim);
+  }
+
+  /* ── COMPLIANCE STRIP ── */
+  .compliance-section {
+    background: var(--slate);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .compliance-inner {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 5rem;
+    align-items: center;
+  }
+
+  .compliance-badges {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+
+  .badge {
+    border: 1px solid var(--line);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .badge-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+  .badge-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .compliance-list { list-style: none; }
+  .compliance-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.2rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .compliance-list li:last-child { border-bottom: none; }
+  .compliance-list li::before {
+    content: '→';
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+  .compliance-list strong { color: var(--paper); font-weight: 400; }
+
+  /* ── USE CASES ── */
+  .usecases-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 3.5rem;
+  }
+
+  .uc-card {
+    border: 1px solid var(--line);
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    transition: border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .uc-card:hover { border-color: rgba(201,168,76,0.4); }
+
+  .uc-icon-wrap {
+    width: 48px; height: 48px;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+  }
+
+  .uc-domain {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.4rem;
+  }
+
+  .uc-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    line-height: 1.25;
+  }
+
+  .uc-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .uc-metric {
+    position: absolute;
+    bottom: 1rem; right: 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+  }
+
+  /* ── TECH STACK ── */
+  .stack-section { background: var(--slate); }
+
+  .stack-cols {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-top: 3.5rem;
+  }
+
+  .stack-col {
+    background: var(--slate);
+    padding: 2rem 1.5rem;
+  }
+
+  .stack-col-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stack-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid rgba(201,168,76,0.06);
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+  .stack-item:last-child { border-bottom: none; }
+  .stack-item-dot {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.5;
+  }
+
+  /* ── CTA SECTION ── */
+  .cta-section {
+    text-align: center;
+    padding: 8rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .cta-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    font-weight: 300;
+    line-height: 1.1;
+    max-width: 18ch;
+    margin: 0 auto 1.5rem;
+  }
+  .cta-title em { font-style: italic; color: var(--gold); }
+
+  .cta-sub {
+    font-size: 0.95rem;
+    color: var(--muted);
+    max-width: 44ch;
+    margin: 0 auto 3rem;
+    line-height: 1.7;
+  }
+
+  .cta-buttons {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--slate);
+    border-top: 1px solid var(--line);
+    padding: 2.5rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+
+  .footer-copy {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+  .footer-links a {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--gold); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── PULSE DOTS ── */
+  .pulse-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #4caf50;
+    position: relative;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  .pulse-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1px solid #4caf50;
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  /* ── LIVE TICKER ── */
+  .ticker-bar {
+    background: rgba(10,13,20,0.9);
+    border: 1px solid var(--line);
+    padding: 1.2rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 3rem;
+    overflow: hidden;
+  }
+
+  .ticker-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .ticker-scroll {
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .ticker-items {
+    display: flex;
+    gap: 3rem;
+    animation: tickerScroll 20s linear infinite;
+    white-space: nowrap;
+  }
+
+  .ticker-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .ticker-item span { color: #4caf50; margin-left: 0.3rem; }
+  .ticker-item.warn span { color: #e8a030; }
+
+  @keyframes tickerScroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Meridian<span>Gateway</span></div>
+  <ul class="nav-links">
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#controls">Controls</a></li>
+    <li><a href="#compliance">Compliance</a></li>
+    <li><a href="#usecases">Use Cases</a></li>
+    <li><a href="#stack">Tech Stack</a></li>
+  </ul>
+  <a href="#cta" class="nav-cta">Request Demo</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-glow-2"></div>
+
+  <div class="hero-eyebrow">Enterprise LLM Orchestration Gateway</div>
+
+  <h1 class="hero-title">
+    AI Control Fabric for <em>Financial Services</em>
+  </h1>
+
+  <p class="hero-subtitle">
+    Meridian is a sovereign, bank-grade orchestration gateway that routes, governs, audits, and controls every LLM interaction across your enterprise — without compromising security, compliance, or explainability.
+  </p>
+
+  <div class="hero-actions">
+    <a href="#architecture" class="btn-primary">Explore Architecture</a>
+    <a href="#cta" class="btn-ghost">Request CIO Briefing</a>
+  </div>
+
+  <!-- Live ticker -->
+  <div class="ticker-bar">
+    <div class="ticker-label"><span class="pulse-dot"></span>Live Gateway</div>
+    <div class="ticker-scroll">
+      <div class="ticker-items">
+        <div class="ticker-item">P&amp;L Commentary Generation <span>↑ 4.2ms</span></div>
+        <div class="ticker-item">Risk Narrative — GPT-4o <span>↑ 312 tokens</span></div>
+        <div class="ticker-item warn">AML Entity Extraction — PII Redacted <span>✓</span></div>
+        <div class="ticker-item">Regulatory Q&amp;A — Claude Sonnet <span>↑ 98% relevance</span></div>
+        <div class="ticker-item">Trade Blotter Summary — Fallback: Gemini <span>↑ auto-routed</span></div>
+        <div class="ticker-item">Audit Log Written — SOX Compliant <span>✓</span></div>
+        <div class="ticker-item">Cost Saved vs GPT-4o — Routed to Haiku <span>↓ $0.018</span></div>
+        <!-- duplicate for seamless loop -->
+        <div class="ticker-item">P&amp;L Commentary Generation <span>↑ 4.2ms</span></div>
+        <div class="ticker-item">Risk Narrative — GPT-4o <span>↑ 312 tokens</span></div>
+        <div class="ticker-item warn">AML Entity Extraction — PII Redacted <span>✓</span></div>
+        <div class="ticker-item">Regulatory Q&amp;A — Claude Sonnet <span>↑ 98% relevance</span></div>
+        <div class="ticker-item">Trade Blotter Summary — Fallback: Gemini <span>↑ auto-routed</span></div>
+        <div class="ticker-item">Audit Log Written — SOX Compliant <span>✓</span></div>
+        <div class="ticker-item">Cost Saved vs GPT-4o — Routed to Haiku <span>↓ $0.018</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-stat-row">
+    <div class="hero-stat"><div class="num">100+</div><div class="label">LLM Models Supported</div></div>
+    <div class="hero-stat"><div class="num">&lt;5ms</div><div class="label">Gateway Overhead</div></div>
+    <div class="hero-stat"><div class="num">Zero</div><div class="label">Vendor Lock-in</div></div>
+    <div class="hero-stat"><div class="num">SR 11-7</div><div class="label">Model Risk Ready</div></div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-strip">
+  <div class="marquee-inner">
+    <div class="marquee-item">SOX Compliant</div>
+    <div class="marquee-item">DORA Ready</div>
+    <div class="marquee-item">PII Redaction</div>
+    <div class="marquee-item">Multi-Model Routing</div>
+    <div class="marquee-item">SR 11-7 Model Risk</div>
+    <div class="marquee-item">Zero Trust Auth</div>
+    <div class="marquee-item">Immutable Audit Trails</div>
+    <div class="marquee-item">RAG Orchestration</div>
+    <div class="marquee-item">Human-in-the-Loop</div>
+    <div class="marquee-item">Token Cost Governance</div>
+    <div class="marquee-item">Basel III Operational Risk</div>
+    <div class="marquee-item">GDPR / CCPA Controls</div>
+    <!-- dup -->
+    <div class="marquee-item">SOX Compliant</div>
+    <div class="marquee-item">DORA Ready</div>
+    <div class="marquee-item">PII Redaction</div>
+    <div class="marquee-item">Multi-Model Routing</div>
+    <div class="marquee-item">SR 11-7 Model Risk</div>
+    <div class="marquee-item">Zero Trust Auth</div>
+    <div class="marquee-item">Immutable Audit Trails</div>
+    <div class="marquee-item">RAG Orchestration</div>
+    <div class="marquee-item">Human-in-the-Loop</div>
+    <div class="marquee-item">Token Cost Governance</div>
+    <div class="marquee-item">Basel III Operational Risk</div>
+    <div class="marquee-item">GDPR / CCPA Controls</div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<section class="arch-section" id="architecture">
+  <div class="arch-header reveal">
+    <div>
+      <div class="section-label">System Architecture</div>
+      <h2 class="section-title">One Gateway.<br/><em>Every Model.</em><br/>Full Control.</h2>
+    </div>
+    <p class="arch-desc">
+      Meridian sits as a sovereign control plane between your enterprise applications and every AI provider. It normalises API surfaces, enforces your governance policies at the perimeter, orchestrates RAG pipelines, and writes immutable audit records — all with sub-5ms overhead. Your teams ship AI features faster; your risk and compliance functions sleep soundly.
+    </p>
+  </div>
+
+  <div class="arch-diagram reveal">
+
+    <!-- Consumer Layer -->
+    <div style="margin-bottom:0.5rem;">
+      <div style="font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;">↓ Consuming Applications</div>
+      <div class="consumer-layer">
+        <div class="consumer-node"><div class="cn-icon">📊</div><div class="cn-label">P&L / Finance</div></div>
+        <div class="consumer-node"><div class="cn-icon">⚠️</div><div class="cn-label">Risk &amp; Stress</div></div>
+        <div class="consumer-node"><div class="cn-icon">🏛️</div><div class="cn-label">Compliance</div></div>
+        <div class="consumer-node"><div class="cn-icon">📈</div><div class="cn-label">Trading Desk</div></div>
+        <div class="consumer-node"><div class="cn-icon">🤝</div><div class="cn-label">Client Ops</div></div>
+      </div>
+    </div>
+
+    <div class="diag-arrow">⬇ ⬇ ⬇ ⬇ ⬇</div>
+
+    <!-- Gateway Box -->
+    <div class="gateway-box" style="margin-top:0.8rem;">
+      <div class="gateway-controls">
+        <div class="ctrl-block">
+          <div class="cb-icon">🔐</div>
+          <div class="cb-label">Auth &amp; RBAC</div>
+          <div class="cb-sub">OAuth2 / JWT</div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cb-icon">🕵️</div>
+          <div class="cb-label">PII Redaction</div>
+          <div class="cb-sub">Pre-flight filter</div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cb-icon">🧠</div>
+          <div class="cb-label">Model Router</div>
+          <div class="cb-sub">Cost / capability</div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cb-icon">📚</div>
+          <div class="cb-label">RAG Engine</div>
+          <div class="cb-sub">Vector + structured</div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cb-icon">🧾</div>
+          <div class="cb-label">Audit Logger</div>
+          <div class="cb-sub">Immutable trail</div>
+        </div>
+        <div class="ctrl-block">
+          <div class="cb-icon">🧑‍⚖️</div>
+          <div class="cb-label">HITL Checkpoint</div>
+          <div class="cb-sub">SME sign-off</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diag-arrow">⬇ ⬇ ⬇ ⬇ ⬇</div>
+
+    <!-- Model Layer -->
+    <div style="margin-top:0.5rem;">
+      <div style="font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;">↓ LLM Providers (abstracted)</div>
+      <div class="model-layer">
+        <div class="model-node premium"><div class="mn-icon">⚡</div><div class="mn-label">GPT-4o / Azure</div><div class="mn-tag">Complex Reasoning</div></div>
+        <div class="model-node premium"><div class="mn-icon">🌊</div><div class="mn-label">Claude Sonnet</div><div class="mn-tag">Compliance &amp; Docs</div></div>
+        <div class="model-node"><div class="mn-icon">🔬</div><div class="mn-label">Gemini Pro</div><div class="mn-tag">Multimodal</div></div>
+        <div class="model-node"><div class="mn-icon">💰</div><div class="mn-label">Haiku / Mini</div><div class="mn-tag">Cost-sensitive</div></div>
+        <div class="model-node"><div class="mn-icon">🏠</div><div class="mn-label">Self-Hosted LLM</div><div class="mn-tag">Air-gapped / MNPI</div></div>
+      </div>
+    </div>
+
+    <div class="diag-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(42,74,127,0.8)"></div>Consumer Apps</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Gateway Control Layer</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(26,107,107,0.8)"></div>Standard LLM Providers</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(201,168,76,0.5)"></div>Premium / Complex Reasoning</div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTROLS -->
+<section id="controls">
+  <div class="reveal">
+    <div class="section-label">Control Planes</div>
+    <h2 class="section-title">Six Layers of <em>Enterprise Control</em></h2>
+  </div>
+
+  <div class="controls-grid reveal">
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">01</div>
+      <div class="ctrl-card-icon">🔐</div>
+      <div class="ctrl-card-title">Identity &amp; Role-Based Access</div>
+      <div class="ctrl-card-desc">Enforce model access at the role level. A credit analyst cannot invoke a trading desk model. Integration with your existing LDAP, Active Directory, or OAuth2 IdP.</div>
+      <div class="ctrl-card-tags"><span class="tag">OAuth2</span><span class="tag">SAML</span><span class="tag">RBAC</span><span class="tag">Attribute-Based</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">02</div>
+      <div class="ctrl-card-icon">🕵️</div>
+      <div class="ctrl-card-title">PII Redaction &amp; Data Perimeter</div>
+      <div class="ctrl-card-desc">Pre-flight prompt scanning strips customer PII, account numbers, and MNPI before any data leaves your perimeter. Post-response masking for sensitive completions.</div>
+      <div class="ctrl-card-tags"><span class="tag">GDPR</span><span class="tag">CCPA</span><span class="tag">NER Detection</span><span class="tag">Regex Rules</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">03</div>
+      <div class="ctrl-card-icon">🧠</div>
+      <div class="ctrl-card-title">Intelligent Model Routing</div>
+      <div class="ctrl-card-desc">Dynamic routing based on task complexity, cost envelope, latency SLA, and data classification. Automatic fallback chains with zero-downtime failover across providers.</div>
+      <div class="ctrl-card-tags"><span class="tag">Cost Routing</span><span class="tag">Fallback</span><span class="tag">Load Balance</span><span class="tag">A/B Testing</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">04</div>
+      <div class="ctrl-card-icon">📚</div>
+      <div class="ctrl-card-title">RAG Orchestration Pipeline</div>
+      <div class="ctrl-card-desc">Retrieve structured data (rates, indices, positions) and unstructured context (regulatory docs, policies) in a single unified pipeline. Metadata-driven vector retrieval.</div>
+      <div class="ctrl-card-tags"><span class="tag">Vector DB</span><span class="tag">Semantic Search</span><span class="tag">Hybrid RAG</span><span class="tag">Re-ranking</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">05</div>
+      <div class="ctrl-card-icon">🧾</div>
+      <div class="ctrl-card-title">Immutable Audit &amp; Observability</div>
+      <div class="ctrl-card-desc">Every prompt, completion, user identity, model version, and token count logged with cryptographic integrity. Plugs into Splunk, ELK, or Azure Monitor out of the box.</div>
+      <div class="ctrl-card-tags"><span class="tag">SOX</span><span class="tag">SR 11-7</span><span class="tag">Splunk</span><span class="tag">Tamper-proof</span></div>
+    </div>
+    <div class="ctrl-card">
+      <div class="ctrl-card-num">06</div>
+      <div class="ctrl-card-icon">🧑‍⚖️</div>
+      <div class="ctrl-card-title">Human-in-the-Loop Checkpoints</div>
+      <div class="ctrl-card-desc">Define HITL triggers by use case, model confidence score, or business rule. SME sign-off workflows integrated into your existing approval chains before output is published.</div>
+      <div class="ctrl-card-tags"><span class="tag">Workflow Engine</span><span class="tag">Approval API</span><span class="tag">Confidence Score</span><span class="tag">HITL</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE -->
+<section class="compliance-section" id="compliance">
+  <div class="compliance-inner reveal">
+    <div>
+      <div class="section-label">Regulatory Alignment</div>
+      <h2 class="section-title">Built for <em>Regulated</em> Institutions</h2>
+      <div class="compliance-badges">
+        <div class="badge"><div class="badge-icon">📋</div><div class="badge-label">SOX Ready</div></div>
+        <div class="badge"><div class="badge-icon">🇪🇺</div><div class="badge-label">DORA Aligned</div></div>
+        <div class="badge"><div class="badge-icon">🏦</div><div class="badge-label">SR 11-7 MRM</div></div>
+        <div class="badge"><div class="badge-icon">🛡️</div><div class="badge-label">Basel III Ops Risk</div></div>
+      </div>
+    </div>
+    <div>
+      <ul class="compliance-list">
+        <li><strong>SR 11-7 Model Risk Management</strong> — Full model inventory, version control, validation workflow, and output monitoring aligned to Fed and OCC guidance for AI model risk.</li>
+        <li><strong>SOX Audit Trail</strong> — Cryptographically signed, tamper-proof logs of every AI-assisted financial disclosure, narrative generation, or reporting workflow.</li>
+        <li><strong>DORA Operational Resilience</strong> — Provider failover, circuit breakers, and incident playbooks ensure AI services meet your ICT continuity requirements under DORA.</li>
+        <li><strong>GDPR / CCPA Data Perimeter</strong> — PII never leaves your sovereign perimeter. Configurable data residency per jurisdiction. Right-to-erasure compatible logging.</li>
+        <li><strong>Basel III Operational Risk</strong> — AI operational risk events captured, categorised, and reportable within your existing OR framework and loss event taxonomy.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section id="usecases">
+  <div class="reveal">
+    <div class="section-label">Domain Use Cases</div>
+    <h2 class="section-title">Where Meridian <em>Delivers Value</em></h2>
+  </div>
+
+  <div class="usecases-grid reveal">
+    <div class="uc-card">
+      <div class="uc-icon-wrap">📊</div>
+      <div>
+        <div class="uc-domain">Finance &amp; P&L</div>
+        <div class="uc-title">Month-End Narrative Generation</div>
+        <div class="uc-desc">Route P&L variance data through RAG + GPT-4o to generate CFO-ready commentary. HITL checkpoint for Finance Controller sign-off before publishing to EPM.</div>
+      </div>
+      <div class="uc-metric">↓ 70% analyst time</div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-icon-wrap">⚠️</div>
+      <div>
+        <div class="uc-domain">Risk Management</div>
+        <div class="uc-title">Stress Scenario Narrative &amp; Validation</div>
+        <div class="uc-desc">Generate, validate, and align stress test narratives against internal policy documents. Policy-consistency scoring with explainable citation before CRO distribution.</div>
+      </div>
+      <div class="uc-metric">↑ 40% efficiency</div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-icon-wrap">🏛️</div>
+      <div>
+        <div class="uc-domain">Compliance &amp; Legal</div>
+        <div class="uc-title">Regulatory Document Interpretation</div>
+        <div class="uc-desc">Semantic search across Basel, DORA, MiFID II, and internal policy corpora. Instant gap analysis with source citations. PII-safe, fully auditable query log.</div>
+      </div>
+      <div class="uc-metric">↓ 80% research time</div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-icon-wrap">🔍</div>
+      <div>
+        <div class="uc-domain">AML &amp; KYC</div>
+        <div class="uc-title">Entity Extraction &amp; Document Parsing</div>
+        <div class="uc-desc">Extract entities, relationships, and flags from onboarding documents. PII redacted before LLM call. Results written to case management with immutable audit provenance.</div>
+      </div>
+      <div class="uc-metric">↑ 3× throughput</div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-icon-wrap">📈</div>
+      <div>
+        <div class="uc-domain">Trading &amp; Markets</div>
+        <div class="uc-title">Market Sentiment &amp; Trade Blotter Summary</div>
+        <div class="uc-desc">Real-time news and market feed sentiment routed to cost-optimised models. Trade blotter summarisation for daily desk reports with cost per token tracked per desk.</div>
+      </div>
+      <div class="uc-metric">↓ 60% cost vs direct</div>
+    </div>
+    <div class="uc-card">
+      <div class="uc-icon-wrap">🤝</div>
+      <div>
+        <div class="uc-domain">Client Operations</div>
+        <div class="uc-title">Smart Query Routing &amp; Resolution</div>
+        <div class="uc-desc">Triage and resolve client service queries using intent classification and RAG over account history. Escalation triggers route to human agents with full AI-context handoff.</div>
+      </div>
+      <div class="uc-metric">↑ 90% auto-resolve</div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section class="stack-section" id="stack">
+  <div class="reveal">
+    <div class="section-label">Reference Implementation</div>
+    <h2 class="section-title">Built on <em>Enterprise-Grade</em> Foundations</h2>
+  </div>
+
+  <div class="stack-cols reveal">
+    <div class="stack-col">
+      <div class="stack-col-title">Gateway Core (Java)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Spring Boot 3.x</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Spring Security (OAuth2)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Spring WebFlux (Reactive)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Resilience4j (Circuit Breaker)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Micrometer + Prometheus</div>
+    </div>
+    <div class="stack-col">
+      <div class="stack-col-title">Orchestration Layer</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>LangChain4j / LiteLLM</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Apache Airflow (pipelines)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>pgvector / Pinecone</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Microsoft Presidio (PII)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Redis (semantic cache)</div>
+    </div>
+    <div class="stack-col">
+      <div class="stack-col-title">Admin UI (Next.js)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Next.js 14 App Router</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>TypeScript + React</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Routing Rule Builder</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Audit Log Explorer</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Cost Dashboard (Power BI)</div>
+    </div>
+    <div class="stack-col">
+      <div class="stack-col-title">Deployment &amp; Infra</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Docker / Kubernetes</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Azure / AWS / On-Prem</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>Splunk / ELK Audit</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>HashiCorp Vault (keys)</div>
+      <div class="stack-item"><div class="stack-item-dot"></div>OpenTelemetry Tracing</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="cta-eyebrow">Ready to Govern AI at Scale</div>
+  <h2 class="cta-title">Your AI.<br/><em>Your Rules.</em><br/>Your Audit Trail.</h2>
+  <p class="cta-sub">Schedule a CIO briefing or request a proof-of-concept deployment within your existing infrastructure. No vendor lock-in. No data leaves your perimeter.</p>
+  <div class="cta-buttons">
+    <a href="#" class="btn-primary">Request CIO Briefing</a>
+    <a href="#" class="btn-ghost">View Architecture Spec</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Meridian Gateway</div>
+  <div class="footer-copy">© 2026 Meridian · Enterprise LLM Orchestration</div>
+  <ul class="footer-links">
+    <li><a href="#">Architecture</a></li>
+    <li><a href="#">Security</a></li>
+    <li><a href="#">Documentation</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Ctrl block hover detail
+  const ctrlBlocks = document.querySelectorAll('.ctrl-block');
+  const details = {
+    0: 'OAuth2 / JWT / SAML · Attribute-based · Dept + Role + Data Class',
+    1: 'Microsoft Presidio · Custom regex · NER · Post-response masking',
+    2: 'Cost-aware · Latency SLA · Capability matrix · Auto-failover',
+    3: 'pgvector · Pinecone · Hybrid BM25+semantic · Metadata filter',
+    4: 'Cryptographic hash · Splunk/ELK · Token count · Model version',
+    5: 'Confidence threshold · Workflow API · SME portal · Escalation chain'
+  };
+
+  ctrlBlocks.forEach((block, i) => {
+    block.title = details[i] || '';
+  });
+</script>
+</body>
+</html>
