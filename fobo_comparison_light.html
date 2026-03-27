@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOBO — Messaging Option Comparison</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #fff; color: #1a1a1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .wrap { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 16px; font-weight: 600; color: #111827; margin-bottom: 4px; }
+  .subtitle { font-size: 12.5px; color: #6B7280; margin-bottom: 1.25rem; }
+  .grid { display: grid; grid-template-columns: 190px repeat(4, minmax(0,1fr)); border: 1px solid #e2e2e2; border-radius: 12px; overflow: hidden; }
+  .cell { padding: 9px 13px; border-bottom: 1px solid #f0f0f0; border-right: 1px solid #f0f0f0; font-size: 12.5px; color: #1a1a1a; line-height: 1.5; vertical-align: middle; }
+  .cell.no-right { border-right: none; }
+  .cell.last { border-bottom: none; }
+  .hdr { font-size: 12px; font-weight: 600; color: #fff; padding: 10px 13px; border-right: 1px solid rgba(255,255,255,0.15); }
+  .hdr.no-right { border-right: none; }
+  .hdr-label { background: #374151; }
+  .hdr-quartz { background: #4B5563; }
+  .hdr-spring { background: #4B5563; }
+  .hdr-rabbit { background: #185FA5; }
+  .hdr-kafka  { background: #4B5563; }
+  .label-cell { font-size: 12px; font-weight: 500; color: #6B7280; background: #F9FAFB; border-right: 1px solid #e2e2e2; border-bottom: 1px solid #f0f0f0; padding: 9px 13px; }
+  .label-cell.last { border-bottom: none; }
+  .pill { display: inline-block; border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .g  { background: #DCFCE7; color: #166534; }
+  .a  { background: #FEF9C3; color: #854D0E; }
+  .r  { background: #FEE2E2; color: #991B1B; }
+  .b  { background: #DBEAFE; color: #1D4ED8; }
+  .highlight-col { background: #EFF6FF; }
+  .rec { margin-top: 1.25rem; border: 1.5px solid #2563EB; border-radius: 10px; padding: 13px 16px; background: #EFF6FF; }
+  .rec-title { font-size: 13px; font-weight: 600; color: #1D4ED8; margin-bottom: 5px; }
+  .rec-body { font-size: 12.5px; color: #374151; line-height: 1.6; }
+  .phases { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin-top: 1.25rem; }
+  .phase { border: 1px solid #e2e2e2; border-radius: 8px; padding: 11px 13px; background: #fff; }
+  .phase-lbl { font-size: 11px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .phase-val { font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 3px; }
+  .phase-sub { font-size: 11.5px; color: #6B7280; line-height: 1.5; }
+  .phase.active { border-color: #2563EB; }
+  .phase.active .phase-lbl { color: #2563EB; }
+  .footer { margin-top: 1.5rem; font-size: 11px; color: #9CA3AF; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>FOBO — Messaging Option Comparison</h1>
+  <p class="subtitle">Quartz vs Spring in-process vs RabbitMQ vs Apache Kafka — burst / rainy-day scenario</p>
+
+  <div class="grid">
+    <div class="hdr hdr-label">Criteria</div>
+    <div class="hdr hdr-quartz">Quartz scheduler</div>
+    <div class="hdr hdr-spring">Spring in-process</div>
+    <div class="hdr hdr-rabbit">RabbitMQ</div>
+    <div class="hdr hdr-kafka no-right">Apache Kafka</div>
+
+    <div class="label-cell">Infrastructure needed</div>
+    <div class="cell"><span class="pill g">None — JVM only</span></div>
+    <div class="cell"><span class="pill g">None — JVM only</span></div>
+    <div class="cell highlight-col"><span class="pill a">Broker required</span></div>
+    <div class="cell no-right"><span class="pill r">Cluster + ZK/KRaft</span></div>
+
+    <div class="label-cell">Availability risk</div>
+    <div class="cell"><span class="pill g">Zero</span></div>
+    <div class="cell"><span class="pill g">Zero</span></div>
+    <div class="cell highlight-col"><span class="pill a">Needs IT approval</span></div>
+    <div class="cell no-right"><span class="pill r">Likely not approved</span></div>
+
+    <div class="label-cell">Solves burst at source</div>
+    <div class="cell"><span class="pill g">Yes — throttles dispatch</span></div>
+    <div class="cell"><span class="pill a">Partial</span></div>
+    <div class="cell highlight-col"><span class="pill g">Yes — external buffer</span></div>
+    <div class="cell no-right"><span class="pill g">Yes — partitioned topics</span></div>
+
+    <div class="label-cell">Solves consumption side</div>
+    <div class="cell"><span class="pill a">No — FOBO pools unchanged</span></div>
+    <div class="cell"><span class="pill a">No — still in-process</span></div>
+    <div class="cell highlight-col"><span class="pill g">Yes — prefetchCount</span></div>
+    <div class="cell no-right"><span class="pill g">Yes — consumer lag</span></div>
+
+    <div class="label-cell">Handles rainy-day release</div>
+    <div class="cell"><span class="pill g">Yes — rate-limits flood</span></div>
+    <div class="cell"><span class="pill a">Partial — custom logic</span></div>
+    <div class="cell highlight-col"><span class="pill g">Yes — durable queue</span></div>
+    <div class="cell no-right"><span class="pill g">Yes — partition lag</span></div>
+
+    <div class="label-cell">Dead letter / retry</div>
+    <div class="cell"><span class="pill a">Manual — JDBC table</span></div>
+    <div class="cell"><span class="pill r">None built-in</span></div>
+    <div class="cell highlight-col"><span class="pill g">Built-in DLQ + retry</span></div>
+    <div class="cell no-right"><span class="pill g">Offset replay</span></div>
+
+    <div class="label-cell">Deployment complexity</div>
+    <div class="cell"><span class="pill g">Low</span></div>
+    <div class="cell"><span class="pill g">Very low</span></div>
+    <div class="cell highlight-col"><span class="pill a">Medium</span></div>
+    <div class="cell no-right"><span class="pill r">High</span></div>
+
+    <div class="label-cell">Dev effort</div>
+    <div class="cell"><span class="pill g">1–2 sprints</span></div>
+    <div class="cell"><span class="pill g">0.5–1 sprint</span></div>
+    <div class="cell highlight-col"><span class="pill a">2–3 sprints</span></div>
+    <div class="cell no-right"><span class="pill r">4–6 sprints</span></div>
+
+    <div class="label-cell">Right-sized for ~8K books</div>
+    <div class="cell"><span class="pill g">Yes</span></div>
+    <div class="cell"><span class="pill g">Yes</span></div>
+    <div class="cell highlight-col"><span class="pill g">Yes</span></div>
+    <div class="cell no-right"><span class="pill a">Overkill</span></div>
+
+    <div class="label-cell last">Fits existing Spring Boot stack</div>
+    <div class="cell last"><span class="pill g">Native</span></div>
+    <div class="cell last"><span class="pill g">Native</span></div>
+    <div class="cell last highlight-col"><span class="pill b">spring-amqp dep</span></div>
+    <div class="cell last no-right"><span class="pill b">spring-kafka dep</span></div>
+  </div>
+
+  <div class="rec">
+    <div class="rec-title">Recommendation — given infra uncertainty</div>
+    <div class="rec-body">Start with <strong>Quartz throttle in Orchestration</strong> — zero new infrastructure, ships fast, stops the burst at source. If RabbitMQ can be provisioned, layer it in to fix the consumption side with <code>prefetchCount</code> backpressure and built-in DLQ. Skip Kafka unless FOBO evolves into a platform-wide finance messaging bus.</div>
+  </div>
+
+  <div class="phases">
+    <div class="phase active">
+      <div class="phase-lbl">Phase 1 — Now</div>
+      <div class="phase-val">Quartz + pool tuning</div>
+      <div class="phase-sub">Rate-limit Orchestration dispatch. Increase Pool 2/4 queue size within 4 GB cap.</div>
+    </div>
+    <div class="phase">
+      <div class="phase-lbl">Phase 2 — If RabbitMQ approved</div>
+      <div class="phase-val">RabbitMQ + prefetchCount</div>
+      <div class="phase-sub">Replace thread pools with external durable queue. DLQ handles Pool 4 overflow.</div>
+    </div>
+    <div class="phase">
+      <div class="phase-lbl">Phase 3 — Long term</div>
+      <div class="phase-val">Kafka (platform decision)</div>
+      <div class="phase-sub">Only if FOBO becomes a shared finance platform bus — not justified at current volume.</div>
+    </div>
+  </div>
+
+  <div class="footer">FOBO Architecture Review &nbsp;|&nbsp; Internal Use Only</div>
+</div>
+</body>
+</html>
