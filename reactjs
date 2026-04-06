@@ -1,0 +1,30 @@
+Looking at the pattern, you need to extract the last segment after the final / from each Sophis/xxx/value entry, handling semicolon-separated multiple values.
+One-liner transformer:
+
+const transformBBUnderlying = (value) =>
+  value?.split(';').map(v => v.split('/').pop()).join(';') ?? '';
+
+
+Examples:
+	∙	Sophis/258182594/498270.KS → 498270.KS
+	∙	Sophis/143917067/.ls;Sophis/143917215/.ss;Sophis/144160632/.lsc3 → .ls;.ss;.lsc3
+
+In your grid column definition (AG Grid / React):
+
+{
+  field: 'bbUnderlying',
+  headerName: 'BB Underlying',
+  valueFormatter: (params) =>
+    params.value?.split(';').map(v => v.split('/').pop()).join(';') ?? ''
+}
+
+
+Or if transforming at data load time:
+
+const transformedData = rawData.map(row => ({
+  ...row,
+  bbUnderlying: row.bbUnderlying?.split(';').map(v => v.split('/').pop()).join(';') ?? ''
+}));
+
+
+The core logic is just split(';') → split('/').pop() on each segment → join(';') back. Drop it wherever fits best in the existing grid setup.​​​​​​​​​​​​​​​​
