@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AOF -- Agent Platform Guide & Plugin Strategy</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #F5F7FA; color: #111827; font-size: 14px; }
+
+.header { background: linear-gradient(135deg, #0F2544, #1560A8); color: #fff; padding: 20px 20px 16px; }
+.header-tag { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #7BAAD4; margin-bottom: 6px; }
+.header h1 { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+.header p { font-size: 12px; color: #A8C4E0; }
+.header-badges { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.hbadge { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 20px; padding: 3px 10px; font-size: 10px; color: #C8DCF0; }
+
+.tab-bar { display: flex; background: #fff; border-bottom: 1px solid #E2E8F0; overflow-x: auto; padding: 0 16px; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+.tab { padding: 12px 14px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; background: transparent; color: #64748B; border-bottom: 2px solid transparent; white-space: nowrap; font-family: inherit; transition: all .15s; letter-spacing: 0.3px; }
+.tab.active { color: #0F2544; border-bottom-color: #0F2544; }
+
+.content { padding: 20px 16px; max-width: 820px; margin: 0 auto; }
+.panel { display: none; } .panel.active { display: block; }
+
+/* typography */
+.lbl { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #94A3B8; margin-bottom: 10px; font-weight: 600; }
+.divider { height: 1px; background: #E2E8F0; margin: 16px 0; }
+
+/* boxes */
+.box { border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+.box-blue  { background: #EBF4FD; border: 1px solid #B5D4F4; border-left: 4px solid #1560A8; }
+.box-green { background: #F0FDF4; border: 1px solid #86EFAC; border-left: 4px solid #16A34A; }
+.box-amber { background: #FFFBEB; border: 1px solid #FDE68A; border-left: 4px solid #D97706; }
+.box-navy  { background: #F0F4FA; border: 1px solid #C5D4E8; border-left: 4px solid #0F2544; }
+.box-red   { background: #FFF5F5; border: 1px solid #FCA5A5; border-left: 4px solid #DC2626; }
+.box-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+.box-text  { font-size: 13px; line-height: 1.8; }
+
+/* cards */
+.card { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.card-title { font-size: 13px; font-weight: 700; color: #0F2544; margin-bottom: 6px; }
+.card-body { font-size: 13px; color: #4B5563; line-height: 1.8; }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+@media(max-width:520px){ .card-grid { grid-template-columns: 1fr; } }
+
+/* layer rows */
+.layer-row { display: flex; gap: 10px; margin-bottom: 6px; align-items: flex-start; }
+.layer-badge { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; margin-top: 2px; }
+.layer-content { flex: 1; background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; }
+.layer-title { font-size: 13px; font-weight: 700; color: #0F2544; margin-bottom: 3px; }
+.layer-body { font-size: 12px; color: #4B5563; line-height: 1.6; }
+.layer-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-top: 5px; }
+.tag-built   { background: #DCFCE7; color: #15803D; }
+.tag-yours   { background: #FEF3C7; color: #92400E; }
+.tag-generic { background: #F1F5F9; color: #475569; }
+.arrow-row { text-align: center; color: #CBD5E1; font-size: 13px; padding: 1px 0; }
+
+/* server grid */
+.server-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+@media(max-width:500px){ .server-grid { grid-template-columns: 1fr; } }
+.server-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 13px 14px; }
+.server-name { font-size: 13px; font-weight: 700; color: #0F2544; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+.stag-aof    { background: #E0F2FE; color: #0369A1; }
+.stag-plugin { background: #FEF3C7; color: #92400E; }
+.stag-free   { background: #F1F5F9; color: #475569; }
+.server-body { font-size: 12px; color: #4B5563; line-height: 1.7; margin-bottom: 7px; }
+.server-tools { font-size: 11px; color: #64748B; font-family: 'Courier New', monospace; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 7px 9px; }
+
+/* comparison table */
+.cmp-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 12px; }
+.cmp-table th { background: #0F2544; color: #fff; padding: 9px 12px; text-align: left; font-size: 11px; }
+.cmp-table td { padding: 9px 12px; border-bottom: 1px solid #E2E8F0; vertical-align: top; line-height: 1.6; }
+.cmp-table tr:nth-child(even) td { background: #F8FAFC; }
+.cmp-table tr:last-child td { border-bottom: none; }
+
+/* flow steps */
+.flow-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: flex-start; }
+.flow-num { font-size: 10px; font-weight: 700; color: #1560A8; background: #EBF4FD; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; margin-top: 2px; font-family: 'Courier New', monospace; white-space: nowrap; }
+.flow-text { font-size: 12px; color: #4B5563; line-height: 1.6; }
+.flow-text strong { color: #0F2544; }
+
+/* build steps */
+.build-item { display: flex; gap: 12px; margin-bottom: 14px; }
+.build-num { width: 26px; height: 26px; border-radius: 50%; background: #0F2544; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.build-title { font-size: 13px; font-weight: 700; color: #0F2544; margin-bottom: 3px; }
+.build-body { font-size: 12px; color: #4B5563; line-height: 1.6; }
+.build-code { font-size: 11px; color: #1A3A5C; font-family: 'Courier New', monospace; background: #F0F4FA; border: 1px solid #C5D4E8; border-radius: 6px; padding: 9px 10px; margin-top: 6px; line-height: 1.7; }
+
+/* plugin anatomy */
+.plugin-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 14px; }
+@media(max-width:520px){ .plugin-grid { grid-template-columns: 1fr 1fr; } }
+.plugin-cell { background: #fff; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; text-align: center; }
+.plugin-cell-title { font-size: 11px; font-weight: 700; color: #0F2544; margin-bottom: 4px; }
+.plugin-cell-body { font-size: 11px; color: #64748B; line-height: 1.5; }
+
+/* analogy */
+.analogy { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.analogy-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #1560A8; font-weight: 700; margin-bottom: 8px; }
+.analogy-text { font-size: 13px; color: #111827; line-height: 1.9; }
+
+/* pitch */
+.pitch-block { background: #fff; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; }
+.pitch-who { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #94A3B8; font-weight: 600; margin-bottom: 8px; }
+.pitch-text { font-size: 13px; color: #111827; line-height: 1.9; font-style: italic; }
+
+/* q&a */
+.qa-block { border: 1px solid #E2E8F0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+.qa-header { padding: 12px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+.qa-q { font-size: 12px; color: #4B5563; font-style: italic; flex: 1; padding-right: 10px; line-height: 1.5; }
+.qa-arrow { font-size: 10px; color: #94A3B8; transition: transform .2s; flex-shrink: 0; }
+.qa-block.open .qa-arrow { transform: rotate(90deg); }
+.qa-a { display: none; padding: 12px 14px; font-size: 13px; color: #111827; line-height: 1.8; background: #fff; border-top: 1px solid #E2E8F0; }
+.qa-block.open .qa-a { display: block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-tag">Barclays Finance Technology</div>
+  <h1>Agent One Finance (AOF) -- Platform Guide & Plugin Strategy</h1>
+  <p>Understanding the platform, MCP servers, what your team builds, and how to present it</p>
+  <div class="header-badges">
+    <span class="hbadge">AOF is live</span>
+    <span class="hbadge">3 plugins already running</span>
+    <span class="hbadge">Your team builds the 4th</span>
+    <span class="hbadge">Dev/Test access confirmed</span>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="show('overview',this)">AOF overview</button>
+  <button class="tab" onclick="show('mcp',this)">MCP servers explained</button>
+  <button class="tab" onclick="show('compare',this)">Generic vs yours</button>
+  <button class="tab" onclick="show('build',this)">What your team builds</button>
+  <button class="tab" onclick="show('flow',this)">How it flows</button>
+  <button class="tab" onclick="show('pitch',this)">Questions &amp; Answers</button>
+</div>
+
+<div class="content">
+
+<!-- ======================================================
+     TAB 1 -- AOF OVERVIEW
+====================================================== -->
+<div id="overview" class="panel active">
+
+  <div class="box box-blue">
+    <div class="box-label" style="color:#1560A8">What AOF is</div>
+    <div class="box-text" style="color:#1A3A5C">Agent One Finance (AOF) is Barclays' own AI agent platform for Finance, running on AWS Bedrock via the Claude Agent SDK. It is already live and already approved. Three finance domain plugins are running: Financial Reporting &amp; Close, Treasury &amp; Liquidity, and Regulatory Capital &amp; Reporting. Your team's workflow does not have a plugin yet. That is the gap your team fills.</div>
+  </div>
+
+  <div class="lbl">The full AOF stack -- what exists and what your team contributes</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#EBF4FD;color:#1D4ED8">UI</div>
+    <div class="layer-content">
+      <div class="layer-title">User Interface Layer</div>
+      <div class="layer-body">Web Chat UI, File Upload (S3), Session Management, SSO Auth, Plugin UI (MCP Apps). Producers and reviewers access AOF through the browser. Plugin UIs render as MCP Apps inside the chat.</div>
+      <span class="layer-tag tag-built">Already built by AOF team</span>
+    </div>
+  </div>
+  <div class="arrow-row">|</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#FECACA;color:#991B1B">G</div>
+    <div class="layer-content">
+      <div class="layer-title">Governance &amp; Policy Enforcement Layer</div>
+      <div class="layer-body">RBAC, Tool Governance Rules, Forbidden Tool Blocking, Domain Routing Enforcer, Plugin RBAC Enforcer. Runs before any tool executes. Prohibitions are hard-coded: no automated regulatory submissions, no GL modifications, no payment execution without human sign-off.</div>
+      <span class="layer-tag tag-built">Already built -- your plugin inherits this for free</span>
+    </div>
+  </div>
+  <div class="arrow-row">|</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#111827;color:#fff">A</div>
+    <div class="layer-content">
+      <div class="layer-title">Core Orchestration Engine -- Agent One Finance</div>
+      <div class="layer-body">Claude Agent SDK (Sonnet/Opus/Haiku) via AWS Bedrock. Sonnet for primary analysis, Opus for complex multi-step reasoning, Haiku for fast entity extraction. The agent decides which plugin to route to, which tools to call, and when to pause for human approval.</div>
+      <span class="layer-tag tag-built">Already built -- Claude Agent SDK on Bedrock</span>
+    </div>
+  </div>
+  <div class="arrow-row">|</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#D1FAE5;color:#065F46">P</div>
+    <div class="layer-content">
+      <div class="layer-title">Finance Plugin Layer -- Domain-Specific Vertical Slices</div>
+      <div class="layer-body">Each plugin bundles: Skills + MCP Servers + Plugin UI + Users/Roles. Three exist today: Financial Reporting &amp; Close (SAP GL, Sub-Ledger), Treasury &amp; Liquidity (Murex TMS, Bloomberg), Regulatory Capital (BoE/PRA feeds). <strong>Your team's workflow plugin does not exist yet.</strong></div>
+      <span class="layer-tag tag-yours">This is where your team builds</span>
+    </div>
+  </div>
+  <div class="arrow-row">|</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#F1F5F9;color:#475569">G</div>
+    <div class="layer-content">
+      <div class="layer-title">Generic MCP Server Layer -- Available to all AOF users</div>
+      <div class="layer-body">RAG Server (document search), Data Analysis (DuckDB, ML, charts), PageIndex (semantic indexing), Documents (DOCX/XLSX generation), Brave Search (web/news), Reg Scanner. These are visible in your session right now. Free to use -- no build needed.</div>
+      <span class="layer-tag tag-generic">Use immediately -- no build needed</span>
+    </div>
+  </div>
+  <div class="arrow-row">|</div>
+
+  <div class="layer-row">
+    <div class="layer-badge" style="background:#EDE9FE;color:#5B21B6">AI</div>
+    <div class="layer-content">
+      <div class="layer-title">AI Model Layer -- Claude via AWS Bedrock</div>
+      <div class="layer-body">Claude Sonnet (primary P&amp;L and variance analysis), Opus (complex multi-step reasoning), Haiku (fast NER and data parsing). All inference routed through AWS Bedrock -- no direct Anthropic API keys, no external data exposure.</div>
+      <span class="layer-tag tag-built">AWS Bedrock -- no key management needed</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="lbl">What a Finance Plugin contains -- the standard pattern</div>
+  <div class="plugin-grid">
+    <div class="plugin-cell">
+      <div class="plugin-cell-title">Skills</div>
+      <div class="plugin-cell-body">Business-specific analytical capabilities unique to the domain. What the agent knows how to do.</div>
+    </div>
+    <div class="plugin-cell">
+      <div class="plugin-cell-title">MCP Servers</div>
+      <div class="plugin-cell-body">Domain data connectors. Connect the agent to your specific internal systems.</div>
+    </div>
+    <div class="plugin-cell">
+      <div class="plugin-cell-title">Plugin UI</div>
+      <div class="plugin-cell-body">Custom views rendered as MCP Apps inside the AOF chat interface.</div>
+    </div>
+    <div class="plugin-cell">
+      <div class="plugin-cell-title">Users &amp; Roles</div>
+      <div class="plugin-cell-body">RBAC-controlled access. Plugin Admin, domain users, approvers scoped to this plugin only.</div>
+    </div>
+  </div>
+
+  <div class="box box-amber">
+    <div class="box-label" style="color:#92400E">Prohibited activities -- hard-coded in governance layer</div>
+    <div class="box-text" style="color:#78350F">No automated regulatory submissions to PRA/FCA without human sign-off. No direct payment or fund transfer execution. No financial statement certification or sign-off. No modification of GL entries. No circumvention of Delegation of Authority limits. These blocks are enforced by the governance layer before any tool runs -- your plugin cannot override them. Design all write actions with human approval gates.</div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TAB 2 -- MCP SERVERS EXPLAINED
+====================================================== -->
+<div id="mcp" class="panel">
+
+  <div class="analogy">
+    <div class="analogy-label">The simplest way to understand MCP servers</div>
+    <div class="analogy-text">
+      Think of a hospital.<br><br>
+      <strong>AOF Generic MCP Servers</strong> are the shared hospital services available to every doctor -- the X-ray machine, the blood test lab, the medical library. Any doctor in the building can use them. They are not specific to cardiology or neurology. They do general things every department needs.<br><br>
+      <strong>Your Plugin MCP Servers</strong> are the cardiology department's own equipment -- the ECG machine, the cardiac catheter lab, the heart-specific patient records. Only cardiologists have them. They speak the language of hearts, not general medicine.<br><br>
+      The <strong>Agent</strong> is the doctor. It uses both -- shared services AND specialist equipment -- depending on what the patient needs. But it only accesses the cardiology equipment when it is operating in the cardiology plugin (your RBAC role).
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="lbl">AOF generic MCP servers -- available to all users right now</div>
+
+  <div class="server-grid">
+    <div class="server-card">
+      <div class="server-name">RAG Server <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">Document search and retrieval using regex and semantic matching. Extracts relevant passages, matches entities, finds related content across uploaded documents.</div>
+      <div class="server-tools">Use: search policy docs, find prior commentary, retrieve accounting standards</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">Data Analysis <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">DuckDB SQL engine, statistics, ML calculations, charts and exports. Takes any tabular data and runs aggregations, comparisons, and visualisations.</div>
+      <div class="server-tools">Use: compare balances vs prior day, calculate variance percentages, chart movements</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">PageIndex <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">Semantic indexing for long documents. Creates L0/L1/L2 summaries for multi-level document Q&amp;A.</div>
+      <div class="server-tools">Use: index workflow process docs, enable agent to answer questions about your procedures</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">Documents <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">Creates DOCX, XLSX, HTML, PPTX files. Generates formatted reports and exports from structured data.</div>
+      <div class="server-tools">Use: generate a formatted variance report, create adjustment summary Excel for reviewer</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">Brave Search <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">Web and news search. LLM context search and deep research on external topics.</div>
+      <div class="server-tools">Use: look up market commentary, check external rate data, research regulatory guidance</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">Reg Scanner <span class="stag stag-aof">Generic</span></div>
+      <div class="server-body">5 jurisdictions. Regulatory change detection and impact analysis against your documents.</div>
+      <div class="server-tools">Use: scan for relevant regulatory changes, check if new rules affect your close process</div>
+    </div>
+  </div>
+
+  <div class="box box-red">
+    <div class="box-label" style="color:#DC2626">What generic servers cannot do</div>
+    <div class="box-text" style="color:#7F1D1D">They cannot connect to your internal Barclays systems. They do not know what your specific systems, books, balances, or workflow steps are. They work on data you give them -- they cannot go and fetch your live data from your internal tools. That is what your plugin MCP servers do.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="lbl">Your plugin MCP servers -- what your team builds</div>
+
+  <div class="server-grid">
+    <div class="server-card">
+      <div class="server-name">Your System MCP Server 1 <span class="stag stag-plugin">Your team builds</span></div>
+      <div class="server-body">Connects to your primary internal system (e.g. position/book management system). Read-only. Knows your data model. Returns live business data in structured JSON the agent can reason about.</div>
+      <div class="server-tools">Example tools:<br>get_book_status(book_id, date)<br>get_reconciliation(book_id, date)<br>get_position_summary(book_id, date)</div>
+    </div>
+    <div class="server-card">
+      <div class="server-name">Your System MCP Server 2 <span class="stag stag-plugin">Your team builds</span></div>
+      <div class="server-body">Connects to your workflow tool and secondary data systems. Read-only. Knows your process model -- steps, statuses, balances, file arrivals.</div>
+      <div class="server-tools">Example tools:<br>get_workflow_step_status(date)<br>get_balance(book_id, date)<br>check_items_generated(book_id, date)<br>get_file_arrival_status(date)</div>
+    </div>
+  </div>
+
+  <div class="box box-green">
+    <div class="box-label" style="color:#15803D">What your MCP servers can do that generic ones cannot</div>
+    <div class="box-text" style="color:#14532D">They speak your system's language. They know your data model. They return business-meaningful data. The agent calls your tool, gets a structured result (e.g. book status: open/closed, balance: 1,250,000, reconciliation: BREAK with reason), then uses Claude Sonnet to explain it in plain English to your users. The generic Data Analysis server then runs variance calculations on that data. The Documents server generates the Excel output. Each layer does what it is best at.</div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TAB 3 -- GENERIC VS YOURS COMPARISON
+====================================================== -->
+<div id="compare" class="panel">
+  <div class="lbl">Full comparison -- AOF generic vs your plugin MCP servers</div>
+
+  <table class="cmp-table">
+    <tr>
+      <th style="width:28%">Dimension</th>
+      <th style="width:36%">AOF Generic MCP Servers</th>
+      <th style="width:36%">Your Plugin MCP Servers</th>
+    </tr>
+    <tr>
+      <td><strong>Who builds them</strong></td>
+      <td>AOF platform team (already built)</td>
+      <td>Your team (you build these)</td>
+    </tr>
+    <tr>
+      <td><strong>Who can use them</strong></td>
+      <td>All authenticated AOF users -- all plugins</td>
+      <td>Only users with your specific plugin role</td>
+    </tr>
+    <tr>
+      <td><strong>What they connect to</strong></td>
+      <td>Generic infrastructure: S3, DuckDB, PageIndex, Brave Search API, web</td>
+      <td>Your specific internal Barclays systems</td>
+    </tr>
+    <tr>
+      <td><strong>Domain knowledge</strong></td>
+      <td>None -- they handle data you give them, not data from your systems</td>
+      <td>Deep -- they know your system's data model and business logic</td>
+    </tr>
+    <tr>
+      <td><strong>Example tools</strong></td>
+      <td>search_documents(), analyse_data(), create_excel(), search_web()</td>
+      <td>get_book_status(), get_balance(), check_items_generated(), get_step_status()</td>
+    </tr>
+    <tr>
+      <td><strong>Data they return</strong></td>
+      <td>Generic: search results, calculations, formatted files, web content</td>
+      <td>Business-specific: live positions, balances, workflow status, reconciliation results</td>
+    </tr>
+    <tr>
+      <td><strong>Can they access your internal systems?</strong></td>
+      <td>No -- they have no knowledge your systems exist</td>
+      <td>Yes -- that is exactly what they are built for</td>
+    </tr>
+    <tr>
+      <td><strong>RBAC protection</strong></td>
+      <td>Available to all AOF users -- no plugin role needed</td>
+      <td>Restricted to your plugin's user roles only</td>
+    </tr>
+    <tr>
+      <td><strong>Data persistence</strong></td>
+      <td>Session data in DuckDB (1 hour auto-clear), files in S3</td>
+      <td>Stateless -- no storage, returns live data from your system each call</td>
+    </tr>
+    <tr>
+      <td><strong>Your build effort</strong></td>
+      <td>Zero -- already connected, use immediately</td>
+      <td>1-2 weeks per MCP server to build and register</td>
+    </tr>
+  </table>
+
+  <div class="lbl">How they work together in a single agent session</div>
+
+  <div class="flow-row">
+    <div class="flow-num">1</div>
+    <div class="flow-text">User asks: <strong>"Give me today's status and flag anything I need to action"</strong></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">2</div>
+    <div class="flow-text">Agent calls <strong>your System MCP Server 1</strong> -- get_book_status returns: open. get_reconciliation returns: BREAK, difference noted with reason.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">3</div>
+    <div class="flow-text">Agent calls <strong>your System MCP Server 2</strong> -- get_balance returns current figure. check_items_generated returns: 2 items pending review.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">4</div>
+    <div class="flow-text">Agent calls <strong>AOF generic Data Analysis server</strong> -- runs variance calculation comparing today's figures to prior day data from uploaded documents.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">5</div>
+    <div class="flow-text">Agent calls <strong>AOF generic Documents server</strong> -- generates formatted Excel summary, stored in S3 for download.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">6</div>
+    <div class="flow-text">Agent returns <strong>plain English status summary</strong> with structured findings. User sees one screen instead of switching between multiple systems.</div>
+  </div>
+
+  <div class="box box-blue">
+    <div class="box-label" style="color:#1560A8">The key insight</div>
+    <div class="box-text" style="color:#1A3A5C">Your plugin MCP servers provide the <strong>live internal data</strong>. AOF generic servers do the <strong>analytical heavy lifting</strong> on that data. The agent orchestrates both. You only need to build the connectors to your systems -- not the analytics engine, not the document generator, not the search infrastructure. AOF provides all of that already.</div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TAB 4 -- WHAT YOUR TEAM BUILDS
+====================================================== -->
+<div id="build" class="panel">
+
+  <div class="box box-navy">
+    <div class="box-label" style="color:#0F2544">Your first action before writing any code</div>
+    <div class="box-text" style="color:#1A3A5C">Contact the AOF platform team and ask for the <strong>Plugin Development Guide</strong> and the <strong>MCP Server registration spec</strong>. This document tells you exactly what endpoint format, tool definition format, and registration process AOF expects. Do not start coding before you have this. Also -- type this into Agent One Dev/Test right now: <em>"I want to build a new finance plugin. What is the process for registering a plugin and its MCP servers with AOF?"</em></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="lbl">What your team builds -- 5 components</div>
+
+  <div class="build-item">
+    <div class="build-num">1</div>
+    <div>
+      <div class="build-title">MCP Server 1 -- Primary internal system connector</div>
+      <div class="build-body">A Python FastAPI (or Node.js) service that connects to your primary internal system. Stateless, read-only by design. Exposes tools the agent can call to fetch live data. Follows the MCP protocol format that AOF expects.</div>
+      <div class="build-code"># Define your tools first -- before writing code:<br>
+get_book_status(book_id, date) -- is this item open or closed?<br>
+get_reconciliation(book_id, date) -- any breaks or mismatches?<br>
+get_summary(book_id, date) -- current position/balance summary<br>
+get_breaks_detail(book_id, date) -- detail on any exceptions</div>
+    </div>
+  </div>
+
+  <div class="build-item">
+    <div class="build-num">2</div>
+    <div>
+      <div class="build-title">MCP Server 2 -- Workflow and secondary system connector</div>
+      <div class="build-body">Connects to your workflow tool and any secondary data systems. Same stateless, read-only pattern. Returns workflow state, step completion status, file arrival confirmation, and item generation status.</div>
+      <div class="build-code">get_workflow_step_status(date) -- which steps are done/blocked?<br>
+get_balance(book_id, date) -- current balance figure<br>
+check_items_generated(book_id, date) -- are items ready?<br>
+get_file_arrival_status(date) -- have all input files arrived?<br>
+get_pending_approvals(date) -- what is waiting for human sign-off?</div>
+    </div>
+  </div>
+
+  <div class="build-item">
+    <div class="build-num">3</div>
+    <div>
+      <div class="build-title">Plugin Skills -- What the agent knows how to do</div>
+      <div class="build-body">Define the skills your plugin exposes to the AOF orchestration engine. Each skill is a named capability that maps to one or more MCP tool calls. Skills tell the agent what it can accomplish within your plugin.</div>
+      <div class="build-code">Skills to define:<br>
+- Status Check: are all books/items open and ready?<br>
+- Balance Validation: is the balance correct vs expected?<br>
+- Reconciliation Check: any breaks between systems?<br>
+- Item Status Report: are items generated and correct?<br>
+- Summary Generation: produce the user-facing status report<br>
+- Workflow Step Monitor: which of the N steps are complete/blocked?</div>
+    </div>
+  </div>
+
+  <div class="build-item">
+    <div class="build-num">4</div>
+    <div>
+      <div class="build-title">Plugin UI -- Status dashboard as MCP App</div>
+      <div class="build-body">A custom view that renders inside the AOF chat as an MCP App. Shows the current status from all your checks in one screen. Includes an approval queue for any write actions that need human sign-off before executing.</div>
+      <div class="build-code">Screens to build:<br>
+- Status Dashboard: overall status at a glance (all checks, any exceptions)<br>
+- Approval Queue: pending human approvals for write actions<br>
+- Step Monitor: visual view of workflow progress</div>
+    </div>
+  </div>
+
+  <div class="build-item">
+    <div class="build-num">5</div>
+    <div>
+      <div class="build-title">Users &amp; Roles -- RBAC definition</div>
+      <div class="build-body">Declare which roles have access to your plugin and what each can do. Submitted to the AOF governance layer. Plugin-specific roles are scoped entirely to your plugin -- they do not affect other plugins.</div>
+      <div class="build-code">Roles to define:<br>
+- Plugin Admin: configure plugin, manage user access, set thresholds<br>
+- Domain User (e.g. Producer): full read access, trigger checks, view status<br>
+- Reviewer: view status dashboard, approve or reject write actions only</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="success-box" style="background:#F0FDF4;border:1px solid #86EFAC;border-left:4px solid #16A34A;border-radius:0 10px 10px 0;padding:14px 18px;margin-bottom:12px;">
+    <div class="box-label" style="color:#15803D">What you do NOT need to build</div>
+    <div class="box-text" style="color:#14532D">Authentication and SSO, session management, audit logging, approval gate infrastructure, governance policy enforcement, rate limiting, the agent itself, AWS Bedrock integration, document generation, data analysis engine, web search, storage layer. All of this is provided by AOF. Your plugin registers with it and declares what it can do. AOF handles the rest.</div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TAB 5 -- HOW IT FLOWS
+====================================================== -->
+<div id="flow" class="panel">
+  <div class="lbl">End-to-end data flow -- from user query to response</div>
+
+  <div class="flow-row">
+    <div class="flow-num">1</div>
+    <div class="flow-text"><strong>User opens AOF web chat</strong> -- SSO authentication creates a unique session UUID. No separate login. Session data isolated per UUID, auto-cleared after 1 hour.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">2</div>
+    <div class="flow-text"><strong>User types a query or uploads a file</strong> -- File uploads go to S3 and are text-extracted, then indexed via RAG Server and PageIndex for semantic search within the session.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">3</div>
+    <div class="flow-text"><strong>Policy Compliance Check</strong> -- Governance layer runs before anything else. RBAC Plugin Access Validation confirms the user has access to your plugin. Tool Governance Check confirms the tools being called are permitted for this user and session.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">4</div>
+    <div class="flow-text"><strong>Agent One routes the query</strong> -- Determines whether the query requires your domain plugin or generic services. Routes to your plugin's skills and MCP servers if it is a domain-specific question.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">5</div>
+    <div class="flow-text"><strong>Your plugin MCP servers are called</strong> -- Agent calls your tools (get_book_status, get_balance, get_reconciliation, etc.). Your MCP servers query your internal systems and return structured JSON results.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">6</div>
+    <div class="flow-text"><strong>Generic MCP servers are called as needed</strong> -- Agent calls AOF Data Analysis to run calculations on your returned data. Calls Documents server to generate an Excel or Word output. All of this happens in the same agent session automatically.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">7</div>
+    <div class="flow-text"><strong>Write action triggers approval gate</strong> -- If the agent wants to submit or upload anything, it pauses. An approval record is created in your plugin's approval queue. The agent cannot proceed until a named reviewer approves. This gate is enforced by AOF's governance layer.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">8</div>
+    <div class="flow-text"><strong>Output policy screening</strong> -- All outputs screened against policy constraints. Any prohibited action blocked before response is returned to the user.</div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num">9</div>
+    <div class="flow-text"><strong>Formatted response returned</strong> -- Status summary displayed in Plugin UI. Artifacts stored in S3 for download. Every action -- tool call, approval, token spend -- logged in the audit trail automatically.</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="card">
+    <div class="card-title">Open question -- scheduled / programmatic invocation</div>
+    <div class="card-body">The current AOF architecture is web chat initiated -- a user starts the session. There is no visible scheduled trigger in the current design. However the Claude Agent SDK on AWS Bedrock technically supports programmatic invocation. Ask the AOF platform team: <em>"Does AOF support scheduled agent runs or programmatic session creation via API?"</em> If yes -- your workflow check can run automatically every morning and have a status summary ready before users arrive. If not -- it is a high-value feature request to raise.</div>
+  </div>
+</div>
+
+<!-- ======================================================
+     TAB 6 -- QUESTIONS & ANSWERS
+====================================================== -->
+<div id="pitch" class="panel">
+  <div class="lbl">Frequently asked questions about AOF and plugin development</div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">What exactly is AOF and how does it differ from other AI tools?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">AOF -- Agent One Finance -- is the firm's own AI agent platform, built on AWS Bedrock using the Claude Agent SDK. It is not a third-party tool or an external SaaS product. It runs inside the firm's infrastructure with full governance, RBAC, audit trails, and SSO already in place. Three finance domain plugins are already live and in use. New plugins follow a documented, standardised pattern that the AOF platform team has defined.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">Is AOF approved for use, or does it need additional sign-off?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">AOF is already approved, already running, and already used by multiple finance teams across the firm. Building a plugin on AOF means building on the already-approved platform following its documented plugin pattern. The governance layer, RBAC, prohibited activities list, and audit trail are all already in place -- any new plugin inherits them automatically. No new AI tool is being introduced.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">What happens if the agent makes a wrong decision or submits something incorrectly?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">The agent does not make final decisions on submissions or approvals. It gathers information and surfaces it. Any write action -- any upload or submission -- requires explicit human approval before it executes. The AOF governance layer enforces this. The agent's job is to do the legwork; the user makes the call and is the named approver on record. This is by design, not optional.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">How is an AI agent different from the automation we already have?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">Existing automation runs fixed steps in a fixed order -- it is a script. An AI agent can reason. If a system is unavailable, it waits and retries. If an item is missing, it explains what is missing and why, not just a red flag. If a reconciliation breaks, it can explain the break based on what it read from the source system. Automation handles the happy path. The agent handles the exceptions -- which is where users spend most of their time.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">What does the team need to build versus what AOF already provides?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">AOF already provides the agent engine, governance layer, RBAC, audit trail, SSO, AWS Bedrock, document generation, and data analysis tools. None of that needs to be rebuilt. What a team builds is specific to their domain: MCP servers that connect the agent to internal systems, a set of plugin skills that define what the agent can do, a status dashboard UI, and the user role definitions. The heavy infrastructure is already there.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">How long does it take to build a plugin, and what does it cost?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">A prototype (two MCP servers and one core skill) takes roughly 3 to 4 weeks. A full plugin (all skills, Plugin UI, full user roles) takes 3 to 4 months. The recommended approach is to start with the prototype to prove value before committing to the full scope. Infrastructure cost is near zero -- the plugin runs on AOF's existing AWS Bedrock and shared infrastructure. The cost is engineering time to build the MCP connectors and skills.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">Why does the domain team need to build this -- can't the platform team do it?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">The AOF platform is generic -- it provides the plumbing. The domain knowledge is the hard part. The domain team understands the data model of the internal systems, the sequence of checks that need to happen, and what the approval chain looks like. If the domain team does not define the plugin, either it does not get built or someone else defines it incorrectly. Domain knowledge is the differentiator.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">How is governance and compliance handled?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">Plugins are built on the firm's own approved AI platform, not an external tool. The governance layer, RBAC, prohibited activities list, and audit trail are all already in place and every plugin inherits them. All write actions -- any submission or upload -- are gated behind a human approval step. The agent surfaces and recommends; the user decides and approves. This is how AOF is designed to work.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">Can this benefit other teams beyond the one building the plugin?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">Each plugin is scoped to its own domain and users. However, the MCP server pattern established and documented by one team becomes a reference for any other team that wants to build a plugin on AOF. Early movers set the standard that other teams follow. That is a strong position to be in as the firm scales AOF across more domains.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">Can AOF plugins run automatically without someone triggering them manually?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">Current AOF architecture is web chat initiated -- a user starts the session from the browser. Whether scheduled or API-triggered invocation is supported should be confirmed with the AOF platform team. The underlying Claude Agent SDK on AWS Bedrock supports it technically. If it is not yet available, it is a high-value feature request -- a morning automated status run before users arrive would significantly increase the value of any plugin.</div>
+  </div>
+
+  <div class="qa-block" onclick="this.classList.toggle('open')">
+    <div class="qa-header"><div class="qa-q">What are the first steps to get started?</div><span class="qa-arrow">&#9654;</span></div>
+    <div class="qa-a">Two things are needed. First -- an introduction to the AOF platform team to get the Plugin Development Guide and register intent to build. Second -- time to build a prototype: two MCP servers and one core skill. Three to four weeks is enough to demonstrate the pattern working end-to-end and get stakeholder sign-off before committing to the full plugin scope.</div>
+  </div>
+</div>
+
+</div>
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
