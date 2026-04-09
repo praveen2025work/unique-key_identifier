@@ -51,7 +51,7 @@ In `index.html`, render this as a second sub-section inside the Demand vs MTP ta
 
 -----
 
-### 3. DEMAND vs MTP TAB — Add Deliverable Allocation check (High Priority)
+### 3. DEMAND vs MTP TAB — Add Deliverable Allocation check (Next Steps ask from team)
 
 Add a second new comparison section to the Demand vs MTP tab called **“Deliverable Allocation”**.
 
@@ -75,6 +75,76 @@ Add this as key `deliverableAllocation` inside `demandVsMTP` in the JSON schema:
 
 Extend the tab toggle to three options:
 **[Attribute Comparison] [Forecast FTE Check] [Deliverable Allocation]**
+
+-----
+
+### 7. OVERVIEW TAB — MTP comparison context note (Low Priority #1)
+
+The Overview tab currently shows raw counts with no context about what the MTP comparison covers.
+
+**Add a context note panel below the KPI cards:**
+
+> “MTP extract is filtered to CIO-1 = Adam Healey + Valid Now = Yes + Optional Team Tag = Group Accounting. Resources from other CIO areas (e.g. Pavan) are excluded from the MTP side of all comparisons. To include other CIOs, re-run with an expanded CIO-1 filter.”
+
+Style: same dismissible banner style as item 6 — background `var(--accent-dim)`, border `var(--accent)`.
+
+-----
+
+### 8. SUPPLY vs MTP TAB — Flag Pete W (PW) resources missing from MTP (Low Priority #4)
+
+Resources that are in Supply under Pete W’s area are not appearing in the MTP comparison because they are filtered out by the CIO-1 filter.
+
+**In `data_builder.py`:**
+
+- After applying MTP filters, identify Supply rows that do NOT match any MTP row
+- Of those unmatched rows, flag any where the manager/team field indicates Pete W / PW ownership (check for “Pete”, “PW”, or “Watmore” in any manager/team column available in Supply)
+- Add these as a separate list `pwMissingFromMTP` in the JSON:
+
+```json
+"supplyVsMTP": {
+  "attributes": [],
+  "pwMissingFromMTP": [],
+  "otherCIOMissingFromMTP": []
+}
+```
+
+**In `index.html`:**
+
+- Add a second sub-section toggle inside Supply vs MTP tab:
+  **[Attribute Comparison] [Missing: PW Resources] [Missing: Other CIO Resources]**
+- Missing: PW Resources table — Name | Grade | Type | Location | Reason: “Not in MTP extract (PW filter)”
+- Missing: Other CIO Resources table — Name | Grade | Type | Location | Reason: “Not in MTP extract (CIO filter)”
+
+-----
+
+### 9. SUPPLY vs MTP TAB — Flag other CIO resources missing from MTP (Low Priority #5)
+
+Same logic as item 8 above but for all other Supply rows that are unmatched in MTP and are NOT Pete W resources.
+
+These are captured in `otherCIOMissingFromMTP` (see JSON schema in item 8 above) and rendered in the **[Missing: Other CIO Resources]** sub-section.
+
+Add a note in that sub-section:
+
+> “These resources appear in Supply but are absent from the MTP extract. This is expected if they report to a different CIO. Expand the MTP CIO-1 filter to include them.”
+
+-----
+
+### 10. SUPPLY vs MTP TAB — Grade comparison display fix (Low Priority #6)
+
+Currently the Grade comparison between Supply and MTP shows MSP (Fixed Price / FTE) in the MTP Grade column instead of the actual grade value.
+
+**In `data_builder.py`:**
+
+- When comparing Grade between Supply and MTP, detect if the MTP Grade value is `"MSP (Fixed Price)"` or `"MSP (FTE)"` or similar MSP variants
+- Do not treat these as a mismatch against a real grade — instead set Status to `"⚠ MSP — Grade not available in MTP"`
+- Add a separate count to `overview.mtpMspGradeCount` for how many resources have this condition
+
+**In `index.html`:**
+
+- Render the MSP status with amber `var(--warn)` badge rather than red mismatch
+- Add a note above the Supply vs MTP attribute table:
+
+> “⚠ Resources shown as MSP (Fixed Price / FTE) in MTP do not have a grade recorded in MTP. These are shown separately and are not counted as mismatches.”
 
 -----
 
@@ -123,14 +193,33 @@ Banner style: background `var(--accent-dim)`, border `var(--accent)`, text `var(
 
 -----
 
+## FULL CHANGE SUMMARY BY PRIORITY
+
+|#       |Priority|Tab           |Change                                                  |
+|--------|--------|--------------|--------------------------------------------------------|
+|7       |High    |Demand vs MTP |Remove Grade check                                      |
+|8       |High    |Demand vs MTP |Remove City check                                       |
+|9       |High    |Demand vs MTP |Remove Role check                                       |
+|10+11   |High    |Demand vs MTP |Add Forecast FTE (Jan–Dec 26) check                     |
+|Team ask|—       |Demand vs MTP |Add Deliverable Allocation check                        |
+|2       |Medium  |Overview      |Count unique BRIDs for all KPI headcounts               |
+|3       |Medium  |Supply vs Team|Add FTE Delta explanation banner                        |
+|1       |Low     |Overview      |Add MTP filter context note                             |
+|4       |Low     |Supply vs MTP |Flag missing PW resources as separate sub-section       |
+|5       |Low     |Supply vs MTP |Flag missing other CIO resources as separate sub-section|
+|6       |Low     |Supply vs MTP |Treat MSP grade as amber warning, not red mismatch      |
+|—       |Low     |Supply vs MTP |Add row count gap explanation banner                    |
+
+-----
+
 ## WHAT NOT TO CHANGE
 
 - Do not modify `:root` CSS variables
 - Do not rename or reorder tabs in the sidebar
-- Do not change the layout of Overview, Supply vs Team, Gaps & Totals, or Raw Data tabs
-- Do not change the Supply vs MTP attribute comparison logic (Grade, Type, Location) — only Demand vs MTP checks are being modified
+- Do not change the layout of Gaps & Totals or Raw Data tabs
 - Do not change chart types, colours, or the Gaps & Totals panel grid
 - Do not change pagination, search, or CSV export behaviour
+- Do not alter the Supply vs MTP Type and Location comparison logic
 
 -----
 
@@ -139,9 +228,9 @@ Banner style: background `var(--accent-dim)`, border `var(--accent)`, text `var(
 Update and overwrite the following files only:
 
 ```
-data_builder.py       ← updated Python with new comparisons + unique BRID counts
-index.html            ← updated template with new tab sections + banners
-index_filled.html     ← regenerated final output (run data_builder.py after changes)
+data_builder.py       ← updated Python with all new comparisons + unique BRID counts + MSP handling
+index.html            ← updated template with new sub-sections, toggles, and banners
+index_filled.html     ← regenerated final output (run data_builder.py after all changes)
 ```
 
 After making all code changes, run `data_builder.py` automatically and confirm `index_filled.html` has been written successfully.
