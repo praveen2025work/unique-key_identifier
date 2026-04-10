@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exception Hub — Code Review & Issue Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f4f2ed;--bg2:#eceae3;--surface:#ffffff;--surface2:#faf9f6;
+  --border:#dedad0;--border2:#cac6bb;
+  --text:#1c1a16;--text-mid:#3a3830;--text-muted:#7a7568;
+  --accent:#1a56db;--accent-lt:#eff3ff;
+  --green:#166534;--green-lt:#f0fdf4;--green-bd:#bbf7d0;
+  --yellow:#92400e;--yellow-lt:#fffbeb;--yellow-bd:#fde68a;
+  --red:#991b1b;--red-lt:#fef2f2;--red-bd:#fecaca;
+  --orange:#9a3412;--orange-lt:#fff7ed;--orange-bd:#fed7aa;
+  --purple:#6b21a8;--purple-lt:#faf5ff;--purple-bd:#e9d5ff;
+  --mono:'DM Mono',monospace;--serif:'Fraunces',serif;--sans:'DM Sans',sans-serif;
+  --rad:8px;
+  --sh:0 1px 3px rgba(0,0,0,.07),0 4px 14px rgba(0,0,0,.05);
+  --sh-lg:0 8px 32px rgba(0,0,0,.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh;}
+
+/* HEADER */
+.hdr{background:var(–surface);border-bottom:2px solid var(–border);padding:0 28px;position:sticky;top:0;z-index:200;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.hdr-in{max-width:1520px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-ic{width:38px;height:38px;background:var(–accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(–mono);font-size:13px;font-weight:500;flex-shrink:0;}
+.logo-t{font-family:var(–serif);font-size:15px;font-weight:600;color:var(–text);}
+.logo-s{font-size:11px;color:var(–text-muted);font-family:var(–mono);letter-spacing:.4px;}
+
+/* STATS */
+.sbar{background:var(–surface);border-bottom:1px solid var(–border);padding:0 28px;}
+.sbar-in{max-width:1520px;margin:0 auto;display:flex;}
+.stat{padding:12px 20px 12px 0;margin-right:20px;border-right:1px solid var(–border);display:flex;align-items:center;gap:10px;min-width:105px;}
+.stat:last-child{border-right:none;}
+.stat-n{font-family:var(–serif);font-size:26px;font-weight:700;line-height:1;}
+.stat-l{font-size:10px;color:var(–text-muted);font-family:var(–mono);text-transform:uppercase;letter-spacing:.8px;}
+.s-tot .stat-n{color:var(–text);}
+.s-crit .stat-n{color:#b91c1c;}
+.s-high .stat-n{color:#c2410c;}
+.s-med .stat-n{color:#b45309;}
+.s-open .stat-n{color:var(–accent);}
+.s-fix .stat-n{color:var(–green);}
+
+/* LAYOUT */
+.wrap{max-width:1520px;margin:0 auto;padding:22px 28px 60px;display:grid;grid-template-columns:238px 1fr;gap:18px;align-items:start;}
+
+/* SIDEBAR */
+.sidebar{position:sticky;top:114px;display:flex;flex-direction:column;gap:3px;}
+.sbl{font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:1.2px;color:var(–text-muted);padding:10px 10px 3px;}
+.nav{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:7px;cursor:pointer;border:1px solid transparent;font-size:13px;color:var(–text-mid);background:none;width:100%;text-align:left;transition:all .12s;gap:6px;}
+.nav:hover{background:var(–surface);border-color:var(–border);}
+.nav.on{background:var(–accent-lt);border-color:#c7d7fb;color:var(–accent);font-weight:500;}
+.nav-l{display:flex;align-items:center;gap:7px;}
+.nbc{font-size:10px;font-family:var(–mono);font-weight:500;padding:1px 7px;border-radius:20px;background:var(–bg2);color:var(–text-muted);}
+.nav.on .nbc{background:#c7d7fb;color:var(–accent);}
+.sdiv{height:1px;background:var(–border);margin:5px 0;}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;gap:16px;}
+.pg{display:none;}.pg.on{display:block;}
+
+/* TOOLBAR */
+.tb{background:var(–surface);border:1px solid var(–border);border-radius:var(–rad);padding:11px 13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;box-shadow:var(–sh);}
+.srch{position:relative;flex:1;min-width:180px;}
+.srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(–text-muted);font-size:13px;pointer-events:none;}
+input[type=text],select,textarea{font-family:var(–sans);font-size:13px;background:var(–bg2);border:1px solid var(–border);border-radius:6px;color:var(–text);outline:none;transition:border-color .15s,box-shadow .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(–accent);box-shadow:0 0 0 3px rgba(26,86,219,.09);background:var(–surface);}
+.srch input{width:100%;padding:7px 11px 7px 30px;}
+select{padding:7px 9px;cursor:pointer;}
+.tdiv{width:1px;height:24px;background:var(–border);flex-shrink:0;}
+
+/* BUTTONS */
+.btn{font-family:var(–sans);font-size:13px;font-weight:500;padding:7px 14px;border-radius:6px;border:1px solid transparent;cursor:pointer;transition:all .14s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.btn-p{background:var(–accent);color:#fff;border-color:var(–accent);}
+.btn-p:hover{background:#1648c4;}
+.btn-s{background:var(–surface);color:var(–text-mid);border-color:var(–border);}
+.btn-s:hover{background:var(–bg2);}
+.btn-g{background:transparent;color:var(–text-muted);border-color:transparent;}
+.btn-g:hover{background:var(–bg2);color:var(–text-mid);}
+.btn-d{background:var(–red-lt);color:var(–red);border-color:var(–red-bd);}
+.btn-d:hover{background:#fee2e2;}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.btn-xs{padding:3px 7px;font-size:11px;}
+
+/* TABLE */
+.tcard{background:var(–surface);border:1px solid var(–border);border-radius:var(–rad);overflow:hidden;box-shadow:var(–sh);}
+.thead{display:grid;grid-template-columns:60px 90px 108px 110px 1fr 130px 118px 106px 86px;background:var(–bg2);border-bottom:2px solid var(–border);}
+.th{padding:9px 12px;font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:.8px;color:var(–text-muted);border-right:1px solid var(–border);display:flex;align-items:center;gap:3px;cursor:pointer;user-select:none;transition:background .1s;}
+.th:hover{background:var(–surface);color:var(–text-mid);}
+.th:last-child{border-right:none;}
+.irow{display:grid;grid-template-columns:60px 90px 108px 110px 1fr 130px 118px 106px 86px;border-bottom:1px solid var(–border);transition:background .1s;cursor:pointer;align-items:center;}
+.irow:last-child{border-bottom:none;}
+.irow:hover{background:#faf9f6;}
+.irow.st-Fixed,.irow.st-Closed{opacity:.55;}
+.td{padding:10px 12px;border-right:1px solid var(–border);font-size:13px;overflow:hidden;}
+.td:last-child{border-right:none;}
+.iid{font-family:var(–mono);font-size:11px;color:var(–text-muted);font-weight:500;}
+.itw{display:flex;flex-direction:column;gap:2px;}
+.ittl{font-size:13px;font-weight:500;color:var(–text);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.isub{font-size:11px;font-family:var(–mono);color:var(–text-muted);}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:11px;font-family:var(–mono);font-weight:500;white-space:nowrap;border:1px solid transparent;}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sv-Critical{background:var(–red-lt);color:var(–red);border-color:var(–red-bd);}
+.sv-Critical .dot{background:#ef4444;}
+.sv-High{background:var(–orange-lt);color:var(–orange);border-color:var(–orange-bd);}
+.sv-High .dot{background:#f97316;}
+.sv-Medium{background:var(–yellow-lt);color:var(–yellow);border-color:var(–yellow-bd);}
+.sv-Medium .dot{background:#f59e0b;}
+.sv-Low{background:var(–green-lt);color:var(–green);border-color:var(–green-bd);}
+.sv-Low .dot{background:#22c55e;}
+.ss-Open{background:var(–accent-lt);color:var(–accent);border-color:#c7d7fb;}
+.ss-In-Progress{background:var(–purple-lt);color:var(–purple);border-color:var(–purple-bd);}
+.ss-Fixed{background:var(–green-lt);color:var(–green);border-color:var(–green-bd);}
+.ss-Closed{background:var(–bg2);color:var(–text-muted);border-color:var(–border);}
+.ss-Wont-Fix{background:var(–red-lt);color:var(–red);border-color:var(–red-bd);}
+.cp-FileWatcher{background:#eff6ff;color:#1e3a8a;border-color:#bfdbfe;}
+.cp-Exception-Hub{background:var(–orange-lt);color:var(–orange);border-color:var(–orange-bd);}
+.cp-UI-Application{background:var(–purple-lt);color:var(–purple);border-color:var(–purple-bd);}
+.cp-Database{background:var(–green-lt);color:var(–green);border-color:var(–green-bd);}
+.cp-Cross-Cutting{background:var(–yellow-lt);color:var(–yellow);border-color:var(–yellow-bd);}
+.tp-Bug{background:var(–red-lt);color:var(–red);border-color:var(–red-bd);}
+.tp-Gap{background:var(–orange-lt);color:var(–orange);border-color:var(–orange-bd);}
+.tp-Security{background:var(–purple-lt);color:var(–purple);border-color:var(–purple-bd);}
+.tp-Performance{background:var(–accent-lt);color:var(–accent);border-color:#c7d7fb;}
+.tp-Design{background:var(–green-lt);color:var(–green);border-color:var(–green-bd);}
+
+/* ASSIGNEE */
+.avw{display:flex;align-items:center;gap:5px;font-size:12px;color:var(–text-mid);}
+.av{width:22px;height:22px;border-radius:50%;color:#fff;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(–mono);}
+.av0{background:#1a56db;}.av1{background:#166534;}.av2{background:#c2410c;}.av3{background:#7c3aed;}.av4{background:#0e7490;}
+.av-none{background:var(–bg2);color:var(–text-muted);}
+
+/* EMPTY */
+.empty{text-align:center;padding:52px 32px;color:var(–text-muted);}
+.empty-i{font-size:40px;opacity:.3;margin-bottom:12px;}
+.empty h3{font-family:var(–serif);font-size:17px;color:var(–text-mid);margin-bottom:5px;}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(15,13,10,.38);backdrop-filter:blur(3px);z-index:500;display:none;align-items:center;justify-content:center;padding:18px;}
+.overlay.on{display:flex;}
+.modal{background:var(–surface);border:1px solid var(–border);border-radius:12px;box-shadow:var(–sh-lg);width:100%;max-width:700px;max-height:92vh;overflow-y:auto;animation:mIn .18s ease;}
+@keyframes mIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.mhdr{padding:17px 22px 13px;border-bottom:1px solid var(–border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;background:var(–bg2);border-radius:12px 12px 0 0;}
+.mtitle{font-family:var(–serif);font-size:16px;font-weight:600;color:var(–text);line-height:1.3;}
+.msub{font-family:var(–mono);font-size:11px;color:var(–text-muted);margin-top:2px;}
+.mbody{padding:20px;display:flex;flex-direction:column;gap:14px;}
+.mfoot{padding:13px 20px;border-top:1px solid var(–border);display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(–bg2);border-radius:0 0 12px 12px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg.full{grid-column:1/-1;}
+.flbl{font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:.9px;color:var(–text-muted);}
+.fg input,.fg select,.fg textarea{width:100%;padding:7px 10px;}
+.fg textarea{resize:vertical;min-height:76px;line-height:1.6;}
+.cbtn{background:none;border:none;font-size:17px;color:var(–text-muted);cursor:pointer;padding:2px 5px;border-radius:4px;line-height:1;}
+.cbtn:hover{background:var(–bg2);color:var(–text);}
+
+/* DETAIL */
+.dmeta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+.dmi{background:var(–bg2);border:1px solid var(–border);border-radius:6px;padding:9px 13px;}
+.dml{font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:.8px;color:var(–text-muted);margin-bottom:4px;}
+.dmv{font-size:13px;font-weight:500;}
+.dbox{background:var(–bg2);border:1px solid var(–border);border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.75;color:var(–text-mid);white-space:pre-wrap;}
+.dsec{font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:1px;color:var(–text-muted);margin-bottom:6px;}
+.clist{display:flex;flex-direction:column;gap:8px;}
+.citem{background:var(–bg2);border:1px solid var(–border);border-radius:6px;padding:10px 13px;}
+.cmeta{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.caut{font-size:12px;font-weight:600;color:var(–text);}
+.cdt{font-size:11px;font-family:var(–mono);color:var(–text-muted);}
+.ctxt{font-size:13px;color:var(–text-mid);line-height:1.6;}
+.cinrow{display:flex;gap:7px;margin-top:9px;}
+.cinrow textarea{flex:1;min-height:52px;padding:7px 10px;}
+
+/* PHASES */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:12px;}
+.pc{background:var(–surface);border:1px solid var(–border);border-radius:var(–rad);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:box-shadow .18s;}
+.pc:hover{box-shadow:var(–sh);}
+.pchdr{padding:12px 14px;border-bottom:1px solid var(–border);display:flex;align-items:center;gap:9px;background:var(–bg2);}
+.pic{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.pfw{background:#eff6ff;}.peh{background:var(–orange-lt);}.pui{background:var(–purple-lt);}.pdb{background:var(–green-lt);}.pcc{background:var(–yellow-lt);}
+.pname{font-size:13px;font-weight:600;color:var(–text);}
+.ptag{font-size:10px;font-family:var(–mono);color:var(–text-muted);}
+.pcb{padding:12px 14px;}
+.pstats{display:flex;gap:14px;margin-bottom:10px;}
+.psn{font-family:var(–serif);font-size:19px;font-weight:700;line-height:1;display:block;}
+.psl{font-size:10px;font-family:var(–mono);color:var(–text-muted);}
+.pbar{height:4px;background:var(–bg2);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.pbf{height:100%;border-radius:2px;background:linear-gradient(90deg,var(–accent),#60a5fa);transition:width .4s ease;}
+.plink{font-size:11px;color:var(–accent);cursor:pointer;font-family:var(–mono);background:none;border:none;text-decoration:underline;text-underline-offset:2px;padding:0;margin-top:7px;display:inline-block;}
+
+/* CHECKLIST */
+.clgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.clcard{background:var(–surface);border:1px solid var(–border);border-radius:var(–rad);overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.clhdr{padding:10px 14px;background:var(–bg2);border-bottom:1px solid var(–border);display:flex;align-items:center;justify-content:space-between;}
+.clt{font-size:13px;font-weight:600;color:var(–text);display:flex;align-items:center;gap:6px;}
+.clp{font-family:var(–mono);font-size:12px;color:var(–accent);font-weight:600;}
+.clb{padding:6px 0;}
+.ci{display:flex;align-items:flex-start;gap:8px;padding:6px 14px;cursor:pointer;transition:background .1s;}
+.ci:hover{background:var(–bg2);}
+.ci input[type=checkbox]{margin-top:2px;width:14px;height:14px;accent-color:var(–accent);cursor:pointer;flex-shrink:0;}
+.citxt{font-size:12.5px;color:var(–text-mid);line-height:1.5;flex:1;}
+.ci.done .citxt{text-decoration:line-through;color:var(–text-muted);}
+
+/* FLOW */
+.fcard{background:var(–surface);border:1px solid var(–border);border-radius:var(–rad);padding:22px;box-shadow:var(–sh);overflow-x:auto;}
+.fh{font-family:var(–serif);font-size:15px;font-weight:600;margin-bottom:18px;color:var(–text);}
+.fll{font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:.9px;color:var(–text-muted);margin-bottom:9px;}
+.ftrack{display:flex;align-items:center;min-width:max-content;margin-bottom:22px;}
+.fn{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:100px;}
+.fb{padding:8px 12px;border-radius:7px;font-size:11px;font-family:var(–mono);font-weight:500;text-align:center;border:2px solid transparent;white-space:nowrap;}
+.fw-b{background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a;}
+.eh-b{background:var(–orange-lt);border-color:var(–orange-bd);color:var(–orange);}
+.ui-b{background:var(–purple-lt);border-color:var(–purple-bd);color:var(–purple);}
+.db-b{background:var(–green-lt);border-color:var(–green-bd);color:var(–green);}
+.fa{color:var(–text-muted);font-size:14px;padding:0 4px;margin-bottom:18px;}
+.flbl{font-size:10px;font-family:var(–mono);color:var(–text-muted);text-align:center;max-width:88px;line-height:1.4;}
+.fnotes{background:var(–bg2);border:1px solid var(–border);border-radius:6px;padding:12px 14px;margin-top:4px;}
+.fng{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;font-size:12px;color:var(–text-mid);margin-top:8px;}
+
+/* RISK */
+.rtbl{width:100%;border-collapse:collapse;font-size:13px;}
+.rtbl th{background:var(–bg2);padding:9px 12px;text-align:left;font-size:10px;font-family:var(–mono);text-transform:uppercase;letter-spacing:.8px;color:var(–text-muted);border-bottom:2px solid var(–border);border-right:1px solid var(–border);}
+.rtbl th:last-child{border-right:none;}
+.rtbl td{padding:10px 12px;border-bottom:1px solid var(–border);border-right:1px solid var(–border);vertical-align:top;}
+.rtbl td:last-child{border-right:none;}
+.rtbl tr:last-child td{border-bottom:none;}
+.rtbl tr:hover td{background:#faf9f6;}
+
+/* TABLE FOOTER */
+.tftr{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:var(–bg2);border-top:1px solid var(–border);font-size:11px;color:var(–text-muted);font-family:var(–mono);}
+.pbns{display:flex;gap:3px;}
+.pbn{width:26px;height:26px;border-radius:5px;border:1px solid var(–border);background:var(–surface);cursor:pointer;font-size:11px;color:var(–text-mid);display:flex;align-items:center;justify-content:center;font-family:var(–mono);transition:all .1s;}
+.pbn:hover{background:var(–bg2);}
+.pbn.on{background:var(–accent);color:#fff;border-color:var(–accent);}
+
+/* SECTION */
+.sh{font-family:var(–serif);font-size:18px;font-weight:700;color:var(–text);margin-bottom:3px;}
+.ss{font-size:13px;color:var(–text-muted);margin-bottom:14px;}
+
+/* TOAST */
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:9999;}
+.toast{background:var(–text);color:var(–bg);padding:10px 15px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:var(–sh-lg);display:flex;align-items:center;gap:8px;animation:tIn .18s ease;max-width:280px;}
+.toast.ok{background:#166534;color:#fff;}
+.toast.err{background:#b91c1c;color:#fff;}
+@keyframes tIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(–bg2);}
+::-webkit-scrollbar-thumb{background:var(–border2);border-radius:3px;}
+</style>
+
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-in">
+    <div class="logo">
+      <div class="logo-ic">EH</div>
+      <div>
+        <div class="logo-t">Exception Hub · Code Review Tracker</div>
+        <div class="logo-s">Custom Workflow Engine · FileWatcher · UIP React · Oracle 19c</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <button class="btn btn-s btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-s btn-sm" onclick="exportJSON()">⬇ JSON</button>
+      <button class="btn btn-p btn-sm" onclick="openAdd()">＋ New Issue</button>
+    </div>
+  </div>
+</div>
+
+<div class="sbar">
+  <div class="sbar-in">
+    <div class="stat s-tot"><div><div class="stat-n" id="st-tot">0</div><div class="stat-l">Total</div></div></div>
+    <div class="stat s-crit"><div><div class="stat-n" id="st-crit">0</div><div class="stat-l">Critical</div></div></div>
+    <div class="stat s-high"><div><div class="stat-n" id="st-high">0</div><div class="stat-l">High</div></div></div>
+    <div class="stat s-med"><div><div class="stat-n" id="st-med">0</div><div class="stat-l">Medium</div></div></div>
+    <div class="stat s-open"><div><div class="stat-n" id="st-open">0</div><div class="stat-l">Open</div></div></div>
+    <div class="stat s-fix"><div><div class="stat-n" id="st-fix">0</div><div class="stat-l">Fixed</div></div></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="sidebar">
+    <div class="sbl">Pages</div>
+    <button class="nav on" onclick="goPage('issues',this)"><span class="nav-l"><span>🐛</span>Issue Tracker</span><span class="nbc" id="nb-iss">0</span></button>
+    <button class="nav" onclick="goPage('phases',this)"><span class="nav-l"><span>📋</span>Review Phases</span><span class="nbc">8</span></button>
+    <button class="nav" onclick="goPage('checklist',this)"><span class="nav-l"><span>✅</span>Checklist</span><span class="nbc" id="nb-chk">0%</span></button>
+    <button class="nav" onclick="goPage('flow',this)"><span class="nav-l"><span>🔀</span>E2E Flow</span></button>
+    <button class="nav" onclick="goPage('risks',this)"><span class="nav-l"><span>⚠️</span>Risk Register</span><span class="nbc" id="nb-risk">8</span></button>
+    <div class="sdiv"></div>
+    <div class="sbl">By Component</div>
+    <button class="nav" onclick="fComp('',this)"><span class="nav-l"><span>🗂</span>All</span><span class="nbc" id="fc-all">0</span></button>
+    <button class="nav" onclick="fComp('FileWatcher',this)"><span class="nav-l"><span>📂</span>FileWatcher</span><span class="nbc" id="fc-fw">0</span></button>
+    <button class="nav" onclick="fComp('Exception Hub',this)"><span class="nav-l"><span>⚙️</span>Exception Hub</span><span class="nbc" id="fc-eh">0</span></button>
+    <button class="nav" onclick="fComp('UI Application',this)"><span class="nav-l"><span>🖥</span>UI Application</span><span class="nbc" id="fc-ui">0</span></button>
+    <button class="nav" onclick="fComp('Database',this)"><span class="nav-l"><span>🗄</span>Database</span><span class="nbc" id="fc-db">0</span></button>
+    <button class="nav" onclick="fComp('Cross-Cutting',this)"><span class="nav-l"><span>🔗</span>Cross-Cutting</span><span class="nbc" id="fc-cc">0</span></button>
+    <div class="sdiv"></div>
+    <div class="sbl">By Status</div>
+    <button class="nav" onclick="fStat('Open',this)"><span class="nav-l"><span>🔵</span>Open</span><span class="nbc" id="fs-open">0</span></button>
+    <button class="nav" onclick="fStat('In Progress',this)"><span class="nav-l"><span>🟣</span>In Progress</span><span class="nbc" id="fs-ip">0</span></button>
+    <button class="nav" onclick="fStat('Fixed',this)"><span class="nav-l"><span>🟢</span>Fixed</span><span class="nbc" id="fs-fix">0</span></button>
+  </aside>
+
+  <main class="main">
+    <!-- ISSUES -->
+    <div class="pg on" id="pg-issues">
+      <div class="sh">Issue Tracker</div>
+      <div class="ss" id="iss-sub">All review findings across components</div>
+      <div class="tb">
+        <div class="srch"><span class="srch-i">🔍</span><input type="text" id="q" placeholder="Search title, description, assignee…" oninput="render()"></div>
+        <div class="tdiv"></div>
+        <select id="fSev" onchange="render()"><option value="">All Severities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+        <select id="fType" onchange="render()"><option value="">All Types</option><option>Bug</option><option>Gap</option><option>Security</option><option>Performance</option><option>Design</option></select>
+        <select id="fAss" onchange="render()"><option value="">All Assignees</option></select>
+        <div class="tdiv"></div>
+        <button class="btn btn-g btn-sm" onclick="clearF()">✕ Clear</button>
+      </div>
+      <div class="tcard">
+        <div class="thead">
+          <div class="th" onclick="srt('id')"># ⇅</div>
+          <div class="th" onclick="srt('severity')">Severity ⇅</div>
+          <div class="th" onclick="srt('type')">Type ⇅</div>
+          <div class="th" onclick="srt('component')">Component ⇅</div>
+          <div class="th" onclick="srt('title')">Issue Title ⇅</div>
+          <div class="th" onclick="srt('assignee')">Assignee ⇅</div>
+          <div class="th" onclick="srt('status')">Status ⇅</div>
+          <div class="th" onclick="srt('created')">Created ⇅</div>
+          <div class="th">Actions</div>
+        </div>
+        <div id="iList"></div>
+        <div class="tftr"><span id="iCnt">0 issues</span><div class="pbns" id="pbns"></div></div>
+      </div>
+    </div>
+
+```
+<!-- PHASES -->
+<div class="pg" id="pg-phases">
+  <div class="sh">Review Phases</div>
+  <div class="ss">8-phase enterprise architecture review — track coverage per component</div>
+  <div class="pgrid" id="pgrid"></div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="pg" id="pg-checklist">
+  <div class="sh">Review Checklist</div>
+  <div class="ss">Tick items as the team reviews each component. Progress saved automatically.</div>
+  <div class="clgrid" id="clgrid"></div>
+</div>
+
+<!-- FLOW -->
+<div class="pg" id="pg-flow">
+  <div class="sh">End-to-End Flow</div>
+  <div class="ss">Custom workflow engine — no BPM tool. All stage transition logic is hand-coded in Exception Hub Java service.</div>
+  <div class="fcard">
+    <div class="fh">Exception Lifecycle — Custom State Machine (Java / Spring Boot)</div>
+    <div class="fll">① Ingestion Layer</div>
+    <div class="ftrack">
+      <div class="fn"><div class="fb fw-b">Upstream System</div><div class="flbl">File drop to shared location</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb fw-b">FileWatcher</div><div class="flbl">Detects &amp; picks up file</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb fw-b">Parse &amp; Validate</div><div class="flbl">Schema check, row validation</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb db-b">Oracle DB</div><div class="flbl">Raw records inserted</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">Exception Hub</div><div class="flbl">Picks up &amp; initialises WF</div></div>
+    </div>
+    <div class="fll">② Custom Workflow Stages — hand-coded FSM in Java (no BPM tool)</div>
+    <div class="ftrack">
+      <div class="fn"><div class="fb eh-b">NEW</div><div class="flbl">Created on file load</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">ASSIGNED</div><div class="flbl">User takes ownership</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">IN REVIEW</div><div class="flbl">Active investigation</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">PENDING</div><div class="flbl">Awaiting upstream info</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">RESOLVED</div><div class="flbl">Action taken, sign-off pending</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb db-b">CLOSED</div><div class="flbl">Audit trail complete</div></div>
+    </div>
+    <div class="fll">③ Presentation Layer</div>
+    <div class="ftrack">
+      <div class="fn"><div class="fb eh-b">Hub REST API</div><div class="flbl">Exposes state &amp; transitions</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb ui-b">UIP React App</div><div class="flbl">Renders list, detail, actions</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb ui-b">User Action</div><div class="flbl">Clicks transition button</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb eh-b">Hub validates &amp; transitions</div><div class="flbl">Role check → FSM guard → DB</div></div>
+      <div class="fa">→</div>
+      <div class="fn"><div class="fb db-b">Audit Row Written</div><div class="flbl">stage_from, stage_to, user, ts</div></div>
+    </div>
+    <div class="fnotes">
+      <div class="dsec">Critical Review Points</div>
+      <div class="fng">
+        <div>🔴 FileWatcher→Hub handoff: if DB write succeeds but Hub fails to pick up, exception is silently lost. Verify retry or queue mechanism.</div>
+        <div>🔴 All stage transitions must be inside a single @Transactional block. Partial writes in a custom FSM corrupt state permanently.</div>
+        <div>🔴 Concurrent users on same exception: custom FSM has no built-in locking. Verify @Version optimistic locking on Exception entity.</div>
+        <div>🟡 All transition guard checks (role, prior stage, data completeness) must happen server-side, not only in UI button visibility.</div>
+        <div>🟡 FileWatcher must persist processed-file manifest to Oracle DB — in-memory state is lost on restart causing duplicate loads.</div>
+        <div>🟡 CLOSED state must produce a complete WORKFLOW_AUDIT row. Without this table there is zero regulatory traceability.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RISKS -->
+<div class="pg" id="pg-risks">
+  <div class="sh">Risk Register</div>
+  <div class="ss">Pre-seeded enterprise risks. Raise any risk as a tracked issue with one click.</div>
+  <div class="tcard">
+    <div style="padding:10px 13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg2);">
+      <span style="font-size:13px;font-weight:600;">Pre-identified Architectural Risks</span>
+      <button class="btn btn-p btn-sm" onclick="openAdd()">＋ Log as Issue</button>
+    </div>
+    <div style="overflow-x:auto;"><table class="rtbl"><thead><tr><th>ID</th><th>Component</th><th>Severity</th><th>Description</th><th>Recommendation</th><th>Action</th></tr></thead><tbody id="rbody"></tbody></table></div>
+  </div>
+</div>
+```
+
+  </main>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+
+<div class="overlay" id="addOv">
+  <div class="modal">
+    <div class="mhdr">
+      <div><div class="mtitle" id="mhd">Add New Issue</div><div class="msub" id="msd">ID auto-assigned on save</div></div>
+      <button class="cbtn" onclick="closeM('addOv')">✕</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="eid">
+      <div class="frow"><div class="fg full"><label class="flbl">Issue Title *</label><input type="text" id="f-title" placeholder="e.g. Workflow transitions not atomic — partial DB state on failure"></div></div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Component *</label><select id="f-comp"><option>FileWatcher</option><option>Exception Hub</option><option>UI Application</option><option>Database</option><option>Cross-Cutting</option></select></div>
+        <div class="fg"><label class="flbl">Type</label><select id="f-type"><option>Bug</option><option>Gap</option><option>Security</option><option>Performance</option><option>Design</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Severity *</label><select id="f-sev"><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+        <div class="fg"><label class="flbl">Status</label><select id="f-stat"><option>Open</option><option>In Progress</option><option>Fixed</option><option>Closed</option><option>Won't Fix</option></select></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="flbl">Assignee</label><input type="text" id="f-ass" placeholder="Developer name"></div>
+        <div class="fg"><label class="flbl">Review Phase</label><select id="f-phase"><option value="">— Select —</option><option>Phase 1 — BRD Analysis</option><option>Phase 2 — Database</option><option>Phase 3 — FileWatcher</option><option>Phase 4 — Exception Hub</option><option>Phase 5 — UI Application</option><option>Phase 6 — Cross-Cutting</option><option>Phase 7 — Gap Analysis</option><option>Phase 8 — Architecture</option></select></div>
+      </div>
+      <div class="frow"><div class="fg full"><label class="flbl">Description / Root Cause</label><textarea id="f-desc" placeholder="Where in code, root cause, business impact…"></textarea></div></div>
+      <div class="frow"><div class="fg full"><label class="flbl">Recommendation / Fix</label><textarea id="f-fix" placeholder="Recommended fix or code change to apply…" style="min-height:62px;"></textarea></div></div>
+      <div class="frow"><div class="fg full"><label class="flbl">File / Class Reference</label><input type="text" id="f-ref" placeholder="e.g. ExceptionWorkflowService.java:142 or EXCEPTIONS table"></div></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-d btn-sm" id="delBtn" style="display:none;" onclick="delIssue()">🗑 Delete</button>
+      <div style="display:flex;gap:7px;margin-left:auto;">
+        <button class="btn btn-s" onclick="closeM('addOv')">Cancel</button>
+        <button class="btn btn-p" onclick="saveIssue()">💾 Save Issue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+
+<div class="overlay" id="detOv">
+  <div class="modal" style="max-width:800px;">
+    <div class="mhdr">
+      <div><div class="mtitle" id="d-title"></div><div class="msub" id="d-meta"></div></div>
+      <button class="cbtn" onclick="closeM('detOv')">✕</button>
+    </div>
+    <div class="mbody" id="d-body"></div>
+    <div class="mfoot">
+      <button class="btn btn-s" onclick="closeM('detOv')">Close</button>
+      <button class="btn btn-p" id="d-edit">✏️ Edit Issue</button>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+const SK='eh_iss_v5',CK='eh_chk_v2';
+let issues=JSON.parse(localStorage.getItem(SK)||'[]');
+let chks=JSON.parse(localStorage.getItem(CK)||'{}');
+let cf={comp:'',stat:'',q:'',sev:'',type:'',ass:''};
+let sF='created',sD=-1,pg=1,pp=15,editId=null;
+
+const SEED=[
+  {title:"No WORKFLOW_AUDIT table — stage transitions completely untracked",component:"Database",type:"Gap",severity:"Critical",status:"Open",assignee:"",phase:"Phase 2 — Database",desc:"There is no WORKFLOW_AUDIT or WORKFLOW_HISTORY table. Without this, there is zero traceability of who moved an exception from one stage to another and when. Regulatory reviews will fail on this gap.",fix:"Create WORKFLOW_AUDIT table: AUDIT_ID, EXCEPTION_ID, STAGE_FROM, STAGE_TO, ACTIONED_BY, ACTION_DATE, COMMENTS. Populate inside same @Transactional as every stage transition.",ref:"Oracle schema — no audit table found"},
+  {title:"Workflow transitions not @Transactional — partial DB state on failure",component:"Exception Hub",type:"Bug",severity:"Critical",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"Transition methods perform multiple DB writes without a shared transaction boundary. A failure mid-way (after updating EXCEPTIONS table but before writing the audit row) leaves the DB in corrupt partial state with no automatic rollback. Custom FSM provides no safety net.",fix:"Add @Transactional(rollbackFor=Exception.class) to all service methods that perform a stage transition. Audit write and state update must share the same transaction.",ref:"ExceptionWorkflowService.java"},
+  {title:"No concurrent access control — two users can corrupt the same exception",component:"Exception Hub",type:"Bug",severity:"Critical",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"Two users can simultaneously load the same exception at stage=ASSIGNED, both click RESOLVE, and both POST to the transition endpoint. Last write silently wins. The custom FSM has no built-in locking to prevent this.",fix:"Add @Version Long field to Exception entity for optimistic locking. Handle ObjectOptimisticLockingFailureException with a 409 Conflict HTTP response and a user-friendly conflict message.",ref:"Exception.java entity class"},
+  {title:"FileWatcher tracks processed files in-memory only — duplicates on restart",component:"FileWatcher",type:"Bug",severity:"High",status:"Open",assignee:"",phase:"Phase 3 — FileWatcher",desc:"Processed-file tracking uses an in-memory Set. On application restart (crash, deploy, OOM), the set is wiped. Files already loaded will be re-picked up and reloaded, creating duplicate exception records in Oracle.",fix:"Persist to FILE_LOAD_LOG Oracle table: FILENAME, FILE_HASH_SHA256, LOAD_DATE, STATUS, ROW_COUNT. Check this table before processing any file.",ref:"FileWatcherService.java"},
+  {title:"No dead-letter handling for file parse failures — infinite retry loop",component:"FileWatcher",type:"Gap",severity:"High",status:"Open",assignee:"",phase:"Phase 3 — FileWatcher",desc:"When a file fails validation or parsing, it stays in the input directory. The watcher attempts to reprocess it on every polling cycle forever, flooding logs and blocking other files.",fix:"On failure: move file to /quarantine directory, insert FILE_LOAD_LOG record with STATUS=FAILED, trigger alert. Add max-retry limit before quarantine.",ref:"FileParser.java"},
+  {title:"Stage transition endpoints have no server-side role check",component:"Exception Hub",type:"Security",severity:"High",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"UI hides action buttons for unauthorised roles, but the backend /transition endpoint does not validate the caller's role. A lower-privilege user can call it directly with curl and perform restricted transitions.",fix:"Add @PreAuthorize annotation or manual role check inside the transition service method. Role enforcement must live in the backend, not just in UI button visibility.",ref:"ExceptionController.java — POST /exceptions/{id}/transition"},
+  {title:"JWT stored in localStorage — XSS-vulnerable",component:"UI Application",type:"Security",severity:"High",status:"Open",assignee:"",phase:"Phase 5 — UI Application",desc:"Authentication JWT is written to localStorage on login. Any injected XSS JavaScript can read and steal the token, allowing full account impersonation.",fix:"Store JWT in httpOnly, Secure, SameSite=Strict cookie. Update API client to use credentials:'include'. Remove all localStorage token references.",ref:"auth.service.ts"},
+  {title:"Hardcoded input directory path in FileWatcher",component:"FileWatcher",type:"Bug",severity:"High",status:"Open",assignee:"",phase:"Phase 3 — FileWatcher",desc:"File input directory is a hardcoded string literal in source. Deploying to DEV/UAT/PROD requires a code change rather than a config change.",fix:"Externalise to application.properties: file.watcher.input.dir. Inject via @Value. Support environment variable override for containers.",ref:"FileWatcherConfig.java"},
+  {title:"N+1 query problem in exception list endpoint",component:"Exception Hub",type:"Performance",severity:"High",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"The list endpoint fetches a page of exceptions then issues one DB query per record to load assigned user details. 50 exceptions = 51 Oracle queries per page.",fix:"Use JOIN FETCH in JPQL or add @EntityGraph to the repository method to load user data in a single SQL join.",ref:"ExceptionRepository.java — findAllByStatus"},
+  {title:"No standard API response envelope — inconsistent error/success shape",component:"Exception Hub",type:"Design",severity:"Medium",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"Success returns raw entity objects; errors return a different structure. UI error handling is brittle and breaks when either format changes.",fix:"Introduce ApiResponse<T> wrapper: {success, data, error:{code,message}, meta:{timestamp,requestId}}. Apply via @ControllerAdvice ResponseBodyAdvice.",ref:"All REST controllers"},
+  {title:"No DB-level pagination — full result set loaded into JVM heap",component:"Exception Hub",type:"Performance",severity:"Medium",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"List queries fetch all matching rows from Oracle into JVM memory and paginate in Java. At 100k+ rows this will cause OOM errors.",fix:"Use Spring Data Pageable. Pass PageRequest to JPA repository so OFFSET/FETCH is issued in Oracle SQL, not sliced in Java.",ref:"ExceptionService.java — getExceptions()"},
+  {title:"Missing indexes on WORKFLOW_STAGE and CREATED_DATE",component:"Database",type:"Performance",severity:"Medium",status:"Open",assignee:"",phase:"Phase 2 — Database",desc:"No index on WORKFLOW_STAGE or CREATED_DATE. Every UI filter query does a full table scan. Will degrade severely at scale.",fix:"CREATE INDEX idx_exc_stage ON exceptions(workflow_stage); CREATE INDEX idx_exc_date ON exceptions(created_date); Also add composite index for combined filter queries.",ref:"Oracle schema — EXCEPTIONS table"},
+  {title:"No distributed correlation ID across service boundaries",component:"Cross-Cutting",type:"Gap",severity:"Medium",status:"Open",assignee:"",phase:"Phase 6 — Cross-Cutting",desc:"FileWatcher, Exception Hub, and UIP logs share no trace ID. When an exception fails to process, the root cause cannot be traced across all three service log streams.",fix:"Generate UUID on file pickup. Propagate as X-Correlation-ID header through all calls. Use MDC.put('correlationId', id) in all Java services.",ref:"All services — logging configuration"},
+  {title:"TypeScript 'any' types used for API response shapes",component:"UI Application",type:"Design",severity:"Medium",status:"Open",assignee:"",phase:"Phase 5 — UI Application",desc:"Multiple React components cast API responses to 'any', bypassing TypeScript type safety. Runtime errors are hidden and refactoring is dangerous.",fix:"Define typed interfaces for all API DTOs in a shared types/ folder. Replace all 'any' usages with typed interfaces.",ref:"exceptionService.ts, workflowService.ts"},
+  {title:"No DB schema migration tool — manual changes cause environment drift",component:"Database",type:"Gap",severity:"Medium",status:"Open",assignee:"",phase:"Phase 2 — Database",desc:"Schema changes are applied manually per environment. DEV/UAT/PROD will diverge. There is no rollback path for failed schema changes.",fix:"Adopt Flyway with versioned V1__, V2__ migration scripts. Integrate into Spring Boot application startup.",ref:"pom.xml — no flyway dependency"},
+  {title:"PII potentially logged at DEBUG level",component:"Exception Hub",type:"Security",severity:"Medium",status:"Open",assignee:"",phase:"Phase 4 — Exception Hub",desc:"Service methods log full request payloads at DEBUG. If DEBUG is inadvertently enabled in PROD, account numbers and names appear in plain-text log files.",fix:"Scrub sensitive fields from all log statements. Implement LogMasker utility. Verify PROD log config disables DEBUG for all application packages.",ref:"ExceptionService.java — processException()"},
+];
+
+const RISKS=[
+  {id:'R001',comp:'Database',sev:'Critical',desc:'No workflow audit trail — stage transitions completely untracked',rec:'Add WORKFLOW_AUDIT table; populate inside every transition @Transactional block'},
+  {id:'R002',comp:'Exception Hub',sev:'Critical',desc:'Non-atomic transitions — partial DB state corruption on failure',rec:'@Transactional on all multi-write transition methods; rollback on RuntimeException'},
+  {id:'R003',comp:'Exception Hub',sev:'Critical',desc:'No concurrency control — two users can overwrite each other\'s transition',rec:'Add @Version optimistic locking to Exception entity; return 409 on conflict'},
+  {id:'R004',comp:'FileWatcher',sev:'High',desc:'In-memory file tracking wiped on restart — duplicate loads',rec:'Persist FILE_LOAD_LOG to Oracle; check before processing any file'},
+  {id:'R005',comp:'Exception Hub',sev:'High',desc:'Server-side entitlement bypass on transition endpoints',rec:'@PreAuthorize or manual role check inside every transition service method'},
+  {id:'R006',comp:'UI Application',sev:'High',desc:'JWT in localStorage — XSS token theft risk',rec:'Move to httpOnly cookie; update API client to credentials:include'},
+  {id:'R007',comp:'Cross-Cutting',sev:'Medium',desc:'No distributed trace ID — failures undiagnosable across service boundaries',rec:'MDC correlation ID from FileWatcher through all services via X-Correlation-ID header'},
+  {id:'R008',comp:'Database',sev:'Medium',desc:'No Flyway/schema migration — environment drift, no rollback',rec:'Adopt Flyway with versioned migration scripts integrated into Spring Boot startup'},
+];
+
+const CHECKLIST=[
+  {grp:'FileWatcher',ic:'📂',cls:'pfw',items:[
+    {t:'File tracking persisted to DB, not in-memory',sev:'Critical'},
+    {t:'Dead-letter / quarantine for failed files',sev:'High'},
+    {t:'No hardcoded file paths — externalised to config',sev:'High'},
+    {t:'Duplicate file detection (hash or filename+date)',sev:'High'},
+    {t:'Partial load handling — rollback on mid-file failure',sev:'Medium'},
+    {t:'File handles properly closed (try-with-resources)',sev:'Medium'},
+    {t:'Structured logging with filename and row context',sev:'Medium'},
+    {t:'Unit tests for file parsing and validation logic',sev:'Low'},
+  ]},
+  {grp:'Exception Hub (Java)',ic:'⚙️',cls:'peh',items:[
+    {t:'All stage transitions wrapped in @Transactional',sev:'Critical'},
+    {t:'@Version optimistic locking on Exception entity',sev:'Critical'},
+    {t:'Server-side role check on every transition endpoint',sev:'Critical'},
+    {t:'Custom FSM is a cohesive class — not scattered if/else',sev:'High'},
+    {t:'Illegal transitions rejected with 400/409 response',sev:'High'},
+    {t:'Standard ApiResponse<T> envelope on all endpoints',sev:'Medium'},
+    {t:'DB-level pagination — no full table loads',sev:'Medium'},
+    {t:'Global @ControllerAdvice exception handler',sev:'Medium'},
+    {t:'No sensitive data logged at DEBUG level',sev:'Medium'},
+    {t:'No N+1 query patterns in list endpoints',sev:'Medium'},
+    {t:'Unit tests for every valid and invalid FSM transition',sev:'High'},
+  ]},
+  {grp:'UI Application (React)',ic:'🖥',cls:'pui',items:[
+    {t:'JWT stored in httpOnly cookie, not localStorage',sev:'High'},
+    {t:'Route-level auth guards enforce role access',sev:'High'},
+    {t:'No dangerouslySetInnerHTML with user input (XSS)',sev:'High'},
+    {t:'TypeScript interfaces for all API DTOs (no "any")',sev:'Medium'},
+    {t:'Workflow stage names as enums/constants',sev:'Medium'},
+    {t:'Loading and error states on all data-fetching components',sev:'Medium'},
+    {t:'API calls in services/hooks, not components',sev:'Medium'},
+    {t:'Pagination or virtualisation on exception list',sev:'Medium'},
+  ]},
+  {grp:'Database (Oracle)',ic:'🗄',cls:'pdb',items:[
+    {t:'WORKFLOW_AUDIT table exists and populated on every transition',sev:'Critical'},
+    {t:'Indexes on WORKFLOW_STAGE and CREATED_DATE',sev:'High'},
+    {t:'Flyway or Liquibase for all schema changes',sev:'High'},
+    {t:'Audit columns on key tables (CREATED_BY, UPDATED_BY, dates)',sev:'Medium'},
+    {t:'No PL/SQL triggers with hidden side-effects',sev:'Medium'},
+    {t:'No WHEN OTHERS THEN NULL (swallowed exceptions)',sev:'Medium'},
+    {t:'Partitioning strategy for EXCEPTIONS and FILE_LOAD_LOG',sev:'Medium'},
+    {t:'No SELECT * in views or stored procedures',sev:'Low'},
+  ]},
+  {grp:'Cross-Cutting',ic:'🔗',cls:'pcc',items:[
+    {t:'Correlation ID flows FileWatcher → Exception Hub → UIP logs',sev:'Medium'},
+    {t:'All env-specific config externalised (no hardcoded URLs/creds)',sev:'High'},
+    {t:'Health check endpoints on FileWatcher and Exception Hub',sev:'Medium'},
+    {t:'OpenAPI/Swagger spec present and current',sev:'Medium'},
+    {t:'FSM state diagram documented in repo or Confluence',sev:'Medium'},
+    {t:'CI/CD pipeline runs tests before merge',sev:'Medium'},
+  ]},
+];
+
+const PHASES=[
+  {n:'Phase 1 — BRD Analysis',tag:'Business Requirements',ic:'📄',cls:'pfw',comp:''},
+  {n:'Phase 2 — Database',tag:'Oracle 19c',ic:'🗄',cls:'pdb',comp:'Database'},
+  {n:'Phase 3 — FileWatcher',tag:'Python / Java',ic:'📂',cls:'pfw',comp:'FileWatcher'},
+  {n:'Phase 4 — Exception Hub',tag:'Java / Spring Boot',ic:'⚙️',cls:'peh',comp:'Exception Hub'},
+  {n:'Phase 5 — UI Application',tag:'React / TypeScript',ic:'🖥',cls:'pui',comp:'UI Application'},
+  {n:'Phase 6 — Cross-Cutting',tag:'Observability & Config',ic:'🔗',cls:'pcc',comp:'Cross-Cutting'},
+  {n:'Phase 7 — Gap Analysis',tag:'BRD vs Code',ic:'📊',cls:'pfw',comp:''},
+  {n:'Phase 8 — Architecture',tag:'Recommendations',ic:'🏗',cls:'peh',comp:''},
+];
+
+function save(){ localStorage.setItem(SK,JSON.stringify(issues)); }
+function saveChks(){ localStorage.setItem(CK,JSON.stringify(chks)); }
+
+function init(){
+  if(!issues.length){
+    issues=SEED.map((s,i)=>({...s,id:'EH-'+(1001+i),created:new Date(Date.now()-i*172800000).toISOString().split('T')[0],comments:[]}));
+    save();
+  }
+  buildAssF(); render(); renderPhases(); renderChecklist(); renderRisks(); updateStats();
+}
+
+function goPage(id,el){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg-'+id).classList.add('on');
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  if(el) el.classList.add('on');
+  if(id==='issues'){ cf.comp=''; cf.stat=''; render(); }
+}
+
+function fComp(c,el){
+  cf.comp=c; cf.stat='';
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  if(el) el.classList.add('on');
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg-issues').classList.add('on');
+  document.getElementById('iss-sub').textContent=c?'Showing: '+c:'All issues';
+  render();
+}
+
+function fStat(s,el){
+  cf.stat=s; cf.comp='';
+  document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
+  if(el) el.classList.add('on');
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg-issues').classList.add('on');
+  document.getElementById('iss-sub').textContent='Status: '+s;
+  render();
+}
+
+function clearF(){
+  cf={comp:'',stat:'',q:'',sev:'',type:'',ass:''};
+  ['q','fSev','fType','fAss'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('iss-sub').textContent='All review findings across components';
+  render();
+}
+
+function srt(f){ if(sF===f) sD*=-1; else{sF=f;sD=1;} render(); }
+
+function render(){
+  const q=(document.getElementById('q').value||'').toLowerCase();
+  const fSev=document.getElementById('fSev').value;
+  const fType=document.getElementById('fType').value;
+  const fAss=document.getElementById('fAss').value;
+
+  let list=issues.filter(i=>{
+    if(cf.comp&&i.component!==cf.comp) return false;
+    if(cf.stat&&i.status!==cf.stat) return false;
+    if(fSev&&i.severity!==fSev) return false;
+    if(fType&&i.type!==fType) return false;
+    if(fAss&&i.assignee!==fAss) return false;
+    if(q&&!((i.title||'').toLowerCase().includes(q)||(i.desc||'').toLowerCase().includes(q)||(i.assignee||'').toLowerCase().includes(q)||(i.id||'').toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  list.sort((a,b)=>{
+    let av=a[sF]||'',bv=b[sF]||'';
+    if(sF==='severity'){const o=['Critical','High','Medium','Low'];av=o.indexOf(av);bv=o.indexOf(bv);}
+    return av<bv?-sD:av>bv?sD:0;
+  });
+
+  const tot=list.length;
+  document.getElementById('iCnt').textContent=tot+' issue'+(tot!==1?'s':'');
+  document.getElementById('nb-iss').textContent=issues.length;
+
+  const pages=Math.max(1,Math.ceil(tot/pp));
+  if(pg>pages) pg=1;
+  const sl=list.slice((pg-1)*pp,pg*pp);
+
+  document.getElementById('iList').innerHTML=sl.length
+    ? sl.map(i=>row(i)).join('')
+    : `<div class="empty"><div class="empty-i">🔍</div><h3>No issues found</h3><p>Adjust filters or add a new issue.</p></div>`;
+
+  const pb=document.getElementById('pbns');
+  pb.innerHTML='';
+  for(let p=1;p<=pages;p++){
+    const b=document.createElement('button');
+    b.className='pbn'+(p===pg?' on':'');
+    b.textContent=p;
+    const pp2=p;
+    b.onclick=()=>{pg=pp2;render();};
+    pb.appendChild(b);
+  }
+  updateStats(); updateCounts();
+}
+
+function row(i){
+  const ssc='ss-'+i.status.replace(/[\s']/g,'-');
+  const cpc='cp-'+i.component.replace(/\s/g,'-');
+  const svc='sv-'+i.severity;
+  const tpc='tp-'+i.type;
+  const ai=i.assignee?(i.assignee.charCodeAt(0)%5):-1;
+  const avH=i.assignee
+    ? `<div class="avw"><div class="av av${ai}">${i.assignee.substring(0,2).toUpperCase()}</div><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;">${i.assignee}</span></div>`
+    : `<div class="avw"><div class="av av-none" style="font-size:13px;">—</div><span style="color:var(--text-muted);font-size:12px;">Unassigned</span></div>`;
+  return `<div class="irow st-${i.status.replace(/[\s']/g,'-')}" onclick="openDetail('${i.id}')">
+    <div class="td"><span class="iid">${i.id}</span></div>
+    <div class="td"><span class="badge ${svc}"><span class="dot"></span>${i.severity}</span></div>
+    <div class="td"><span class="badge ${tpc}">${i.type}</span></div>
+    <div class="td"><span class="badge ${cpc}" style="font-size:10px;">${i.component}</span></div>
+    <div class="td"><div class="itw"><div class="ittl">${esc(i.title)}</div>${i.phase?`<div class="isub">${esc(i.phase)}</div>`:''}</div></div>
+    <div class="td">${avH}</div>
+    <div class="td"><span class="badge ${ssc}">${i.status}</span></div>
+    <div class="td" style="font-size:11px;font-family:var(--mono);color:var(--text-muted);">${i.created||''}</div>
+    <div class="td" onclick="event.stopPropagation()">
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-s btn-xs" onclick="openEdit('${i.id}')">✏️</button>
+        <select class="btn btn-s btn-xs" style="padding:3px 5px;font-size:11px;" onchange="qStat('${i.id}',this.value)">
+          <option value="">→</option>
+          <option>Open</option><option>In Progress</option><option>Fixed</option><option>Closed</option><option>Won't Fix</option>
+        </select>
+      </div>
+    </div>
+  </div>`;
+}
+
+function qStat(id,v){
+  if(!v) return;
+  const i=issues.find(x=>x.id===id); if(!i) return;
+  i.status=v; save(); render(); toast('Updated: '+v,'ok');
+}
+
+function updateStats(){
+  document.getElementById('st-tot').textContent=issues.length;
+  document.getElementById('st-crit').textContent=issues.filter(i=>i.severity==='Critical').length;
+  document.getElementById('st-high').textContent=issues.filter(i=>i.severity==='High').length;
+  document.getElementById('st-med').textContent=issues.filter(i=>i.severity==='Medium').length;
+  document.getElementById('st-open').textContent=issues.filter(i=>i.status==='Open').length;
+  document.getElementById('st-fix').textContent=issues.filter(i=>i.status==='Fixed').length;
+}
+function updateCounts(){
+  document.getElementById('fc-all').textContent=issues.length;
+  const cm={fw:'FileWatcher',eh:'Exception Hub',ui:'UI Application',db:'Database',cc:'Cross-Cutting'};
+  Object.entries(cm).forEach(([k,v])=>{const el=document.getElementById('fc-'+k);if(el)el.textContent=issues.filter(i=>i.component===v).length;});
+  document.getElementById('fs-open').textContent=issues.filter(i=>i.status==='Open').length;
+  document.getElementById('fs-ip').textContent=issues.filter(i=>i.status==='In Progress').length;
+  document.getElementById('fs-fix').textContent=issues.filter(i=>i.status==='Fixed').length;
+}
+
+function openAdd(pre){
+  editId=null;
+  document.getElementById('mhd').textContent='Add New Issue';
+  document.getElementById('msd').textContent='ID auto-assigned on save';
+  document.getElementById('eid').value='';
+  document.getElementById('delBtn').style.display='none';
+  const map={title:'',comp:'FileWatcher',type:'Bug',sev:'Medium',stat:'Open',ass:'',phase:'',desc:'',fix:'',ref:''};
+  Object.entries(map).forEach(([f,d])=>{ const el=document.getElementById('f-'+f); if(el) el.value=(pre&&pre[f])||d; });
+  document.getElementById('addOv').classList.add('on');
+}
+
+function openEdit(id){
+  const i=issues.find(x=>x.id===id); if(!i) return;
+  editId=id;
+  document.getElementById('mhd').textContent='Edit Issue';
+  document.getElementById('msd').textContent=id;
+  document.getElementById('eid').value=id;
+  document.getElementById('delBtn').style.display='';
+  const m={title:'title',comp:'component',type:'type',sev:'severity',stat:'status',ass:'assignee',phase:'phase',desc:'desc',fix:'fix',ref:'ref'};
+  Object.entries(m).forEach(([f,k])=>{ const el=document.getElementById('f-'+f); if(el) el.value=i[k]||''; });
+  document.getElementById('addOv').classList.add('on');
+}
+
+function saveIssue(){
+  const title=document.getElementById('f-title').value.trim();
+  if(!title){ toast('Title is required','err'); return; }
+  const data={title,component:document.getElementById('f-comp').value,type:document.getElementById('f-type').value,severity:document.getElementById('f-sev').value,status:document.getElementById('f-stat').value,assignee:document.getElementById('f-ass').value.trim(),phase:document.getElementById('f-phase').value,desc:document.getElementById('f-desc').value.trim(),fix:document.getElementById('f-fix').value.trim(),ref:document.getElementById('f-ref').value.trim()};
+  if(editId){
+    Object.assign(issues.find(x=>x.id===editId),data);
+    toast('Issue updated','ok');
+  } else {
+    const mx=issues.reduce((m,i)=>Math.max(m,parseInt(i.id.replace('EH-'),10)||0),1000);
+    data.id='EH-'+(mx+1); data.created=new Date().toISOString().split('T')[0]; data.comments=[];
+    issues.push(data);
+    toast('Added: '+data.id,'ok');
+  }
+  save(); buildAssF(); render(); closeM('addOv');
+}
+
+function delIssue(){
+  if(!editId||!confirm('Delete this issue? Cannot be undone.')) return;
+  issues=issues.filter(i=>i.id!==editId);
+  save(); render(); closeM('addOv'); toast('Issue deleted');
+}
+
+function openDetail(id){
+  const i=issues.find(x=>x.id===id); if(!i) return;
+  document.getElementById('d-title').textContent=i.title;
+  document.getElementById('d-meta').textContent=i.id+' · '+i.component+' · '+i.created;
+  const svc='sv-'+i.severity, ssc='ss-'+i.status.replace(/[\s']/g,'-'), tpc='tp-'+i.type, cpc='cp-'+i.component.replace(/\s/g,'-');
+  document.getElementById('d-body').innerHTML=`
+    <div class="dmeta">
+      <div class="dmi"><div class="dml">Severity</div><div class="dmv"><span class="badge ${svc}"><span class="dot"></span>${i.severity}</span></div></div>
+      <div class="dmi"><div class="dml">Status</div><div class="dmv"><span class="badge ${ssc}">${i.status}</span></div></div>
+      <div class="dmi"><div class="dml">Type</div><div class="dmv"><span class="badge ${tpc}">${i.type}</span></div></div>
+      <div class="dmi"><div class="dml">Component</div><div class="dmv"><span class="badge ${cpc}" style="font-size:10px;">${i.component}</span></div></div>
+      <div class="dmi"><div class="dml">Assignee</div><div class="dmv">${i.assignee||'<span style="color:var(--text-muted)">Unassigned</span>'}</div></div>
+      <div class="dmi"><div class="dml">Phase</div><div class="dmv" style="font-size:12px;">${i.phase||'—'}</div></div>
+    </div>
+    ${i.desc?`<div><div class="dsec">Description / Root Cause</div><div class="dbox">${esc(i.desc)}</div></div>`:''}
+    ${i.fix?`<div><div class="dsec">Recommendation / Fix</div><div class="dbox">${esc(i.fix)}</div></div>`:''}
+    ${i.ref?`<div><div class="dsec">File / Class Reference</div><div class="dbox" style="font-family:var(--mono);font-size:12px;">${esc(i.ref)}</div></div>`:''}
+    <div>
+      <div class="dsec">Comments (${(i.comments||[]).length})</div>
+      <div class="clist">${(i.comments||[]).map(c=>`<div class="citem"><div class="cmeta"><div class="av av0" style="width:19px;height:19px;font-size:9px;">${(c.author||'?').substring(0,2).toUpperCase()}</div><span class="caut">${esc(c.author)}</span><span class="cdt">${c.date}</span></div><div class="ctxt">${esc(c.text)}</div></div>`).join('')||`<div style="font-size:12px;color:var(--text-muted);padding:3px 0;">No comments yet.</div>`}</div>
+      <div class="cinrow">
+        <input type="text" id="cn" placeholder="Your name" style="width:130px;padding:6px 9px;">
+        <textarea id="ct" placeholder="Add comment or fix note…"></textarea>
+
+```
+    <button class="btn btn-p btn-sm" onclick="addComment('${id}')">Post</button>
+  </div>
+</div>`;
+```
+
+document.getElementById(‘d-edit’).onclick=()=>{ closeM(‘detOv’); openEdit(id); };
+document.getElementById(‘detOv’).classList.add(‘on’);
+}
+
+function addComment(id){
+const t=document.getElementById(‘ct’).value.trim();
+if(!t){ toast(‘Comment cannot be empty’,‘err’); return; }
+const i=issues.find(x=>x.id===id); if(!i) return;
+if(!i.comments) i.comments=[];
+i.comments.push({author:document.getElementById(‘cn’).value.trim()||‘Anonymous’,text:t,date:new Date().toLocaleDateString()});
+save(); openDetail(id); toast(‘Comment added’,‘ok’);
+}
+
+function renderPhases(){
+document.getElementById(‘pgrid’).innerHTML=PHASES.map(p=>{
+const tot=p.comp?issues.filter(i=>i.component===p.comp).length:issues.length;
+const fx=p.comp?issues.filter(i=>i.component===p.comp&&(i.status===‘Fixed’||i.status===‘Closed’)).length:issues.filter(i=>i.status===‘Fixed’||i.status===‘Closed’).length;
+const pct=tot?Math.round(fx/tot*100):0;
+return `<div class="pc"><div class="pchdr"><div class="pic ${p.cls}">${p.ic}</div><div><div class="pname">${p.n}</div><div class="ptag">${p.tag}</div></div></div> <div class="pcb"> <div class="pstats"> <div><span class="psn" style="color:var(--text);">${tot}</span><span class="psl">Issues</span></div> <div><span class="psn" style="color:var(--green);">${fx}</span><span class="psl">Fixed</span></div> <div><span class="psn" style="color:var(--accent);">${pct}%</span><span class="psl">Done</span></div> </div> <div class="pbar"><div class="pbf" style="width:${pct}%"></div></div> ${p.comp?`<button class="plink" onclick="fComp('${p.comp}',null);goPage('issues',null)">View issues →</button>`:'<span style="font-size:11px;color:var(--text-muted);font-family:var(--mono);">Cross-component phase</span>'} </div></div>`;
+}).join(’’);
+}
+
+function renderChecklist(){
+let tot=0,done=0;
+document.getElementById(‘clgrid’).innerHTML=CHECKLIST.map(g=>{
+const d=g.items.filter((*,i)=>chks[g.grp+’*’+i]).length;
+tot+=g.items.length; done+=d;
+const pct=Math.round(d/g.items.length*100);
+return `<div class="clcard"><div class="clhdr"><div class="clt"><span>${g.ic}</span>${g.grp}</div><span class="clp">${pct}%</span></div> <div class="clb">${g.items.map((it,idx)=>{ const key=g.grp+'_'+idx, chk=!!chks[key]; return `<label class="ci${chk?' done':''}"><input type=“checkbox” ${chk?‘checked’:’’} onchange=“toggleChk(’${key}’,this.checked)”><span class="citxt">${esc(it.t)}</span><span style="margin-left:auto;"><span class="badge sv-${it.sev}" style="padding:1px 5px;font-size:10px;">${it.sev}</span></span></label>`; }).join('')}</div></div>`;
+}).join(’’);
+const pct=tot?Math.round(done/tot*100):0;
+document.getElementById(‘nb-chk’).textContent=pct+’%’;
+}
+
+function toggleChk(k,v){ chks[k]=v; saveChks(); renderChecklist(); }
+
+function renderRisks(){
+const sm={Critical:‘sv-Critical’,High:‘sv-High’,Medium:‘sv-Medium’,Low:‘sv-Low’};
+const cm={Database:‘cp-Database’,‘Exception Hub’:‘cp-Exception-Hub’,FileWatcher:‘cp-FileWatcher’,‘UI Application’:‘cp-UI-Application’,‘Cross-Cutting’:‘cp-Cross-Cutting’};
+document.getElementById(‘rbody’).innerHTML=RISKS.map(r=>`<tr>
+<td style="font-family:var(--mono);font-size:11px;font-weight:600;color:var(--text-muted);">${r.id}</td>
+<td><span class="badge ${cm[r.comp]||''}" style="font-size:10px;">${r.comp}</span></td>
+<td><span class="badge ${sm[r.sev]||''}">${r.sev}</span></td>
+<td style="font-size:13px;color:var(--text-mid);max-width:260px;">${esc(r.desc)}</td>
+<td style="font-size:12px;color:var(--text-mid);max-width:240px;">${esc(r.rec)}</td>
+<td><button class="btn btn-p btn-xs" onclick='openAdd({title:"[${r.id}] "+${JSON.stringify(r.desc)},comp:${JSON.stringify(r.comp)},sev:${JSON.stringify(r.sev)},type:"Gap",desc:${JSON.stringify(r.desc)},fix:${JSON.stringify(r.rec)}})'>＋ Issue</button></td>
+
+  </tr>`).join('');
+}
+
+function buildAssF(){
+const sel=document.getElementById(‘fAss’), cur=sel.value;
+const names=[…new Set(issues.map(i=>i.assignee).filter(Boolean))].sort();
+sel.innerHTML=’<option value="">All Assignees</option>’+names.map(n=>`<option${n===cur?' selected':''}>${n}</option>`).join(’’);
+}
+
+function closeM(id){ document.getElementById(id).classList.remove(‘on’); }
+
+function exportJSON(){ dl(new Blob([JSON.stringify(issues,null,2)],{type:‘application/json’}),‘eh-issues-’+td()+’.json’); }
+function exportCSV(){
+const cols=[‘id’,‘severity’,‘type’,‘component’,‘status’,‘title’,‘assignee’,‘phase’,‘ref’,‘created’];
+dl(new Blob([[cols.join(’,’),…issues.map(i=>cols.map(c=>’”’+(i[c]||’’).replace(/”/g,’””’)+’”’).join(’,’))].join(’\n’)],{type:‘text/csv’}),‘eh-issues-’+td()+’.csv’);
+}
+function dl(blob,name){ const a=document.createElement(‘a’);a.href=URL.createObjectURL(blob);a.download=name;a.click(); }
+function td(){ return new Date().toISOString().split(‘T’)[0]; }
+function esc(s){ return (s||’’).replace(/&/g,’&’).replace(/</g,’<’).replace(/>/g,’>’).replace(/”/g,’"’); }
+function toast(msg,type=’’){
+const d=document.createElement(‘div’);
+d.className=‘toast’+(type?’ ‘+type:’’);
+d.textContent=(type===‘ok’?’✓ ’:type===‘err’?‘✕ ‘:’’)+msg;
+document.getElementById(‘toasts’).appendChild(d);
+setTimeout(()=>d.remove(),3000);
+}
+
+document.addEventListener(‘keydown’,e=>{
+if(e.key===‘Escape’) document.querySelectorAll(’.overlay.on’).forEach(o=>o.classList.remove(‘on’));
+if((e.metaKey||e.ctrlKey)&&e.key===‘k’){ e.preventDefault(); openAdd(); }
+});
+document.querySelectorAll(’.overlay’).forEach(o=>o.addEventListener(‘click’,function(e){ if(e.target===this) this.classList.remove(‘on’); }));
+
+init();
+</script>
+
+</body>
+</html>
