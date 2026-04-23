@@ -1,0 +1,26 @@
+{
+  "workflowAppConfigId": "PNL_NARRATIVE_001",
+  "appGroupId": "PNL_CLOSE",
+  "appType": "LLM_AGENT",
+  "workflowStage": "POST_CLOSE",
+  "workflowSubstage": "COMMENTARY_GENERATION",
+  "workflowAppConfigDeps": ["PNL_LINEAGE_EXTRACT_001"],
+  "llmConfig": {
+    "provider": "AOF_BEDROCK",
+    "modelId": "claude-sonnet-4-5",
+    "systemPromptRef": "pnl_commentary_v3",
+    "tools": ["pnl_lineage_lookup", "tb_bb_exception_lookup"],
+    "responseSchema": "schemas/pnl_commentary.json",
+    "maxTokens": 4000,
+    "temperature": 0.1
+  },
+  "inputBindings": [
+    {"artifactId": "masterbook.csv",   "as": "document"},
+    {"artifactId": "pnl_lineage.json", "as": "inline_json"}
+  ],
+  "outputBindings": [
+    {"path": "$.narrative",     "artifactId": "commentary.md"},
+    {"path": "$.materialItems", "artifactId": "material_items.json"}
+  ],
+  "isUsedForWorkflowInstance": true
+}
