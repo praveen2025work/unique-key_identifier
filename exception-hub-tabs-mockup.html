@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Exception Hub · Action Tabs Redesign (Sample + Dev Spec)</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --border: #e2e5ea;
+    --border-strong: #cfd3da;
+    --text: #1f2430;
+    --text-muted: #5b6472;
+    --text-subtle: #8a93a1;
+    --primary: #00395d;          /* Barclays deep blue */
+    --primary-tint: #e6eef4;
+    --accent: #00aeef;           /* Barclays cyan */
+    --warn-bg: #fef3c7;
+    --warn-fg: #92400e;
+    --info-bg: #dbeafe;
+    --info-fg: #1e40af;
+    --ok-bg: #dcfce7;
+    --ok-fg: #166534;
+    --danger-bg: #fee2e2;
+    --danger-fg: #991b1b;
+    --mine: #fff8e1;             /* subtle yellow for "needs my action" rows */
+    --mine-border: #f0c400;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  /* ---------- App shell ---------- */
+  .app-shell {
+    max-width: 1440px;
+    margin: 24px auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: -0.01em;
+  }
+  .brand .sep { color: var(--text-subtle); }
+  .brand .sub { color: var(--text-muted); font-weight: 500; font-size: 14px; }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--surface-2);
+  }
+  .user-chip .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #00395d, #00aeef);
+    color: white; font-weight: 600; font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .user-chip .who { line-height: 1.1; }
+  .user-chip .who .name { font-weight: 600; font-size: 12px; }
+  .user-chip .who .role { font-size: 11px; color: var(--text-muted); }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 0;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .toolbar-left { display: flex; align-items: baseline; gap: 12px; }
+  .list-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .list-count { font-size: 12px; color: var(--text-muted); }
+
+  .toolbar-right { display: flex; gap: 8px; }
+  .btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    background: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn svg { width: 14px; height: 14px; }
+
+  /* ---------- The three-tab bar (the core of this redesign) ---------- */
+  .action-tabs {
+    display: flex;
+    padding: 14px 20px 0;
+    gap: 2px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .action-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    transition: all 0.15s;
+    font-family: inherit;
+    position: relative;
+    top: 1px;
+  }
+  .action-tab:hover { color: var(--text); background: var(--surface-2); }
+  .action-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+  }
+  .action-tab svg { width: 16px; height: 16px; }
+  .tab-badge {
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--border);
+    color: var(--text-muted);
+    min-width: 22px;
+    text-align: center;
+  }
+  .action-tab.active .tab-badge {
+    background: var(--primary);
+    color: white;
+  }
+  .action-tab[data-tab="action"] .tab-badge {
+    background: var(--warn-fg);
+    color: white;
+  }
+  .action-tab[data-tab="action"]:not(.active) .tab-badge {
+    background: var(--warn-bg);
+    color: var(--warn-fg);
+  }
+  .action-tab[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Context strip explaining the current view */
+  .context-strip {
+    padding: 10px 20px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .context-strip svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--accent); }
+  .context-strip strong { color: var(--text); font-weight: 600; }
+
+  /* ---------- Table ---------- */
+  .table-wrap {
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0.01em;
+  }
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  tr.mine-row {
+    background: var(--mine);
+    box-shadow: inset 3px 0 0 var(--mine-border);
+  }
+  tr.mine-row:hover { background: #fff4cc; }
+  tr:hover { background: var(--surface-2); }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .status-open { background: var(--ok-bg); color: var(--ok-fg); }
+  .status-inprogress { background: var(--warn-bg); color: var(--warn-fg); }
+  .status-completed { background: var(--info-bg); color: var(--info-fg); }
+  .status-rejected { background: var(--danger-bg); color: var(--danger-fg); }
+
+  .step-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .step-chip.mine {
+    background: #fef3c7;
+    border-color: var(--mine-border);
+    color: var(--warn-fg);
+    font-weight: 600;
+  }
+  .step-chip .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .step-chip.done {
+    background: var(--info-bg);
+    color: var(--info-fg);
+    border-color: #93c5fd;
+  }
+
+  .my-action-btn {
+    padding: 4px 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .my-action-btn:hover { background: #002a47; }
+  .action-muted {
+    font-size: 11px;
+    color: var(--text-subtle);
+    font-style: italic;
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .empty-state svg {
+    width: 48px; height: 48px;
+    color: var(--border-strong);
+    margin-bottom: 12px;
+  }
+  .empty-state h3 { margin: 0 0 4px; font-size: 14px; color: var(--text); }
+  .empty-state p { margin: 0; font-size: 12px; }
+
+  /* ---------- Dev spec section ---------- */
+  .spec {
+    max-width: 1440px;
+    margin: 24px auto 40px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .spec-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, var(--primary) 0%, #004a78 100%);
+    color: white;
+  }
+  .spec-header h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .spec-header p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.85;
+  }
+  .spec-body {
+    padding: 24px;
+  }
+  .spec-section {
+    margin-bottom: 32px;
+  }
+  .spec-section:last-child { margin-bottom: 0; }
+  .spec-section h3 {
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--primary-tint);
+  }
+  .spec-section p, .spec-section li {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .spec-section code {
+    background: var(--primary-tint);
+    color: var(--primary);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+  }
+  pre {
+    background: #0f1420;
+    color: #e6e6e6;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.55;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    margin: 8px 0;
+  }
+  pre .kw { color: #c792ea; }
+  pre .fn { color: #82aaff; }
+  pre .str { color: #c3e88d; }
+  pre .cm { color: #6a7890; font-style: italic; }
+  pre .nm { color: #f78c6c; }
+
+  .rule-table {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .rule-table th {
+    background: var(--primary-tint);
+    color: var(--primary);
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+  .rule-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: normal;
+    vertical-align: top;
+  }
+  .rule-table tr:last-child td { border-bottom: none; }
+
+  .callout {
+    background: #fffbe6;
+    border-left: 3px solid #f0c400;
+    padding: 12px 14px;
+    border-radius: 0 6px 6px 0;
+    margin: 12px 0;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .callout strong { color: var(--warn-fg); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- =====================================================================
+     SAMPLE UI
+     ===================================================================== -->
+<div class="app-shell">
+
+  <div class="app-header">
+    <div class="brand">
+      <h1>Exception Hub</h1>
+      <span class="sep">·</span>
+      <span class="sub">Dashboard</span>
+    </div>
+    <div class="user-chip">
+      <div class="avatar" id="userAvatar">PN</div>
+      <div class="who">
+        <div class="name">Praveen Nandyala</div>
+        <div class="role" id="userRoleLabel">PC_OWNER</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="list-title">Exception List</span>
+      <span class="list-count" id="listCount">—</span>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 4h18M6 12h12M10 20h4"/></svg>
+        Show Filters
+      </button>
+      <button class="btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M20 4l-8 8M4 20l8-8"/></svg>
+        Refresh
+      </button>
+      <button class="btn">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M3 17v2a2 2 0 002 2h14a2 2 0 002-2v-2"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+
+  <!-- THE THREE TABS (replacing "My Actions" button) -->
+  <div class="action-tabs" id="actionTabs">
+    <button class="action-tab active" data-tab="action">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Action Required
+      <span class="tab-badge" id="badgeAction">0</span>
+    </button>
+    <button class="action-tab" data-tab="all">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      All Visible
+      <span class="tab-badge" id="badgeAll">0</span>
+    </button>
+    <button class="action-tab" data-tab="history">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      My History
+      <span class="tab-badge" id="badgeHistory">0</span>
+    </button>
+  </div>
+
+  <div class="context-strip" id="contextStrip">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <span id="contextText">Loading…</span>
+  </div>
+
+  <div class="table-wrap">
+    <table id="exceptionTable">
+      <thead>
+        <tr>
+          <th>Business Date</th>
+          <th>Aging</th>
+          <th>Status</th>
+          <th>Current Step</th>
+          <th>SDS Book Code</th>
+          <th>System</th>
+          <th>Legal Entity</th>
+          <th>Instrument ID</th>
+          <th>Equity Class</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- =====================================================================
+     DEVELOPER SPECIFICATION
+     ===================================================================== -->
+<div class="spec">
+  <div class="spec-header">
+    <h2>Developer Specification · Action / All / My History Tabs</h2>
+    <p>Business use case, role-based filter rules, data contract, and acceptance criteria for the Exception Hub workflow UI.</p>
+  </div>
+
+  <div class="spec-body">
+
+    <!-- 1. Problem & Goal -->
+    <div class="spec-section">
+      <h3>1. Problem &amp; Goal</h3>
+      <p>
+        Today the Exception Hub shows a single <code>My Actions</code> toggle. Users cannot easily see (a) items waiting on
+        <em>them</em> right now, (b) the full set they have visibility over, and (c) items they already actioned that have
+        moved downstream. The redesign replaces the single toggle with three mutually-exclusive tabs driven by the user's
+        role and the current active workflow step on each exception.
+      </p>
+      <p><strong>Goal:</strong> a user at any L4 role (Analyst, Reviewer, Approver, etc.) lands on their work queue by default,
+        can pivot to the full scope when investigating, and can trace what they have already processed — all without filters
+        or context menus.</p>
+    </div>
+
+    <!-- 2. Tabs -->
+    <div class="spec-section">
+      <h3>2. Tabs &amp; Definitions</h3>
+      <table class="rule-table">
+        <thead>
+          <tr>
+            <th style="width:18%">Tab</th>
+            <th style="width:10%">Default?</th>
+            <th>Definition</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Action Required</strong><br><span style="color:var(--text-muted);font-size:11px">key: <code>action</code></span></td>
+            <td>Yes (L4 roles)</td>
+            <td>Exceptions where the <strong>currently active workflow step</strong> is mapped to the logged-in user's role.
+              Only items needing <em>this user's</em> intervention. Count badge drives the red urgency signal.</td>
+          </tr>
+          <tr>
+            <td><strong>All Visible</strong><br><span style="color:var(--text-muted);font-size:11px">key: <code>all</code></span></td>
+            <td>Yes (Owner)</td>
+            <td>Every exception the user has entitlement to view, regardless of current step. For L4 users this is a
+              read-only investigative view; action button only appears on rows where they are the active actor.</td>
+          </tr>
+          <tr>
+            <td><strong>My History</strong><br><span style="color:var(--text-muted);font-size:11px">key: <code>history</code></span></td>
+            <td>No</td>
+            <td>Exceptions this user has previously actioned (approved / rejected / reviewed / commented) but which are no
+              longer in their queue — typically moved to the next step or closed. Sourced from the workflow audit trail,
+              not from current-state.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 3. Role matrix -->
+    <div class="spec-section">
+      <h3>3. Role Behaviour Matrix</h3>
+      <table class="rule-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Default Tab</th>
+            <th>Action Required filter</th>
+            <th>All Visible filter</th>
+            <th>My History filter</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>PC_OWNER</code><br><span style="color:var(--text-muted);font-size:11px">Owner / Admin</span></td>
+            <td><code>all</code></td>
+            <td>All exceptions where <em>any</em> step is currently active (i.e. not terminal).
+              Owner is not gated by step ownership.</td>
+            <td>Everything in entitled scope.</td>
+            <td>Exceptions the Owner user has personally actioned (rare but supported).</td>
+          </tr>
+          <tr>
+            <td><code>ANALYST</code>, <code>REVIEWER</code>, <code>APPROVER</code>, …<br>
+              <span style="color:var(--text-muted);font-size:11px">any L4 functional role</span></td>
+            <td><code>action</code></td>
+            <td><code>exception.currentStep.assignedRole == user.role</code><br>
+              AND <code>exception.currentStep.status == 'IN_PROGRESS'</code></td>
+            <td>Everything in entitled scope, action button disabled on rows where the user is not the active actor.</td>
+            <td><code>audit.actorId == user.id</code> AND <code>audit.step != exception.currentStep</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <strong>Entitlement scope</strong> is a separate filter applied on top of every tab (SDS book access, legal entity
+        access, region, etc.) — it is enforced by the existing Central Enterprise Entitlement System and MUST be applied
+        server-side before any tab filter runs.
+      </div>
+    </div>
+
+    <!-- 4. Pseudocode -->
+    <div class="spec-section">
+      <h3>4. Filter Logic (server-side pseudocode)</h3>
+<pre><span class="cm">// ExceptionQueryService.java — new endpoint param: ?tab=action|all|history</span>
+
+<span class="kw">public</span> Page&lt;ExceptionDto&gt; <span class="fn">list</span>(User user, Tab tab, Pageable page) {
+
+    <span class="cm">// 1. Always start from the user's entitled scope.</span>
+    Specification&lt;Exception&gt; spec = <span class="fn">withinEntitlement</span>(user);
+
+    <span class="kw">switch</span> (tab) {
+
+        <span class="kw">case</span> <span class="nm">ACTION</span>:
+            <span class="kw">if</span> (user.<span class="fn">hasRole</span>(<span class="str">"PC_OWNER"</span>)) {
+                spec = spec.<span class="fn">and</span>(<span class="fn">hasAnyOpenStep</span>());
+            } <span class="kw">else</span> {
+                spec = spec
+                    .<span class="fn">and</span>(<span class="fn">currentStepAssignedTo</span>(user.<span class="fn">getRole</span>()))
+                    .<span class="fn">and</span>(<span class="fn">currentStepStatus</span>(<span class="nm">IN_PROGRESS</span>));
+            }
+            <span class="kw">break</span>;
+
+        <span class="kw">case</span> <span class="nm">ALL</span>:
+            <span class="cm">// No step filter; entitlement already applied.</span>
+            <span class="kw">break</span>;
+
+        <span class="kw">case</span> <span class="nm">HISTORY</span>:
+            spec = spec.<span class="fn">and</span>(<span class="fn">hasAuditBy</span>(user.<span class="fn">getId</span>()))
+                       .<span class="fn">and</span>(<span class="fn">currentStepNotAssignedTo</span>(user.<span class="fn">getRole</span>()));
+            <span class="kw">break</span>;
+    }
+
+    <span class="kw">return</span> exceptionRepository.<span class="fn">findAll</span>(spec, page);
+}
+</pre>
+      <p style="color:var(--text-muted);font-size:12px;">
+        <code>currentStepAssignedTo</code> joins on the workflow's <code>workflow_step</code> table where
+        <code>is_current = true</code>. <code>hasAuditBy</code> joins on the <code>workflow_audit</code> / Envers
+        <code>_AUD</code> tables by actor id.
+      </p>
+    </div>
+
+    <!-- 5. API contract -->
+    <div class="spec-section">
+      <h3>5. API Contract</h3>
+      <div class="grid-2">
+        <div>
+          <p><strong>List endpoint</strong></p>
+<pre>GET /api/exceptions
+    ?tab=action|all|history          <span class="cm">// required</span>
+    &amp;status=OPEN,IN_PROGRESS         <span class="cm">// optional</span>
+    &amp;page=0&amp;size=100&amp;sort=aging,desc</pre>
+        </div>
+        <div>
+          <p><strong>Counts endpoint</strong> (for tab badges — cheap, cached)</p>
+<pre>GET /api/exceptions/counts
+Response:
+{
+  "action":  47,
+  "all":     2478,
+  "history": 312
+}</pre>
+        </div>
+      </div>
+      <p style="color:var(--text-muted);font-size:12px;">
+        Counts endpoint must respect the same role + entitlement rules as the list endpoint. Call it on page load and
+        re-poll (or refresh via the existing SSE/WebSocket if workflow events are already pushed) when a user submits an action.
+      </p>
+    </div>
+
+    <!-- 6. Frontend structure -->
+    <div class="spec-section">
+      <h3>6. Frontend Structure (React / TypeScript)</h3>
+<pre><span class="cm">// Suggested component tree in the existing Exception Hub React app</span>
+&lt;ExceptionHubDashboard&gt;
+  &lt;Toolbar /&gt;
+  &lt;ActionTabs
+      value={tab}                         <span class="cm">// 'action' | 'all' | 'history'</span>
+      counts={counts}                     <span class="cm">// from /counts endpoint</span>
+      onChange={setTab}
+      userRole={user.role}
+      defaultTab={user.role === <span class="str">'PC_OWNER'</span> ? <span class="str">'all'</span> : <span class="str">'action'</span>}
+  /&gt;
+  &lt;ContextStrip tab={tab} role={user.role} /&gt;
+  &lt;ExceptionTable
+      query={{ tab, filters, sort, page }}
+      rowRenderer={row =&gt; (
+        &lt;ExceptionRow
+            row={row}
+            isMine={row.currentStep.assignedRole === user.role}
+            canAction={row.currentStep.assignedRole === user.role
+                       &amp;&amp; row.currentStep.status === <span class="str">'IN_PROGRESS'</span>}
+        /&gt;
+      )}
+  /&gt;
+&lt;/ExceptionHubDashboard&gt;</pre>
+      <ul>
+        <li><strong>Persist tab in URL</strong> (<code>?tab=action</code>) so deep-links and browser back work.</li>
+        <li><strong>Row highlighting:</strong> rows where <code>isMine</code> get the yellow left-border treatment
+            (see mockup). This is especially valuable on the <code>all</code> tab so a user can spot their own items.</li>
+        <li><strong>Action button</strong> is disabled with tooltip <em>"Awaiting {roleName}"</em> when
+            <code>canAction === false</code>.</li>
+        <li><strong>Empty states:</strong> each tab needs its own copy (see mockup — swap through the tabs when the
+            count is 0).</li>
+      </ul>
+    </div>
+
+    <!-- 7. Acceptance criteria -->
+    <div class="spec-section">
+      <h3>7. Acceptance Criteria</h3>
+      <ol>
+        <li>Owner user lands on <strong>All Visible</strong> by default; sees global counts on all three tab badges.</li>
+        <li>Any L4 role user lands on <strong>Action Required</strong> by default; badge equals count of exceptions where
+          current step is assigned to their role AND status is <code>IN_PROGRESS</code>.</li>
+        <li>Switching to <strong>All Visible</strong> shows the user's full entitled scope; rows not awaiting them render
+          the action button as disabled with the correct tooltip.</li>
+        <li>Switching to <strong>My History</strong> shows only exceptions the user has actioned AND which have since moved
+          past their step. Same exception never appears in both <em>Action Required</em> and <em>My History</em> at the
+          same time.</li>
+        <li>After a user submits an action, the row disappears from <strong>Action Required</strong> and appears in
+          <strong>My History</strong> on the next refresh; both badge counts update.</li>
+        <li>Tab state is preserved in URL; refreshing the page preserves the current tab.</li>
+        <li>Entitlement denial (e.g. user loses SDS book access mid-session) must drop the row from all three tabs on next load.</li>
+        <li>Audit: every list request logs <code>{userId, role, tab, resultCount}</code> to the existing audit sink.</li>
+      </ol>
+    </div>
+
+    <!-- 8. Edge cases -->
+    <div class="spec-section">
+      <h3>8. Edge Cases to Confirm with BA</h3>
+      <ul>
+        <li><strong>Multi-role users</strong> — if a user holds both Reviewer and Approver, is Action Required the union
+          of both queues? (Recommended: yes, with the step column disambiguating.)</li>
+        <li><strong>Rework / re-open</strong> — if an approver rejects an item back to the analyst, does it reappear in
+          the analyst's Action Required and also stay in the approver's History? (Recommended: yes — History is "I have
+          touched this", not "I have finally cleared this".)</li>
+        <li><strong>Delegation</strong> — during leave coverage, should the delegate's Action Required include the
+          delegator's queue? Needs product decision; not in scope for v1.</li>
+        <li><strong>Closed / terminal exceptions</strong> — should they appear in History indefinitely or be capped
+          (e.g. 90 days, with archive beyond)? Recommended: 90 days visible, archive accessible via existing search.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- =====================================================================
+     DEMO DATA + LOGIC
+     ===================================================================== -->
+<script>
+/* ---------- Mock dataset ---------- */
+/* Each exception has a workflow with steps. assignedRole + status on the
+   current step drives the Action Required filter. */
+
+const STEPS = {
+  ANALYST_REVIEW:  { label: 'Analyst Review',  role: 'ANALYST'  },
+  REVIEWER_CHECK:  { label: 'Reviewer Check',  role: 'REVIEWER' },
+  APPROVER_SIGN:   { label: 'Approver Sign-off', role: 'APPROVER' },
+  COMPLETED:       { label: 'Completed',        role: null       }
+};
+
+/*
+  Each row: currentStep + auditTrail (who actioned what).
+  "auditTrail" entries are stamped with the role that performed each
+  historical action — used for My History lookup.
+*/
+const exceptions = [
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'APPROVER_SIGN', 1028325, 'Atlas', 'BCSL', '142366346', 'Ordinary Share (Ex)',
+     [{ role:'ANALYST', by:'a.kumar' }, { role:'REVIEWER', by:'praveen' }]),
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'REVIEWER_CHECK', 681799, 'DELTA_ONE', 'BBPLC', '1014QUAHK200072035', 'Equity Swap (OTC)',
+     [{ role:'ANALYST', by:'praveen' }]),
+  mk('2026-03-25', 1, 'IN_PROGRESS', 'ANALYST_REVIEW', 649749, 'Atlas', 'BBPLC', '240082358', 'Fund (Ex)', []),
+  mk('2026-03-25', 2, 'IN_PROGRESS', 'APPROVER_SIGN', 1263452, 'DELTA_ONE', 'BCSL', '129215756', 'Ordinary Share (Ex)',
+     [{ role:'ANALYST', by:'k.raj' }, { role:'REVIEWER', by:'praveen' }]),
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'ANALYST_REVIEW', 681799, 'DELTA_ONE', 'BBPLC', '1014QMCN15B5073', 'Equity Swap (OTC)', []),
+  mk('2026-03-25', 1, 'IN_PROGRESS', 'REVIEWER_CHECK', 681799, 'DELTA_ONE', 'BBPLC', '1014QRHKD8000064', 'Equity Swap (OTC)',
+     [{ role:'ANALYST', by:'m.shah' }]),
+  mk('2026-03-25', 3, 'IN_PROGRESS', 'APPROVER_SIGN', 681799, 'DELTA_ONE', 'BBPLC', '1014QUAHK2BS0751', 'Equity Swap (OTC)',
+     [{ role:'ANALYST', by:'a.kumar' }, { role:'REVIEWER', by:'praveen' }]),
+  mk('2026-03-24', 1, 'COMPLETED', 'COMPLETED', 1319759, 'DELTA_ONE', 'BCSL', '1014DEOAU2SB', 'Equity Swap (OTC)',
+     [{ role:'ANALYST', by:'praveen' }, { role:'REVIEWER', by:'s.nair' }, { role:'APPROVER', by:'j.chen' }]),
+  mk('2026-03-24', 1, 'COMPLETED', 'COMPLETED', 1319759, 'DELTA_ONE', 'BCSL', '1014DELHK2SB', 'Equity Swap (OTC)',
+     [{ role:'ANALYST', by:'m.shah' }, { role:'REVIEWER', by:'praveen' }, { role:'APPROVER', by:'j.chen' }]),
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'APPROVER_SIGN', 1001922, 'DELTA_ONE', 'BCSL', '17906702', 'Ordinary Share (Ex)',
+     [{ role:'ANALYST', by:'k.raj' }, { role:'REVIEWER', by:'s.nair' }]),
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'REVIEWER_CHECK', 1028325, 'Atlas', 'BCSL', '237983093', 'Equity Swap Intrinsic (OTC)',
+     [{ role:'ANALYST', by:'a.kumar' }]),
+  mk('2026-03-25', 0, 'IN_PROGRESS', 'ANALYST_REVIEW', 1504496, 'Atlas', 'BCSL', '265631420', 'Equity Swap Intrinsic (OTC)', []),
+  mk('2026-03-25', 2, 'OPEN', 'ANALYST_REVIEW', 1450239, 'Atlas', 'BCSL', '232259874', 'Equity Swap (OTC)', []),
+  mk('2026-03-25', 0, 'OPEN', 'ANALYST_REVIEW', 681799, 'DELTA_ONE', 'BBPLC', '1014SQSK1000000', 'Equity Swap (OTC)', []),
+  mk('2026-03-25', 1, 'OPEN', 'REVIEWER_CHECK', 1504496, 'Atlas', 'BCSL', '68470453', 'Ordinary Share (Ex)',
+     [{ role:'ANALYST', by:'praveen' }]),
+];
+
+function mk(date, aging, status, step, bookCode, system, entity, instrId, eqClass, audit) {
+  return { date, aging, status, currentStepKey: step, bookCode, system, entity, instrId, eqClass, audit };
+}
+
+/* ---------- State ---------- */
+const state = {
+  role: 'PC_OWNER',
+  tab: 'all',      // owners start on 'all'
+  userId: 'praveen'
+};
+
+/* ---------- Filter logic (mirror of server pseudocode in spec) ---------- */
+function filterByTab(rows, role, userId, tab) {
+  if (tab === 'action') {
+    if (role === 'PC_OWNER') {
+      return rows.filter(r => r.currentStepKey !== 'COMPLETED');
+    }
+    return rows.filter(r => {
+      const s = STEPS[r.currentStepKey];
+      return s.role === role && r.status !== 'COMPLETED';
+    });
+  }
+  if (tab === 'all') {
+    return rows; // entitlement would apply; demo treats all as in-scope
+  }
+  if (tab === 'history') {
+    return rows.filter(r => {
+      const actedByMe = r.audit.some(a => a.by === userId);
+      const currentStepIsMine = STEPS[r.currentStepKey].role === role;
+      return actedByMe && !currentStepIsMine;
+    });
+  }
+  return rows;
+}
+
+function counts(role, userId) {
+  return {
+    action:  filterByTab(exceptions, role, userId, 'action').length,
+    all:     filterByTab(exceptions, role, userId, 'all').length,
+    history: filterByTab(exceptions, role, userId, 'history').length
+  };
+}
+
+/* ---------- Renderers ---------- */
+const statusClass = s => ({
+  OPEN: 'status-open',
+  IN_PROGRESS: 'status-inprogress',
+  COMPLETED: 'status-completed',
+  REJECTED: 'status-rejected'
+})[s] || '';
+
+function renderRow(r) {
+  const step = STEPS[r.currentStepKey];
+  const isMine = step.role === state.role && state.role !== 'PC_OWNER';
+  const canAction = isMine && r.status !== 'COMPLETED';
+  const isDone = r.currentStepKey === 'COMPLETED';
+
+  const stepChipClass =
+    isDone ? 'step-chip done' :
+    isMine ? 'step-chip mine' : 'step-chip';
+
+  const actionCell = isDone
+    ? '<span class="action-muted">Closed</span>'
+    : canAction
+      ? '<button class="my-action-btn">Take Action</button>'
+      : `<span class="action-muted">Awaiting ${step.role.charAt(0) + step.role.slice(1).toLowerCase()}</span>`;
+
+  return `
+    <tr class="${isMine && !isDone ? 'mine-row' : ''}">
+      <td>${r.date}</td>
+      <td>${r.aging}</td>
+      <td><span class="status-badge ${statusClass(r.status)}">${r.status.replace('_',' ')}</span></td>
+      <td><span class="${stepChipClass}"><span class="dot"></span>${step.label}</span></td>
+      <td>${r.bookCode}</td>
+      <td>${r.system}</td>
+      <td>${r.entity}</td>
+      <td style="font-family:monospace;font-size:11px">${r.instrId}</td>
+      <td>${r.eqClass}</td>
+      <td>${actionCell}</td>
+    </tr>
+  `;
+}
+
+function contextCopy(role, tab) {
+  if (role === 'PC_OWNER') {
+    return ({
+      action:  'Owner view: every exception with an active (non-terminal) workflow step.',
+      all:     'Owner view: every exception in the Exception Hub within your entitlement scope.',
+      history: 'Owner view: exceptions you have personally actioned (rare for Owner role).'
+    })[tab];
+  }
+  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase();
+  return ({
+    action:  `Only exceptions where the current workflow step is assigned to ${roleLabel} and is in progress awaiting your action.`,
+    all:     `All exceptions in your entitlement scope. Rows not awaiting you show a disabled action button.`,
+    history: `Exceptions you (${state.userId}) previously actioned that have since moved past your step.`
+  })[tab];
+}
+
+function emptyState(tab) {
+  const msgs = {
+    action: ['You\'re all clear', 'No exceptions are waiting for your action right now.'],
+    all: ['Nothing visible', 'No exceptions match your entitlement scope.'],
+    history: ['No history yet', 'You haven\'t actioned any exceptions that have moved past your step.']
+  };
+  const [t, p] = msgs[tab];
+  return `
+    <tr><td colspan="10">
+      <div class="empty-state">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+        <h3>${t}</h3>
+        <p>${p}</p>
+      </div>
+    </td></tr>
+  `;
+}
+
+/* ---------- Render ---------- */
+function render() {
+  // User chip
+  const roleLabels = {
+    PC_OWNER: 'PC_OWNER', ANALYST: 'ANALYST (L4)',
+    REVIEWER: 'REVIEWER (L4)', APPROVER: 'APPROVER (L4)'
+  };
+  document.getElementById('userRoleLabel').textContent = roleLabels[state.role];
+  document.getElementById('userAvatar').textContent = state.role === 'PC_OWNER' ? 'PN' : state.role[0];
+
+  // Counts + badges
+  const c = counts(state.role, state.userId);
+  document.getElementById('badgeAction').textContent = c.action;
+  document.getElementById('badgeAll').textContent = c.all;
+  document.getElementById('badgeHistory').textContent = c.history;
+
+  // Active tab highlight
+  document.querySelectorAll('.action-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === state.tab);
+  });
+
+  // Context strip
+  document.getElementById('contextText').textContent = contextCopy(state.role, state.tab);
+
+  // Table
+  const filtered = filterByTab(exceptions, state.role, state.userId, state.tab);
+  document.getElementById('listCount').textContent =
+    `${filtered.length} exception${filtered.length === 1 ? '' : 's'}`;
+  const body = document.getElementById('tableBody');
+  body.innerHTML = filtered.length
+    ? filtered.map(renderRow).join('')
+    : emptyState(state.tab);
+}
+
+/* ---------- Events ---------- */
+document.getElementById('actionTabs').addEventListener('click', e => {
+  const btn = e.target.closest('.action-tab');
+  if (!btn || btn.disabled) return;
+  state.tab = btn.dataset.tab;
+  render();
+});
+
+render();
+</script>
+
+</body>
+</html>
