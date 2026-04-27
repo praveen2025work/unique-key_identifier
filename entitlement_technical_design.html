@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Entitlement Refactor — Technical Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c1322;
+    --bg-2:#111a2c;
+    --panel:#162033;
+    --panel-2:#1b2742;
+    --line:#243149;
+    --line-2:#2e3e5c;
+    --ink:#e6ecf5;
+    --ink-2:#aab4c7;
+    --muted:#6e7a92;
+    --accent:#6ad1c8;
+    --accent-2:#f0c674;
+    --rose:#e07a8a;
+    --green:#8bc88f;
+    --violet:#a99ce0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;font-size:15px}
+  .mono{font-family:"IBM Plex Mono",monospace}
+  .serif-i{font-family:"IBM Plex Serif",serif;font-style:italic}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 48px}
+
+  .cover{
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(900px 420px at 92% -10%, rgba(106,209,200,.08) 0%, transparent 60%),
+      radial-gradient(700px 500px at -10% 110%, rgba(240,198,116,.05) 0%, transparent 60%),
+      var(--bg);
+    position:relative;
+  }
+  .cover .wrap{padding:56px 48px 72px}
+  .cover .topbar{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500}
+  .cover .topbar .doc-id{color:var(--accent);font-family:"IBM Plex Mono",monospace;letter-spacing:.05em;text-transform:none;font-size:12px}
+  .cover h1{font-weight:300;font-size:60px;line-height:1.02;letter-spacing:-0.025em;margin:48px 0 16px}
+  .cover h1 b{font-weight:600;color:var(--accent)}
+  .cover .lede{font-size:17px;line-height:1.55;color:var(--ink-2);max-width:780px;font-weight:300}
+  .cover .meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:48px;padding-top:24px;border-top:1px solid var(--line);font-size:13px}
+  .cover .meta-grid b{display:block;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:500}
+  .cover .meta-grid span{color:var(--ink);font-weight:500}
+
+  .toc{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0 0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .toc a{color:var(--ink-2);text-decoration:none;padding:16px 16px;font-size:12.5px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:5px;transition:background .2s}
+  .toc a:last-child{border-right:none}
+  .toc a:hover{background:var(--panel);color:var(--ink)}
+  .toc a .n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);letter-spacing:.08em}
+  .toc a .t{font-weight:500}
+
+  section{padding:40px 0}
+  .section-head{margin-bottom:28px}
+  .section-head .marker{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+  .section-head h2{font-size:32px;font-weight:300;letter-spacing:-0.02em;line-height:1.15;margin:8px 0 12px}
+  .section-head h2 b{font-weight:600}
+  .section-head .sub{color:var(--ink-2);font-size:15px;max-width:820px;margin:0}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px}
+  .panel + .panel{margin-top:14px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+
+  h3{font-size:16px;font-weight:600;letter-spacing:-0.005em;margin:0 0 8px}
+  h4{font-size:13px;font-weight:600;color:var(--ink);margin:0 0 10px;text-transform:uppercase;letter-spacing:.1em}
+  p{margin:0 0 10px;color:var(--ink-2)}
+  p:last-child{margin-bottom:0}
+  code.inline{font-family:"IBM Plex Mono",monospace;background:var(--bg-2);border:1px solid var(--line);padding:2px 6px;border-radius:3px;font-size:12.5px;color:var(--accent-2)}
+
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;overflow-x:auto}
+  .diagram svg{display:block;width:100%;height:auto}
+  .cap{font-size:12px;color:var(--muted);margin-top:8px;font-family:"IBM Plex Serif",serif;font-style:italic}
+
+  .xform-block{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:24px}
+  .xform-row-label{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px}
+  .src-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px}
+  .src-row .cell{background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:12px 14px;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .src-row .cell .h{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+  .src-row .cell .v{color:var(--ink);font-weight:500}
+  .src-row .cell.key{border-color:var(--accent);background:rgba(106,209,200,.06)}
+  .src-row .cell.owner{border-color:var(--green)}
+  .src-row .cell.del{border-color:var(--green);border-style:dashed}
+  .src-row .cell.sup{border-color:var(--rose)}
+  .src-row .cell.jsup{border-color:var(--rose);border-style:dashed}
+
+  .merge-arrows{display:grid;grid-template-columns:1fr 2fr 2fr;gap:8px;margin:14px 0 6px;align-items:center;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+  .merge-arrows .a{text-align:center;padding:10px 0;background:var(--bg-2);border:1px dashed var(--line-2);border-radius:3px}
+  .merge-arrows .a.g{border-color:var(--green);color:var(--green)}
+  .merge-arrows .a.r{border-color:var(--rose);color:var(--rose)}
+
+  .out-rows{display:grid;gap:8px;margin-top:8px}
+  .out-row{display:grid;grid-template-columns:1fr 1.4fr 1.4fr 2fr;gap:8px;align-items:stretch}
+  .out-row .cell{background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:12px 14px;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .out-row .cell .h{display:block;color:var(--muted);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+  .out-row .cell .v{color:var(--ink);font-weight:500}
+  .out-row .cell.key{border-color:var(--accent);background:rgba(106,209,200,.06)}
+  .out-row .cell.owner-fill{border-color:var(--green);background:rgba(139,200,143,.06)}
+  .out-row .cell.sup-fill{border-color:var(--rose);background:rgba(224,122,138,.06)}
+  .out-row .cell.empty{color:var(--muted);font-style:italic;border-style:dashed}
+  .out-row .note{font-family:"IBM Plex Serif",serif;font-style:italic;font-size:12.5px;color:var(--muted);display:flex;align-items:center;padding-left:6px}
+  .out-row .note b{font-style:normal;font-family:"IBM Plex Sans",sans-serif;color:var(--ink-2);font-weight:500;margin-right:6px}
+
+  .join-block{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:24px;margin-top:14px}
+  .join-keys{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-bottom:12px}
+  .join-keys .col-tbl{background:var(--bg-2);border:1px solid var(--line-2);border-radius:4px;padding:14px 16px}
+  .join-keys .col-tbl b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:8px}
+  .join-keys .col-tbl .col{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);padding:4px 0}
+  .join-keys .col-tbl .col.bold{color:var(--accent-2);font-weight:600}
+  .join-keys .eq{font-family:"IBM Plex Mono",monospace;font-size:24px;color:var(--accent-2);font-weight:600;text-align:center}
+
+  .roles-list{display:grid;grid-template-columns:200px 1fr;gap:0;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+  .roles-list .cat{background:var(--panel-2);padding:14px 18px;font-weight:600;color:var(--ink);border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid var(--line);font-size:14px}
+  .roles-list .cat:last-of-type{border-bottom:none}
+  .roles-list .cat .pn{font-size:10px;letter-spacing:.16em;color:var(--accent-2);font-weight:600;margin-top:6px}
+  .roles-list .roles{background:var(--panel);padding:0;border-bottom:1px solid var(--line);display:flex;flex-direction:column}
+  .roles-list .roles:last-of-type{border-bottom:none}
+  .roles-list .roles .r{padding:11px 18px;border-bottom:1px solid var(--line);font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);display:grid;grid-template-columns:2fr 2fr auto;gap:14px;align-items:center}
+  .roles-list .roles .r:last-child{border-bottom:none}
+  .roles-list .roles .r .perm{font-size:10px;letter-spacing:.1em;font-weight:600;padding:3px 8px;border-radius:2px;font-family:"IBM Plex Mono",monospace;text-align:center}
+  .roles-list .roles .r .perm.rw{background:rgba(106,209,200,.1);color:var(--accent);border:1px solid rgba(106,209,200,.3)}
+  .roles-list .roles .r .perm.ro{background:rgba(170,180,199,.06);color:var(--ink-2);border:1px solid var(--line-2)}
+  .roles-list .roles .r .path{font-family:"IBM Plex Sans",sans-serif;font-size:11.5px;color:var(--muted);font-style:italic}
+
+  .steps{counter-reset:s;display:grid;gap:12px}
+  .step{display:grid;grid-template-columns:44px 1fr;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:18px 22px;align-items:start}
+  .step:before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:"IBM Plex Mono",monospace;color:var(--accent);font-size:13px;font-weight:600;letter-spacing:.05em;padding-top:1px}
+  .step h3{margin-bottom:4px}
+  .step p{font-size:14px}
+
+  .gate{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center;margin:8px 0}
+  .gate .check{background:var(--bg-2);border:1px solid var(--line-2);border-radius:5px;padding:14px;text-align:center}
+  .gate .check b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:6px}
+  .gate .check span{font-size:12.5px;color:var(--ink-2)}
+  .gate .op{font-family:"IBM Plex Mono",monospace;font-size:18px;color:var(--accent-2);font-weight:600;text-align:center}
+  .gate .result{background:rgba(139,200,143,.08);border:1px solid rgba(139,200,143,.4);border-radius:5px;padding:14px;text-align:center}
+  .gate .result b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:6px}
+  .gate .result span{font-size:12.5px;color:var(--ink)}
+
+  .sprint{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+  .sprint .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px}
+  .sprint .col h3{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:14px}
+  .sprint .col h3 .b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted);font-weight:500;letter-spacing:.1em}
+  .sprint ul{margin:0;padding:0;list-style:none}
+  .sprint li{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
+  .sprint li:first-child{border-top:none;padding-top:0}
+  .sprint li .id{font-family:"IBM Plex Mono",monospace;color:var(--accent);font-size:11.5px;font-weight:500;padding-top:2px}
+  .sprint li b{color:var(--ink);font-weight:600;display:block;margin-bottom:2px;font-size:13.5px}
+
+  .risk{display:grid;grid-template-columns:80px 1fr 240px;gap:14px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+  .risk:first-child{border-top:none}
+  .risk .lvl{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;text-align:center;padding:5px 0;border-radius:2px}
+  .risk .lvl.high{background:rgba(224,122,138,.12);color:var(--rose);border:1px solid rgba(224,122,138,.3)}
+  .risk .lvl.med{background:rgba(240,198,116,.1);color:var(--accent-2);border:1px solid rgba(240,198,116,.3)}
+  .risk .lvl.low{background:rgba(139,200,143,.1);color:var(--green);border:1px solid rgba(139,200,143,.3)}
+  .risk .body b{color:var(--ink);display:block;margin-bottom:2px;font-size:14px;font-weight:600}
+  .risk .body span{font-size:13px;color:var(--ink-2)}
+  .risk .mitig{font-size:12px;color:var(--muted);text-align:right}
+
+  footer{margin-top:48px;padding:28px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+
+  @media (max-width:780px){
+    .wrap{padding:28px 20px}
+    .cover h1{font-size:38px}
+    .cover .meta-grid{grid-template-columns:1fr 1fr}
+    .toc{grid-template-columns:1fr 1fr}
+    .toc a{border-right:none;border-bottom:1px solid var(--line)}
+    .grid-2,.grid-3,.sprint{grid-template-columns:1fr}
+    .src-row{grid-template-columns:1fr 1fr}
+    .out-row{grid-template-columns:1fr}
+    .gate{grid-template-columns:1fr}
+    .gate .op{display:none}
+    .roles-list{grid-template-columns:1fr}
+    .roles-list .cat{border-right:none}
+    .roles-list .roles .r{grid-template-columns:1fr}
+    .risk{grid-template-columns:1fr}
+    .risk .mitig{text-align:left}
+    .join-keys{grid-template-columns:1fr}
+    .join-keys .eq{transform:rotate(90deg)}
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="wrap">
+    <div class="topbar">
+      <span>Technical Design Document · Internal</span>
+      <span class="doc-id">TDD-ENT-REF-001 · v0.2 · DRAFT</span>
+    </div>
+    <h1>Entitlement system <b>refactor</b><br/>two pathways, one resolved view.</h1>
+    <p class="lede">A controlled refactor of the entitlement model behind the main exception table. Source data collapses cleanly into a smaller, role-aware shape; the user's role drives which join the app uses to filter the exception view; workflow steps gate which roles can act, and when.</p>
+    <div class="meta-grid">
+      <div><b>Owner</b><span>Finance Technology — Entitlements</span></div>
+      <div><b>Audience</b><span>Engineering team</span></div>
+      <div><b>Effort</b><span>2 sprints · 3–4 weeks</span></div>
+      <div><b>Status</b><span>For implementation review</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<nav class="toc">
+  <a href="#arch"><span class="n">§ 01</span><span class="t">Architecture</span></a>
+  <a href="#xform"><span class="n">§ 02</span><span class="t">5 → 3 Transformation</span></a>
+  <a href="#join"><span class="n">§ 03</span><span class="t">The Two Joins</span></a>
+  <a href="#login"><span class="n">§ 04</span><span class="t">Roles &amp; Login Flow</span></a>
+  <a href="#access"><span class="n">§ 05</span><span class="t">Role-Based View</span></a>
+  <a href="#workflow"><span class="n">§ 06</span><span class="t">Workflow Action Gating</span></a>
+  <a href="#mig"><span class="n">§ 07</span><span class="t">Migration / Decommission</span></a>
+  <a href="#plan"><span class="n">§ 08</span><span class="t">Sprint Plan &amp; Risks</span></a>
+</nav>
+
+<!-- 01 ARCHITECTURE -->
+<section id="arch">
+  <div class="section-head">
+    <span class="marker">§ 01 — Architecture</span>
+    <h2>Two pathways feeding <b>one filtered view</b></h2>
+    <p class="sub">Two source feeds — NPL Ramp data and the Business Area Governance table — produce two entitlement tables. The main exception table is unchanged. At query time the app picks one join based on the logged-in user's role, and shows them only the exceptions they're entitled to.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 440" xmlns="http://www.w3.org/2000/svg" role="img">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6ad1c8"/>
+        </marker>
+        <marker id="arrW" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#aab4c7"/>
+        </marker>
+      </defs>
+
+      <text x="20" y="26" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" letter-spacing="2" fill="#6e7a92">SOURCES</text>
+      <text x="370" y="26" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" letter-spacing="2" fill="#6e7a92">ENTITLEMENT TABLES</text>
+      <text x="720" y="26" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" letter-spacing="2" fill="#6e7a92">USER VIEW</text>
+
+      <rect x="20" y="50" width="280" height="100" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="36" y="72" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">NPL Ramp Data</text>
+      <text x="36" y="90" font-family="IBM Plex Mono,monospace" font-size="11" fill="#6ad1c8">filtered to 5 columns</text>
+      <text x="36" y="112" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">MasterBookId, NPL_Owner,</text>
+      <text x="36" y="128" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">NPL_Delegate, supervisorGID,</text>
+      <text x="36" y="144" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">jointSupGID</text>
+
+      <rect x="20" y="170" width="280" height="100" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="36" y="192" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">Business Area Governance</text>
+      <text x="36" y="210" font-family="IBM Plex Mono,monospace" font-size="11" fill="#f0c674">admin UI · file upload</text>
+      <text x="36" y="232" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">BusinessAreaL4 + 7 disciplines</text>
+      <text x="36" y="248" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">(OwnerDelegate + Supervisor)</text>
+      <text x="36" y="264" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">+ GovernanceForum</text>
+
+      <rect x="20" y="290" width="280" height="76" rx="4" fill="#162033" stroke="#2e3e5c" stroke-dasharray="4 3"/>
+      <text x="36" y="312" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">Main Exception Table</text>
+      <text x="36" y="330" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">unchanged · existing</text>
+      <text x="36" y="350" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">sdsbookcode, businessarea, …</text>
+
+      <rect x="370" y="50" width="280" height="100" rx="4" fill="#1b2742" stroke="#6ad1c8" stroke-width="1.4"/>
+      <text x="386" y="72" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">FO Entitlements</text>
+      <text x="386" y="90" font-family="IBM Plex Mono,monospace" font-size="11" fill="#6ad1c8">3 columns · normalized</text>
+      <text x="386" y="112" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">MasterBookId · FO_Owner ·</text>
+      <text x="386" y="128" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">Supervisor</text>
+      <text x="386" y="144" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">used by Front Office role</text>
+
+      <rect x="370" y="170" width="280" height="100" rx="4" fill="#1b2742" stroke="#f0c674" stroke-width="1.4"/>
+      <text x="386" y="192" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">L4 Entitlements</text>
+      <text x="386" y="210" font-family="IBM Plex Mono,monospace" font-size="11" fill="#f0c674">role-keyed · normalized</text>
+      <text x="386" y="232" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">BusinessAreaL4 · Role ·</text>
+      <text x="386" y="248" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">User_GID</text>
+      <text x="386" y="264" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">used by all other roles</text>
+
+      <rect x="370" y="290" width="280" height="76" rx="4" fill="#1b2742" stroke="#a99ce0"/>
+      <text x="386" y="312" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">User Info Table</text>
+      <text x="386" y="330" font-family="IBM Plex Mono,monospace" font-size="11" fill="#a99ce0">refreshed at login</text>
+      <text x="386" y="350" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">user_gid, user_type (role)</text>
+
+      <rect x="720" y="100" width="240" height="220" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="736" y="124" font-family="IBM Plex Sans,sans-serif" font-size="14" font-weight="600" fill="#e6ecf5">Exception Hub App</text>
+      <text x="736" y="142" font-family="IBM Plex Mono,monospace" font-size="11" fill="#6ad1c8">role-driven view resolution</text>
+
+      <text x="736" y="170" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">if FO Owner</text>
+      <text x="736" y="186" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">  → join FO ↔ exception</text>
+      <text x="736" y="202" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">     on MasterBookId</text>
+
+      <text x="736" y="226" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">else</text>
+      <text x="736" y="242" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">  → join L4 ↔ exception</text>
+      <text x="736" y="258" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">     on BusinessAreaL4</text>
+
+      <text x="736" y="286" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#f0c674">+ workflow step gating</text>
+      <text x="736" y="302" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">role × active step → action</text>
+
+      <line x1="300" y1="100" x2="370" y2="100" stroke="#6ad1c8" stroke-width="1.4" marker-end="url(#arr)"/>
+      <line x1="300" y1="220" x2="370" y2="220" stroke="#f0c674" stroke-width="1.4" marker-end="url(#arr)"/>
+      <line x1="650" y1="100" x2="720" y2="160" stroke="#6ad1c8" stroke-width="1.4" marker-end="url(#arr)"/>
+      <line x1="650" y1="220" x2="720" y2="220" stroke="#f0c674" stroke-width="1.4" marker-end="url(#arr)"/>
+      <line x1="650" y1="328" x2="720" y2="280" stroke="#a99ce0" stroke-width="1.2" marker-end="url(#arrW)"/>
+      <path d="M 300 328 C 510 328, 580 280, 720 250" stroke="#aab4c7" stroke-width="1.2" fill="none" stroke-dasharray="4 3" marker-end="url(#arrW)"/>
+      <text x="430" y="395" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">main exception joined at view time using sdsbookcode and businessarea</text>
+    </svg>
+  </div>
+  <p class="cap">Figure 1 — Sources on the left, derived entitlement tables in the middle, the app on the right. The app picks the join based on the user's role; the user info table is the single source of truth for "what role am I right now."</p>
+</section>
+
+<!-- 02 — 5→3 -->
+<section id="xform">
+  <div class="section-head">
+    <span class="marker">§ 02 — The 5 → 3 Collapse</span>
+    <h2>Why one source row becomes <b>up to four</b> entitlement rows</h2>
+    <p class="sub">The NPL Ramp feed gives us five columns. The entitlement table needs three. The collapse isn't lossy — it's a <span class="serif-i">reshape</span>. Each non-null person on a master book becomes their own entitlement row, tagged by which seat they hold (owner-side or supervisor-side).</p>
+  </div>
+
+  <div class="xform-block">
+    <div class="xform-row-label">Before — One row in NPL Ramp data (5 columns)</div>
+    <div class="src-row">
+      <div class="cell key"><span class="h">MasterBookId</span><span class="v">MB_4471</span></div>
+      <div class="cell owner"><span class="h">NPL Owner</span><span class="v">alice.gid</span></div>
+      <div class="cell del"><span class="h">NPL Delegate</span><span class="v">bob.gid</span></div>
+      <div class="cell sup"><span class="h">supervisorGID</span><span class="v">carol.gid</span></div>
+      <div class="cell jsup"><span class="h">jointSupGID</span><span class="v">dave.gid</span></div>
+    </div>
+
+    <div class="merge-arrows">
+      <div class="a">key passes through</div>
+      <div class="a g">Owner ∪ Delegate → FO_Owner</div>
+      <div class="a r">supervisorGID ∪ jointSupGID → Supervisor</div>
+    </div>
+
+    <div class="xform-row-label" style="margin-top:6px">After — Up to four rows in FO Entitlements (3 columns)</div>
+    <div class="out-rows">
+      <div class="out-row">
+        <div class="cell key"><span class="h">MasterBookId</span><span class="v">MB_4471</span></div>
+        <div class="cell owner-fill"><span class="h">FO_Owner</span><span class="v">alice.gid</span></div>
+        <div class="cell empty"><span class="h">Supervisor</span><span class="v">—</span></div>
+        <div class="note"><b>Row 1</b>from NPL Owner</div>
+      </div>
+      <div class="out-row">
+        <div class="cell key"><span class="h">MasterBookId</span><span class="v">MB_4471</span></div>
+        <div class="cell owner-fill"><span class="h">FO_Owner</span><span class="v">bob.gid</span></div>
+        <div class="cell empty"><span class="h">Supervisor</span><span class="v">—</span></div>
+        <div class="note"><b>Row 2</b>from NPL Delegate</div>
+      </div>
+      <div class="out-row">
+        <div class="cell key"><span class="h">MasterBookId</span><span class="v">MB_4471</span></div>
+        <div class="cell empty"><span class="h">FO_Owner</span><span class="v">—</span></div>
+        <div class="cell sup-fill"><span class="h">Supervisor</span><span class="v">carol.gid</span></div>
+        <div class="note"><b>Row 3</b>from supervisorGID</div>
+      </div>
+      <div class="out-row">
+        <div class="cell key"><span class="h">MasterBookId</span><span class="v">MB_4471</span></div>
+        <div class="cell empty"><span class="h">FO_Owner</span><span class="v">—</span></div>
+        <div class="cell sup-fill"><span class="h">Supervisor</span><span class="v">dave.gid</span></div>
+        <div class="note"><b>Row 4</b>from jointSupGID</div>
+      </div>
+    </div>
+  </div>
+  <p class="cap">Figure 2 — Reshape, not aggregation. Each named person on the master book gets their own row in the entitlement table.</p>
+
+  <div class="grid-2" style="margin-top:14px">
+    <div class="panel">
+      <h4>Why split rows instead of one wide row?</h4>
+      <p>Putting four GIDs across two columns on one row would force every downstream join to do four <code class="inline">OR</code> comparisons. Splitting into rows keeps the join trivial — <span class="serif-i">"is this user's GID anywhere in the FO_Owner or Supervisor column for this book?"</span> — and lets us add or remove people without rewriting the row shape.</p>
+    </div>
+    <div class="panel">
+      <h4>What about the empty cells?</h4>
+      <p>Each entitlement row carries exactly one populated GID — either FO_Owner or Supervisor, never both. The empty column makes the row's intent obvious to anyone reading the table and lets the workflow gate distinguish owner-actions from supervisor-actions cleanly.</p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <h4>Edge cases</h4>
+    <p><b>Same person in two seats.</b> If the NPL Owner and the supervisorGID are the same GID, they get two rows — one as FO_Owner, one as Supervisor. They earn access through both seats and the workflow can recognize either.</p>
+    <p><b>Null in the source.</b> If <code class="inline">jointSupGID</code> is empty, no Row 4 is generated. There is no "ghost" entitlement.</p>
+    <p><b>Replay.</b> The transformation is keyed by <code class="inline">MasterBookId</code> + load batch. Re-running the same batch tombstones and rewrites the same set of rows — never duplicates.</p>
+  </div>
+</section>
+
+<!-- 03 — JOINS -->
+<section id="join">
+  <div class="section-head">
+    <span class="marker">§ 03 — The Two Joins</span>
+    <h2>How entitlement rows <b>find</b> their exceptions</h2>
+    <p class="sub">The main exception table already carries both the keys we need: <code class="inline">sdsbookcode</code> matches the master book, and <code class="inline">businessarea</code> matches the L4. Two columns, two joins — one per pathway.</p>
+  </div>
+
+  <div class="join-block">
+    <h3>Join A — FO Entitlements ↔ Main Exception</h3>
+    <p>For Front Office users, the app filters the main exception table by master book.</p>
+    <div class="join-keys">
+      <div class="col-tbl">
+        <b>FO Entitlements</b>
+        <div class="col">MasterBookId</div>
+        <div class="col bold">→ MasterBookId</div>
+        <div class="col">FO_Owner</div>
+        <div class="col">Supervisor</div>
+      </div>
+      <div class="eq">=</div>
+      <div class="col-tbl">
+        <b>Main Exception Table</b>
+        <div class="col bold">sdsbookcode ←</div>
+        <div class="col">businessarea</div>
+        <div class="col">workflow_step</div>
+        <div class="col">… exception attributes</div>
+      </div>
+    </div>
+    <p style="margin-top:8px"><b>The rule:</b> <code class="inline">sdsbookcode</code> on the exception <span class="serif-i">is</span> the <code class="inline">MasterBookId</code>. The user sees an exception if their GID appears in <code class="inline">FO_Owner</code> or <code class="inline">Supervisor</code> for that <code class="inline">MasterBookId</code>.</p>
+  </div>
+
+  <div class="join-block">
+    <h3>Join B — L4 Entitlements ↔ Main Exception</h3>
+    <p>For every other role, the app filters by Business Area L4.</p>
+    <div class="join-keys">
+      <div class="col-tbl">
+        <b>L4 Entitlements</b>
+        <div class="col">BusinessAreaL4</div>
+        <div class="col bold">→ BusinessAreaL4</div>
+        <div class="col">Role</div>
+        <div class="col">User_GID</div>
+      </div>
+      <div class="eq">=</div>
+      <div class="col-tbl">
+        <b>Main Exception Table</b>
+        <div class="col">sdsbookcode</div>
+        <div class="col bold">businessarea ←</div>
+        <div class="col">workflow_step</div>
+        <div class="col">… exception attributes</div>
+      </div>
+    </div>
+    <p style="margin-top:8px"><b>The rule:</b> <code class="inline">businessarea</code> on the exception <span class="serif-i">is</span> the <code class="inline">BusinessAreaL4</code>. The user sees an exception if their GID appears in the L4 entitlements row for that <code class="inline">BusinessAreaL4</code>, scoped to the role they hold.</p>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <h4>Why the main exception table doesn't change</h4>
+    <p>It already carries <code class="inline">sdsbookcode</code> and <code class="inline">businessarea</code>. Both are populated on every exception by the upstream feed. The refactor doesn't add columns, doesn't change indexes, and doesn't touch the existing exception write path. We are only changing how access is resolved when somebody asks <span class="serif-i">"what can I see?"</span></p>
+  </div>
+</section>
+
+<!-- 04 — ROLES & LOGIN -->
+<section id="login">
+  <div class="section-head">
+    <span class="marker">§ 04 — Roles &amp; Login Flow</span>
+    <h2>Roles come from <b>Entitlement Service</b>, refreshed on every login</h2>
+    <p class="sub">The app does not store role definitions. It reads the user's current roles from the central Entitlement Service the moment they log in, and writes them into a local user info table for fast lookup during the rest of the session.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 240" xmlns="http://www.w3.org/2000/svg" role="img">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#a99ce0"/>
+        </marker>
+      </defs>
+
+      <text x="20" y="40" font-family="IBM Plex Mono,monospace" font-size="10" font-weight="600" letter-spacing="2" fill="#6e7a92">LOGIN — STEP-BY-STEP</text>
+
+      <rect x="20" y="80" width="160" height="80" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="36" y="106" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">User logs in</text>
+      <text x="36" y="124" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">SSO authenticates</text>
+      <text x="36" y="140" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">GID established</text>
+
+      <rect x="240" y="80" width="200" height="80" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="256" y="106" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">Exception Hub App</text>
+      <text x="256" y="124" font-family="IBM Plex Mono,monospace" font-size="11" fill="#a99ce0">login handler · first action</text>
+      <text x="256" y="140" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">calls Entitlement API</text>
+
+      <rect x="500" y="80" width="220" height="80" rx="4" fill="#162033" stroke="#a99ce0" stroke-width="1.4"/>
+      <text x="516" y="106" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">Entitlement Service</text>
+      <text x="516" y="124" font-family="IBM Plex Mono,monospace" font-size="11" fill="#a99ce0">central · authoritative</text>
+      <text x="516" y="140" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">returns role list for GID</text>
+
+      <rect x="780" y="80" width="280" height="80" rx="4" fill="#1b2742" stroke="#a99ce0"/>
+      <text x="796" y="106" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">User Info Table</text>
+      <text x="796" y="124" font-family="IBM Plex Mono,monospace" font-size="11" fill="#a99ce0">upsert per login</text>
+      <text x="796" y="140" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">user_gid · user_type · last_login</text>
+
+      <line x1="180" y1="120" x2="240" y2="120" stroke="#aab4c7" stroke-width="1.4" marker-end="url(#arr2)"/>
+      <line x1="440" y1="120" x2="500" y2="120" stroke="#a99ce0" stroke-width="1.4" marker-end="url(#arr2)"/>
+      <line x1="720" y1="120" x2="780" y2="120" stroke="#a99ce0" stroke-width="1.4" marker-end="url(#arr2)"/>
+
+      <text x="200" y="195" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">SSO complete</text>
+      <text x="455" y="195" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">fetch roles</text>
+      <text x="830" y="195" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">refresh local user_type</text>
+    </svg>
+  </div>
+  <p class="cap">Figure 3 — Login flow. Roles are pulled fresh on every login; the local user info table is a session-friendly cache, never the source of truth.</p>
+
+  <div class="grid-2" style="margin-top:14px">
+    <div class="panel">
+      <h4>Why refresh on every login</h4>
+      <p>If a user changes role this morning in the central Entitlement Service, the change should take effect the next time they log into the app — not when an overnight sync runs. Pulling on login keeps the app honest without a heavy real-time integration.</p>
+    </div>
+    <div class="panel">
+      <h4>Why a local user info table at all</h4>
+      <p>Every page the user opens needs to know their role to pick the right join and gate the right workflow actions. A local upsert per login means we read role data once over the network and then hit a local table for the rest of the session — fast, simple, no per-page calls to Entitlement Service.</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:24px">Roles in scope (TBBB · Final)</h3>
+  <p style="color:var(--ink-2);font-size:14.5px;margin-bottom:12px">The Entitlement Service returns one or more of the following role identifiers. The app maps the role to the join pathway and to the workflow actions it can perform.</p>
+
+  <div class="roles-list">
+    <div class="cat">Risk<span class="pn">L4 PATH</span></div>
+    <div class="roles">
+      <div class="r"><span>Risk-TB BB Market Risk-User</span><span class="path">→ joins L4 entitlements as Market Risk</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>Risk-TB BB Credit Risk-User</span><span class="path">→ joins L4 entitlements as Credit Risk</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>Risk-TB BB Wholesale Credit Risk-User</span><span class="path">→ joins L4 entitlements as WCR</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>Risk-TB BB Counterparty Credit Risk-User</span><span class="path">→ joins L4 entitlements as CCR</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>Risk-TB BB Internal Rating Based-User</span><span class="path">→ joins L4 entitlements as IRB</span><span class="perm rw">RW</span></div>
+    </div>
+
+    <div class="cat">Regulatory<span class="pn">L4 PATH</span></div>
+    <div class="roles">
+      <div class="r"><span>Regulatory-TB BB Reg Reporting-User</span><span class="path">→ joins L4 entitlements as Reg Reporting</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>Regulatory-TB BB Reg Policy-User</span><span class="path">→ joins L4 entitlements as Reg Policy</span><span class="perm rw">RW</span></div>
+    </div>
+
+    <div class="cat">Product Control<span class="pn">L4 PATH</span></div>
+    <div class="roles">
+      <div class="r"><span>Product Control-TB BB-User</span><span class="path">→ joins L4 entitlements as PC</span><span class="perm rw">RW</span></div>
+    </div>
+
+    <div class="cat">Front Office<span class="pn">NPL PATH</span></div>
+    <div class="roles">
+      <div class="r"><span>Front Office-TB BB-User</span><span class="path">→ joins FO entitlements on MasterBookId</span><span class="perm rw">RW</span></div>
+    </div>
+
+    <div class="cat">IT<span class="pn">SCOPE TBC</span></div>
+    <div class="roles">
+      <div class="r"><span>IT-TB BB Prime IT-User</span><span class="path">→ scope to be confirmed (open item)</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>IT-TB BB Non-Prime IT-User</span><span class="path">→ scope to be confirmed (open item)</span><span class="perm rw">RW</span></div>
+      <div class="r"><span>IT-TB BB Central IT CVS and AVS-User</span><span class="path">→ scope to be confirmed (open item)</span><span class="perm rw">RW</span></div>
+    </div>
+
+    <div class="cat">Other<span class="pn">L4 PATH · RO</span></div>
+    <div class="roles">
+      <div class="r"><span>Other-TB BB Governance Forum-User</span><span class="path">→ joins L4 entitlements; read-only</span><span class="perm ro">RO</span></div>
+    </div>
+  </div>
+  <p class="cap">Figure 4 — Roles returned by the Entitlement Service. <span class="serif-i">RW</span> roles can act on workflow steps assigned to them; the <span class="serif-i">RO</span> Governance Forum role can only view.</p>
+</section>
+
+<!-- 05 — ROLE-BASED VIEW -->
+<section id="access">
+  <div class="section-head">
+    <span class="marker">§ 05 — Role-Based View Resolution</span>
+    <h2>One simple decision: <b>which join to use</b></h2>
+    <p class="sub">Every time the user opens the exception list, the app checks their role on the user info table and picks one of two join paths. There is no third option, no hybrid, no fallback.</p>
+  </div>
+
+  <div class="diagram">
+    <svg viewBox="0 0 1080 320" xmlns="http://www.w3.org/2000/svg" role="img">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#6ad1c8"/>
+        </marker>
+        <marker id="arr3y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0c674"/>
+        </marker>
+      </defs>
+
+      <rect x="20" y="130" width="200" height="80" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="36" y="156" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">User opens exception list</text>
+      <text x="36" y="174" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">app reads user_type from</text>
+      <text x="36" y="190" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">user info table</text>
+
+      <polygon points="320,170 410,120 500,170 410,220" fill="#1b2742" stroke="#a99ce0" stroke-width="1.4"/>
+      <text x="410" y="167" font-family="IBM Plex Sans,sans-serif" font-size="12" font-weight="600" fill="#e6ecf5" text-anchor="middle">role =</text>
+      <text x="410" y="184" font-family="IBM Plex Sans,sans-serif" font-size="12" font-weight="600" fill="#e6ecf5" text-anchor="middle">Front Office?</text>
+
+      <rect x="580" y="40" width="220" height="80" rx="4" fill="#1b2742" stroke="#6ad1c8" stroke-width="1.4"/>
+      <text x="596" y="66" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">FO Owner pathway</text>
+      <text x="596" y="84" font-family="IBM Plex Mono,monospace" font-size="11" fill="#6ad1c8">join FO_Entitlements</text>
+      <text x="596" y="100" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">on MasterBookId = sdsbookcode</text>
+
+      <rect x="580" y="220" width="220" height="80" rx="4" fill="#1b2742" stroke="#f0c674" stroke-width="1.4"/>
+      <text x="596" y="246" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">L4 pathway</text>
+      <text x="596" y="264" font-family="IBM Plex Mono,monospace" font-size="11" fill="#f0c674">join L4_Entitlements</text>
+      <text x="596" y="280" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">on BusinessAreaL4 = businessarea</text>
+
+      <rect x="850" y="130" width="210" height="80" rx="4" fill="#162033" stroke="#243149"/>
+      <text x="866" y="156" font-family="IBM Plex Sans,sans-serif" font-size="13" font-weight="600" fill="#e6ecf5">Filtered exception list</text>
+      <text x="866" y="174" font-family="IBM Plex Mono,monospace" font-size="11" fill="#aab4c7">only what user can see</text>
+      <text x="866" y="190" font-family="IBM Plex Serif,serif" font-style="italic" font-size="11" fill="#6e7a92">action gating applied next</text>
+
+      <line x1="220" y1="170" x2="320" y2="170" stroke="#aab4c7" stroke-width="1.4" marker-end="url(#arr3)"/>
+      <path d="M 460 140 C 510 100, 540 80, 580 80" stroke="#6ad1c8" stroke-width="1.4" fill="none" marker-end="url(#arr3)"/>
+      <path d="M 460 200 C 510 240, 540 260, 580 260" stroke="#f0c674" stroke-width="1.4" fill="none" marker-end="url(#arr3y)"/>
+      <path d="M 800 80 C 830 80, 850 130, 850 165" stroke="#6ad1c8" stroke-width="1.4" fill="none" marker-end="url(#arr3)"/>
+      <path d="M 800 260 C 830 260, 850 210, 850 175" stroke="#f0c674" stroke-width="1.4" fill="none" marker-end="url(#arr3y)"/>
+
+      <text x="500" y="100" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#6ad1c8">YES</text>
+      <text x="500" y="245" font-family="IBM Plex Mono,monospace" font-size="11" font-weight="600" fill="#f0c674">NO</text>
+    </svg>
+  </div>
+  <p class="cap">Figure 5 — Role-based join selection. The role on the user info table picks the path; the path picks the rows; the rows are joined to the unchanged main exception table.</p>
+
+  <div class="grid-2" style="margin-top:14px">
+    <div class="panel">
+      <h4>FO Owner — what they see</h4>
+      <p>Every exception whose <code class="inline">sdsbookcode</code> matches a master book where they appear as FO_Owner or Supervisor in the FO entitlements table. No L4-level access; their world is master-book-scoped by design.</p>
+    </div>
+    <div class="panel">
+      <h4>Other roles — what they see</h4>
+      <p>Every exception whose <code class="inline">businessarea</code> matches a Business Area L4 where they're configured as the relevant role's Owner/Delegate or Supervisor in the L4 entitlements table. Master-book-level access does not apply.</p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <h4>Multi-role users</h4>
+    <p>If a user has more than one role (e.g. Reg Policy and Product Control), the L4 join produces the union of exceptions across both roles. The user info table stores the full set; the resolution logic does not pick one and ignore the others.</p>
+  </div>
+</section>
+
+<!-- 06 — WORKFLOW GATING -->
+<section id="workflow">
+  <div class="section-head">
+    <span class="marker">§ 06 — Workflow Action Gating</span>
+    <h2>Seeing an exception <b>≠ being able to act on it</b></h2>
+    <p class="sub">Once an exception is on screen, whether the user can <span class="serif-i">do</span> something with it depends on three things: their role, what role the current workflow step expects, and whether that step is the active step right now.</p>
+  </div>
+
+  <div class="panel">
+    <h4>The three checks</h4>
+    <div class="gate">
+      <div class="check">
+        <b>Check 1</b>
+        <span>User's role appears in the user info table</span>
+      </div>
+      <div class="op">+</div>
+      <div class="check">
+        <b>Check 2</b>
+        <span>Current workflow step is configured for that role</span>
+      </div>
+      <div class="op">+</div>
+      <div class="check">
+        <b>Check 3</b>
+        <span>That step is the <span class="serif-i">active</span> step on this exception</span>
+      </div>
+      <div class="op">=</div>
+      <div class="result">
+        <b>Action allowed</b>
+        <span>Buttons enabled, write APIs accept</span>
+      </div>
+    </div>
+    <p style="margin-top:12px">Any one of the three failing means the action is denied. The user may still see the exception (entitlement passes) and may still understand what stage it's at — they simply can't move it forward unless all three align.</p>
+  </div>
+
+  <div class="grid-2" style="margin-top:14px">
+    <div class="panel">
+      <h4>Why all three together</h4>
+      <p>Role alone isn't enough — a Product Control user shouldn't act on a step meant for Reg Reporting. Step configuration alone isn't enough — even the right role can't act on a step that's already passed. Active-step alone isn't enough — the system needs to know <span class="serif-i">who</span> is allowed to advance it.</p>
+    </div>
+    <div class="panel">
+      <h4>Where the rules live</h4>
+      <p>Step-to-role mapping is part of the workflow configuration that already exists for the exception type. The active step is on the exception row itself (current <code class="inline">workflow_step</code>). The user's role is on the user info table refreshed at login. Nothing new is invented — the gate is just a clean evaluation of three existing facts.</p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <h4>Worked example</h4>
+    <p><b>Exception</b>: a TB-BB exception on master book <code class="inline">MB_4471</code>, business area L4 <code class="inline">FX_OPTIONS_AMER</code>, currently on the <span class="serif-i">"PC Review"</span> step.</p>
+    <p><b>Front Office user (alice.gid)</b>: sees the exception (entitled via FO pathway), but the current step is configured for the Product Control role. <code class="inline">Action: denied.</code> She can view, comment if comments are open, but cannot advance the step.</p>
+    <p><b>Product Control user (paul.gid)</b>: sees the exception (entitled via L4 pathway as PC), the step is configured for PC, and it's the active step. <code class="inline">Action: allowed.</code> He can approve, reject, or send back.</p>
+    <p><b>Reg Policy user (rita.gid)</b>: sees the exception (entitled via L4 pathway as Reg Policy), but the active step is "PC Review", not her step. <code class="inline">Action: denied — pending.</code> When the workflow advances to "Reg Policy Review", her gate flips to allowed.</p>
+  </div>
+</section>
+
+<!-- 07 — MIGRATION -->
+<section id="mig">
+  <div class="section-head">
+    <span class="marker">§ 07 — Migration &amp; Decommission</span>
+    <h2>How we <b>retire</b> the existing structure</h2>
+    <p class="sub">Controlled cut-over with a parallel-verification window. The new model runs alongside the old one for long enough to prove equivalence, then the old one is removed in one cut.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div>
+        <h3>Stand up the new path in shadow</h3>
+        <p>Deploy the FO entitlements table, the L4 entitlements table, and the user info table. Run the transformations against production sources but route no consumer traffic to them yet.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>Reconciliation harness</h3>
+        <p>For every user-and-exception pair the existing structure currently authorizes, assert the new path authorizes the same. Run nightly. Target: zero discrepancies for two consecutive runs before flag-flip.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>Flag-flip the read path</h3>
+        <p>Switch the app to the new resolution logic via feature flag. Monitor latency, error rate, and ticket volume for 48 hours. Rollback is one flag-flip away.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div>
+        <h3>Decommission the legacy</h3>
+        <p>After one week of clean operation: drop the legacy entitlement tables, archive their final state, remove the dead code, retire the related batch jobs, update the runbook.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 — PLAN & RISKS -->
+<section id="plan">
+  <div class="section-head">
+    <span class="marker">§ 08 — Sprint Plan &amp; Risks</span>
+    <h2>Two sprints, <b>3–4 weeks</b></h2>
+    <p class="sub">Sprint 1 builds the new path in shadow. Sprint 2 cuts over and decommissions. Story IDs are placeholders for the team's tracker.</p>
+  </div>
+
+  <div class="sprint">
+    <div class="col">
+      <h3>Sprint 1 — Foundations <span class="b">WEEK 1–2</span></h3>
+      <ul>
+        <li><span class="id">ENT-101</span><span><b>Entitlement tables</b>FO entitlements (3-column shape), L4 entitlements (role-keyed), user info table.</span></li>
+        <li><span class="id">ENT-102</span><span><b>NPL ingestion</b>Read NPL Ramp data, apply 5→3 reshape, write FO entitlements idempotently.</span></li>
+        <li><span class="id">ENT-103</span><span><b>L4 ingestion</b>Read Business Area Governance data (admin UI + file upload), write L4 entitlements idempotently.</span></li>
+        <li><span class="id">ENT-104</span><span><b>Login handler</b>Call Entitlement Service at login, upsert user info table.</span></li>
+        <li><span class="id">ENT-105</span><span><b>Admin UI</b>Maintain Business Area Governance assignments, with file-upload validation.</span></li>
+        <li><span class="id">ENT-106</span><span><b>Reconciliation harness</b>Diff legacy authorization vs new path, nightly.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Sprint 2 — Cut-over <span class="b">WEEK 3–4</span></h3>
+      <ul>
+        <li><span class="id">ENT-201</span><span><b>Role-based view</b>App selects FO or L4 join based on user_type from user info table.</span></li>
+        <li><span class="id">ENT-202</span><span><b>Workflow gate</b>Three-check action evaluation (role × step config × active step).</span></li>
+        <li><span class="id">ENT-203</span><span><b>UAT</b>Business-led scenarios across all role categories.</span></li>
+        <li><span class="id">ENT-204</span><span><b>Performance verification</b>Confirm filter latency vs current baseline.</span></li>
+        <li><span class="id">ENT-205</span><span><b>Flag-flip &amp; soak</b>48-hour monitored cut-over.</span></li>
+        <li><span class="id">ENT-206</span><span><b>Decommission</b>Drop legacy, archive, retire jobs, update runbook.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="margin-top:32px">Risks</h3>
+  <div class="panel">
+    <div class="risk">
+      <div class="lvl high">High</div>
+      <div class="body">
+        <b>IT role scoping is undefined</b>
+        <span>Prime IT, Non-Prime IT, Central IT CVS and AVS roles are not represented in the Business Area Governance table. The pathway and scope for these roles needs a decision before Sprint 2.</span>
+      </div>
+      <div class="mitig">Confirm with governance team in Sprint 1; default assumption is global view via L4 path with "all L4" wildcard.</div>
+    </div>
+    <div class="risk">
+      <div class="lvl high">High</div>
+      <div class="body">
+        <b>Initial L4 governance file is incomplete on day one</b>
+        <span>Sprint 2 UAT depends on real L4 assignments; without them, only synthetic test data is exercised.</span>
+      </div>
+      <div class="mitig">Lock file delivery date end of Sprint 1 as acceptance criterion.</div>
+    </div>
+    <div class="risk">
+      <div class="lvl med">Med</div>
+      <div class="body">
+        <b>Reconciliation drift between legacy and new path</b>
+        <span>Hidden semantics in the legacy structure (implicit overrides, ad-hoc grants) may not map cleanly.</span>
+      </div>
+      <div class="mitig">Reconciliation harness fails CI; require zero diff for two nights pre cut-over.</div>
+    </div>
+    <div class="risk">
+      <div class="lvl med">Med</div>
+      <div class="body">
+        <b>Entitlement Service availability at login</b>
+        <span>If Entitlement Service is unreachable, login cannot refresh roles. The app must decide: hard-fail or fall back to last-known roles.</span>
+      </div>
+      <div class="mitig">Default to fall-back with TTL on user info table; flag stale roles in the UI banner.</div>
+    </div>
+    <div class="risk">
+      <div class="lvl low">Low</div>
+      <div class="body">
+        <b>Bulk-upload file format variance across regions</b>
+        <span>Admin teams may submit slightly different headers.</span>
+      </div>
+      <div class="mitig">Header alias map maintained in a config table, not in code.</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:14px">
+    <h4>Open items for review</h4>
+    <p>— <b>IT role scoping:</b> do Prime IT, Non-Prime IT, and Central IT CVS and AVS users see all exceptions, or are they scoped by something we haven't captured yet?</p>
+    <p>— <b>Effective dating:</b> are L4 assignments expected to be time-versioned (effective from / to) on day one, or is "current state with audit history" sufficient for v1?</p>
+    <p>— <b>Stale role behavior:</b> if the Entitlement Service is unreachable on login, is fall-back to last-known roles acceptable for a bounded window, or should the app refuse access?</p>
+    <p>— <b>Governance Forum (RO):</b> is read-only access enforced at API level (no write endpoints exposed), at workflow gate level (Check 2 always denies), or both?</p>
+  </div>
+</section>
+
+<footer>
+  <div>TDD-ENT-REF-001 · Entitlement Refactor — Technical Design · Draft v0.2</div>
+  <div class="mono">FT · ENTITLEMENTS · 2 SPRINTS · 3–4 WEEKS</div>
+</footer>
+
+</div>
+</body>
+</html>
