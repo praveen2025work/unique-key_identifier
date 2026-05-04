@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Exception Hub — Access &amp; Notification Rules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fbf7f0;
+    --paper:#ffffff;
+    --ink:#1c1917;
+    --ink-2:#44403c;
+    --muted:#78716c;
+    --line:#e7e2d6;
+    --line-2:#d6cfbe;
+    --gold:#a07c2c;
+    --gold-soft:#f5edd8;
+    --rose:#a44a4a;
+    --green:#3f6b3a;
+    --green-soft:#e1ecdb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Inter Tight",system-ui,sans-serif;line-height:1.6;font-size:15.5px}
+  .serif{font-family:"Fraunces",Georgia,serif}
+  .it{font-style:italic}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 56px}
+
+  .head{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:36px}
+  .head .sup{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500;display:flex;justify-content:space-between}
+  .head .sup .id{font-family:ui-monospace,monospace;color:var(--gold);letter-spacing:.05em;text-transform:none}
+  .head h1{font-family:"Fraunces",serif;font-weight:300;font-size:46px;line-height:1.05;letter-spacing:-0.02em;margin:24px 0 12px}
+  .head h1 b{font-weight:500;font-style:italic}
+  .head .lede{color:var(--ink-2);font-size:16.5px;max-width:720px;margin:0}
+
+  section{margin:0 0 36px}
+  .marker{font-family:ui-monospace,monospace;font-size:11px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:500}
+  h2{font-family:"Fraunces",serif;font-weight:400;font-size:26px;letter-spacing:-0.01em;line-height:1.2;margin:6px 0 14px}
+  h2 b{font-weight:500;font-style:italic}
+
+  p{margin:0 0 12px;color:var(--ink-2)}
+  p:last-child{margin-bottom:0}
+
+  .rule{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:18px 22px}
+  .rule + .rule{margin-top:10px}
+  .rule h3{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--ink)}
+  .rule h3 .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:var(--gold-soft);color:var(--gold);padding:3px 8px;border-radius:2px;margin-right:8px;font-weight:600;vertical-align:1px}
+  .rule p{margin:0;font-size:14.5px}
+
+  .who{display:grid;grid-template-columns:230px 1fr;border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+  .who > div{padding:16px 20px;border-bottom:1px solid var(--line);font-size:14.5px}
+  .who .role{
+    border-right:1px solid var(--line);font-weight:600;color:var(--ink);
+    display:flex;flex-direction:column;justify-content:center
+  }
+  .who .role .src{font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.08em;color:var(--gold);font-weight:500;margin-top:4px;text-transform:uppercase}
+  .who .desc{color:var(--ink-2)}
+  .who > div:nth-last-child(-n+2){border-bottom:none}
+
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px}
+  .three .c{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:14px 16px}
+  .three .c b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px}
+  .three .c span{font-size:13.5px;color:var(--ink-2)}
+
+  .callout{background:var(--gold-soft);border-left:3px solid var(--gold);border-radius:0 4px 4px 0;padding:14px 18px}
+  .callout p{color:var(--ink);font-size:14.5px}
+  .callout p b{font-weight:600}
+
+  /* Sample data */
+  .scenario{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:0;overflow:hidden;margin-bottom:14px}
+  .scenario h4{
+    margin:0;padding:12px 18px;background:#f5f1e6;border-bottom:1px solid var(--line);
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600
+  }
+  .scenario table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .scenario th,.scenario td{padding:10px 16px;text-align:left;border-bottom:1px solid var(--line);font-family:ui-monospace,monospace;font-size:12.5px}
+  .scenario tr:last-child td{border-bottom:none}
+  .scenario th{background:#fbf7ee;color:var(--muted);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;font-family:"Inter Tight",sans-serif}
+  .scenario td.no{color:var(--rose)}
+  .scenario td.yes{color:var(--green)}
+  .scenario td .ppl{font-family:"Inter Tight",sans-serif;color:var(--ink);font-size:13px}
+
+  /* Visibility matrix */
+  .matrix{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow-x:auto}
+  .matrix table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .matrix th,.matrix td{padding:11px 14px;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  .matrix th:last-child,.matrix td:last-child{border-right:none}
+  .matrix tr:last-child td{border-bottom:none}
+  .matrix thead th{
+    background:#f5f1e6;font-size:11px;letter-spacing:.06em;font-weight:600;color:var(--ink);
+    font-family:ui-monospace,monospace;
+  }
+  .matrix thead th:first-child{font-family:"Inter Tight",sans-serif;letter-spacing:0;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+  .matrix tbody th{
+    text-align:left;font-weight:600;background:#fbf7ee;font-size:13.5px;
+    color:var(--ink);padding-left:18px;border-right:1px solid var(--line)
+  }
+  .matrix tbody th .role{display:block;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-top:2px;text-transform:uppercase}
+  .matrix .y{color:var(--green);font-weight:700;font-size:16px}
+  .matrix .n{color:#d4cfbf;font-size:16px}
+  .matrix tr.gov td{background:#fbf7ee}
+  .matrix tr.gov th{background:var(--gold-soft)}
+  .matrix tr.gov th .role{color:var(--gold)}
+
+  .legend{display:flex;gap:18px;margin-top:10px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+  .legend span b{color:var(--green);font-weight:700;margin-right:4px}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.05em;display:flex;justify-content:space-between}
+
+  @media (max-width:720px){
+    .wrap{padding:28px 22px}
+    .head h1{font-size:34px}
+    .who{grid-template-columns:1fr}
+    .who .role{border-right:none}
+    .three{grid-template-columns:1fr}
+    .matrix table{min-width:600px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="head">
+    <div class="sup">
+      <span>Business Document</span>
+      <span class="id">EH-RULES-002 · DRAFT</span>
+    </div>
+    <h1>Exception Hub<br/><b>access &amp; notification rules</b></h1>
+    <p class="lede">Who can log in, what they see, when they can act, and who gets notified — written to be read once, with a worked example at the end.</p>
+  </header>
+
+  <!-- 01 LOGIN -->
+  <section>
+    <span class="marker">§ 01 — Login</span>
+    <h2>The user must hold a <b>TB BB role</b> in finportal</h2>
+    <p>Roles live in finportal. When a user opens Exception Hub, the app reads their roles from finportal.</p>
+    <div class="rule">
+      <h3><span class="tag">If</span>No TB BB role</h3>
+      <p>The user is blocked at the landing screen. They cannot view exceptions and cannot act on anything.</p>
+    </div>
+    <div class="rule">
+      <h3><span class="tag">If</span>One or more TB BB roles</h3>
+      <p>The user is navigated to the dashboard. The dashboard shows the data they're entitled to, based on the rules below.</p>
+    </div>
+  </section>
+
+  <!-- 02 WHO SEES WHAT -->
+  <section>
+    <span class="marker">§ 02 — What each role sees</span>
+    <h2>Four categories, <b>four rules</b></h2>
+    <div class="who">
+      <div class="role">Front Office Owner<span class="src">via NPL FO data</span></div>
+      <div class="desc">Sees only exceptions for master books where they appear as FO Owner, Delegate, or Supervisor. Book-level access.</div>
+
+      <div class="role">Product Control<span class="src">via PC L4 data</span></div>
+      <div class="desc">Sees only exceptions on Business Area L4s where they appear as the PC owner. L4-level access.</div>
+
+      <div class="role">Risk · Regulatory · IT central team<span class="src">FO-initiated only</span></div>
+      <div class="desc">Sees every exception <span class="it">where Front Office has initiated the workflow</span>. Exceptions that are still pre-workflow are invisible to these roles. The UI surfaces only the workflow steps relevant to their role.</div>
+
+      <div class="role">Governance Forum<span class="src">read-only · everything</span></div>
+      <div class="desc">Sees <span class="it">all</span> exceptions regardless of whether the workflow has been initiated. Read-only — there is no workflow step assigned to this role, so no actions are ever available.</div>
+    </div>
+    <p style="margin-top:10px;font-size:13.5px;color:var(--muted)"><span class="serif it">Note on naming.</span> The "IT central team" role is what finportal labels as the FO IT role. They are the same set of users.</p>
+  </section>
+
+  <!-- 03 WHEN CAN THEY ACT -->
+  <section>
+    <span class="marker">§ 03 — When can they act</span>
+    <h2>Seeing an exception is <b>not the same</b> as being able to act on it</h2>
+    <p>A user can act on an exception only when all three are true:</p>
+    <div class="three">
+      <div class="c"><b>Check 1</b><span>They hold a TB BB role for that exception's category</span></div>
+      <div class="c"><b>Check 2</b><span>The current workflow step is configured for their role</span></div>
+      <div class="c"><b>Check 3</b><span>That step is the <span class="it">active</span> step on this exception right now</span></div>
+    </div>
+    <p style="margin-top:14px">Any one missing → action denied. Governance Forum users always fail Check 2 by design — they have no step assignment, so they can view but never act.</p>
+  </section>
+
+  <!-- 04 NOTIFICATIONS -->
+  <section>
+    <span class="marker">§ 04 — Notifications</span>
+    <h2>The L4 Governance table drives <b>who gets emailed</b></h2>
+    <p>The Business Area L4 Governance table holds discipline owners, supervisors, and the governance forum for each L4. It is <span class="it">not</span> used to filter what anyone sees — it is used only to decide who gets notified when an exception advances.</p>
+    <div class="callout">
+      <p><b>Example.</b> An exception on L4 <span class="serif it">FX_OPTIONS_AMER</span> advances to "Reg Reporting Review". The notification engine looks up the Reg Reporting owner and supervisor for that L4 in the governance table and emails them. They open Exception Hub, see the exception (because Risk/Reg/IT roles see all FO-initiated exceptions), and act on it (because the active step matches their role).</p>
+    </div>
+  </section>
+
+  <!-- 05 WORKED EXAMPLE -->
+  <section>
+    <span class="marker">§ 05 — Worked example</span>
+    <h2>Five exceptions, <b>five users</b></h2>
+    <p>To make the rules concrete, here is one snapshot. Five exceptions exist; one of them is pre-workflow (FO has not initiated yet). Five users with different roles open the dashboard.</p>
+
+    <div class="scenario">
+      <h4>The five exceptions</h4>
+      <table>
+        <thead><tr><th>Exception</th><th>Master book</th><th>Business Area L4</th><th>Active step</th><th>FO initiated?</th></tr></thead>
+        <tbody>
+          <tr><td>EX-1001</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td>FO Review</td><td class="yes">Yes</td></tr>
+          <tr><td>EX-1002</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td>PC Review</td><td class="yes">Yes</td></tr>
+          <tr><td>EX-1003</td><td>MB_8829</td><td>RATES_EMEA</td><td>Reg Reporting Review</td><td class="yes">Yes</td></tr>
+          <tr><td>EX-1004</td><td>MB_5512</td><td>EQ_DERIV_APAC</td><td>—</td><td class="no">No</td></tr>
+          <tr><td>EX-1005</td><td>MB_8829</td><td>RATES_EMEA</td><td>Risk Review</td><td class="yes">Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="scenario">
+      <h4>Ownership reference</h4>
+      <table>
+        <thead><tr><th>Source</th><th>Key</th><th>Owner</th></tr></thead>
+        <tbody>
+          <tr><td>NPL FO data</td><td>MB_4471</td><td><span class="ppl">alice (FO)</span></td></tr>
+          <tr><td>NPL FO data</td><td>MB_8829</td><td><span class="ppl">bob (FO)</span></td></tr>
+          <tr><td>NPL FO data</td><td>MB_5512</td><td><span class="ppl">charlie (FO)</span></td></tr>
+          <tr><td>PC L4 data</td><td>FX_OPTIONS_AMER</td><td><span class="ppl">paul (PC)</span></td></tr>
+          <tr><td>PC L4 data</td><td>RATES_EMEA</td><td><span class="ppl">priya (PC)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="matrix">
+      <table>
+        <thead>
+          <tr>
+            <th>Who sees what</th>
+            <th>EX-1001</th><th>EX-1002</th><th>EX-1003</th><th>EX-1004</th><th>EX-1005</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>alice<span class="role">FO Owner · MB_4471</span></th>
+            <td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="n">○</td><td class="n">○</td>
+          </tr>
+          <tr>
+            <th>paul<span class="role">PC · FX_OPTIONS_AMER</span></th>
+            <td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="n">○</td><td class="n">○</td>
+          </tr>
+          <tr>
+            <th>rachel<span class="role">Risk — Credit Risk</span></th>
+            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="y">●</td>
+          </tr>
+          <tr>
+            <th>ian<span class="role">IT central team</span></th>
+            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="y">●</td>
+          </tr>
+          <tr class="gov">
+            <th>gary<span class="role">Governance Forum · RO</span></th>
+            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="y">●</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend"><span><b>●</b> visible</span><span style="color:var(--muted)"><b style="color:#d4cfbf">○</b> not visible</span></div>
+
+    <p style="margin-top:18px">Reading the matrix: <b>alice</b> and <b>paul</b> only see exceptions tied to their book or L4 respectively. <b>rachel</b> and <b>ian</b> see every <span class="it">FO-initiated</span> exception — note how they both miss EX-1004, which is still pre-workflow. <b>gary</b> is the only user who sees EX-1004, because the Governance Forum role sees everything regardless of workflow status, but he can only look — he cannot act on any of them.</p>
+
+    <p>For action: <b>alice</b> can act on EX-1001 (active step is FO Review), <b>paul</b> can act on EX-1002 (PC Review), <b>rachel</b> can act on EX-1005 (Risk Review). On the others, they may see the exception but the active step does not belong to them, so the action buttons are disabled.</p>
+  </section>
+
+  <footer>
+    <span>EH-RULES-002 · Exception Hub — Access &amp; Notification Rules · Draft</span>
+    <span>Finance Technology · TB BB</span>
+  </footer>
+
+</div>
+</body>
+</html>
