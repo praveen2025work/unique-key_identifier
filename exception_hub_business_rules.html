@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Exception Hub — Access &amp; Notification Rules</title>
+<title>Exception Hub · Access, Notifications &amp; Views</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
@@ -11,6 +11,8 @@
   :root{
     --bg:#fbf7f0;
     --paper:#ffffff;
+    --paper-2:#f5f1e6;
+    --paper-3:#fbf7ee;
     --ink:#1c1917;
     --ink-2:#44403c;
     --muted:#78716c;
@@ -19,103 +21,210 @@
     --gold:#a07c2c;
     --gold-soft:#f5edd8;
     --rose:#a44a4a;
+    --rose-soft:#f3dfdf;
     --green:#3f6b3a;
     --green-soft:#e1ecdb;
+    --teal:#2c7a72;
+    --teal-soft:#dcefec;
+    --violet:#6b5ba1;
+    --violet-soft:#e6e1f0;
+    --blue:#3a6691;
+    --blue-soft:#dde7f0;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Inter Tight",system-ui,sans-serif;line-height:1.6;font-size:15.5px}
   .serif{font-family:"Fraunces",Georgia,serif}
   .it{font-style:italic}
-  .wrap{max-width:920px;margin:0 auto;padding:48px 56px}
+  .wrap{max-width:980px;margin:0 auto;padding:48px 56px 100px}
 
   .head{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:36px}
   .head .sup{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:500;display:flex;justify-content:space-between}
   .head .sup .id{font-family:ui-monospace,monospace;color:var(--gold);letter-spacing:.05em;text-transform:none}
   .head h1{font-family:"Fraunces",serif;font-weight:300;font-size:46px;line-height:1.05;letter-spacing:-0.02em;margin:24px 0 12px}
   .head h1 b{font-weight:500;font-style:italic}
-  .head .lede{color:var(--ink-2);font-size:16.5px;max-width:720px;margin:0}
+  .head .lede{color:var(--ink-2);font-size:16.5px;max-width:760px;margin:0}
 
-  section{margin:0 0 36px}
+  section{margin:0 0 44px}
   .marker{font-family:ui-monospace,monospace;font-size:11px;color:var(--gold);letter-spacing:.18em;text-transform:uppercase;font-weight:500}
   h2{font-family:"Fraunces",serif;font-weight:400;font-size:26px;letter-spacing:-0.01em;line-height:1.2;margin:6px 0 14px}
   h2 b{font-weight:500;font-style:italic}
+  h3{font-family:"Fraunces",serif;font-weight:500;font-size:18px;color:var(--ink);margin:22px 0 8px}
+  h4{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--gold);margin:0 0 10px}
 
   p{margin:0 0 12px;color:var(--ink-2)}
   p:last-child{margin-bottom:0}
+  b{color:var(--ink)}
 
-  .rule{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:18px 22px}
-  .rule + .rule{margin-top:10px}
-  .rule h3{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--ink)}
-  .rule h3 .tag{display:inline-block;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;background:var(--gold-soft);color:var(--gold);padding:3px 8px;border-radius:2px;margin-right:8px;font-weight:600;vertical-align:1px}
-  .rule p{margin:0;font-size:14.5px}
+  .lede-mini{font-size:15.5px;color:var(--ink-2);margin-bottom:14px;max-width:760px}
 
-  .who{display:grid;grid-template-columns:230px 1fr;border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
-  .who > div{padding:16px 20px;border-bottom:1px solid var(--line);font-size:14.5px}
-  .who .role{
-    border-right:1px solid var(--line);font-weight:600;color:var(--ink);
-    display:flex;flex-direction:column;justify-content:center
+  /* Login flow steps */
+  .steps{display:grid;gap:8px}
+  .step{display:grid;grid-template-columns:36px 1fr;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:14px 18px;align-items:start}
+  .step .n{font-family:ui-monospace,monospace;color:var(--gold);font-size:13px;font-weight:600;padding-top:1px}
+  .step b{display:block;color:var(--ink);font-weight:600;font-size:14px;margin-bottom:2px}
+  .step span{color:var(--ink-2);font-size:13.5px}
+
+  /* Three view cards */
+  .views{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px}
+  .vcard{border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+  .vcard h4{margin:0;padding:11px 16px;background:var(--paper-2);border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:8px}
+  .vcard h4 .dot{width:9px;height:9px;border-radius:50%}
+  .vcard.act h4 .dot{background:var(--rose)}
+  .vcard.all h4 .dot{background:var(--blue)}
+  .vcard.his h4 .dot{background:var(--green)}
+  .vcard .body{padding:14px 16px;font-size:13.5px;color:var(--ink-2);line-height:1.5}
+  .vcard .body p{margin:0 0 8px;font-size:13.5px}
+  .vcard.act h4{color:var(--rose);background:var(--rose-soft)}
+  .vcard.all h4{color:var(--blue);background:var(--blue-soft)}
+  .vcard.his h4{color:var(--green);background:var(--green-soft)}
+
+  /* Per role view definition */
+  .role-views{border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden;margin-top:8px}
+  .role-views table{width:100%;border-collapse:collapse;font-size:14px}
+  .role-views th{
+    text-align:left;background:var(--paper-2);padding:11px 14px;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line);
+    border-right:1px solid var(--line);font-family:"Inter Tight",sans-serif
   }
-  .who .role .src{font-family:ui-monospace,monospace;font-size:10.5px;letter-spacing:.08em;color:var(--gold);font-weight:500;margin-top:4px;text-transform:uppercase}
-  .who .desc{color:var(--ink-2)}
-  .who > div:nth-last-child(-n+2){border-bottom:none}
+  .role-views th:last-child{border-right:none}
+  .role-views td{padding:13px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);color:var(--ink-2);vertical-align:top;font-size:13.5px;line-height:1.5}
+  .role-views td:last-child{border-right:none}
+  .role-views tr:last-child td{border-bottom:none}
+  .role-views td.role{font-weight:600;color:var(--ink);background:var(--paper-3);font-size:14px;width:170px}
+  .role-views td.role .src{display:block;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--gold);font-weight:500;margin-top:3px;letter-spacing:.06em;text-transform:uppercase}
+  .role-views td.act{background:rgba(164,74,74,.04)}
+  .role-views td.all{background:rgba(58,102,145,.04)}
+  .role-views td.his{background:rgba(63,107,58,.04)}
+  .role-views tr.gov td.role{background:var(--gold-soft)}
+  .role-views tr.gov td.role .src{color:var(--gold)}
+  .role-views .empty{color:var(--muted);font-style:italic}
 
-  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px}
-  .three .c{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:14px 16px}
-  .three .c b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px}
-  .three .c span{font-size:13.5px;color:var(--ink-2)}
+  /* Three check gate */
+  .gate{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;gap:8px;align-items:center;margin:14px 0 10px}
+  .gate .check{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:14px;text-align:center}
+  .gate .check b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px}
+  .gate .check span{font-size:13px;color:var(--ink-2)}
+  .gate .op{font-family:ui-monospace,monospace;font-size:18px;color:var(--gold);font-weight:600;text-align:center}
+  .gate .res{background:var(--green-soft);border:1px solid #b5cfaf;border-radius:5px;padding:14px;text-align:center}
+  .gate .res b{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:6px}
+  .gate .res span{font-size:13px;color:var(--ink)}
 
-  .callout{background:var(--gold-soft);border-left:3px solid var(--gold);border-radius:0 4px 4px 0;padding:14px 18px}
-  .callout p{color:var(--ink);font-size:14.5px}
-  .callout p b{font-weight:600}
+  /* Notification cards */
+  .notif-flow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .notif-card{border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+  .notif-card.brc{border-color:#e8c5c5}
+  .notif-card h4{margin:0;padding:12px 18px;background:var(--paper-2);border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.14em;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:10px;text-transform:uppercase}
+  .notif-card.brc h4{background:var(--rose-soft);color:var(--rose)}
+  .notif-card h4 .dot{width:9px;height:9px;border-radius:50%}
+  .notif-card h4 .dot.norm{background:var(--teal)}
+  .notif-card h4 .dot.brc{background:var(--rose)}
+  .notif-card .body{padding:16px 18px;font-size:14px;color:var(--ink-2)}
+  .notif-card .recipients{margin-top:10px;padding:12px 14px;background:var(--paper-3);border-left:3px solid var(--teal);border-radius:0 4px 4px 0;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--ink)}
+  .notif-card.brc .recipients{border-left-color:var(--rose)}
+  .notif-card .recipients .label{display:block;font-family:"Inter Tight",sans-serif;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+
+  /* Admin role panel */
+  .admin{border:1px solid var(--violet);background:linear-gradient(180deg, var(--violet-soft) 0%, var(--paper) 65%);border-radius:6px;padding:20px 24px}
+  .admin h3{margin:0 0 8px;font-family:"Fraunces",serif;font-weight:500;font-size:19px;color:var(--violet)}
+  .admin .role-tag{
+    display:inline-block;font-family:ui-monospace,monospace;font-size:11px;background:var(--violet);color:#fff;
+    padding:3px 9px;border-radius:3px;letter-spacing:.04em;font-weight:500;margin-right:6px
+  }
+  .admin ul{margin:8px 0 0;padding-left:18px;color:var(--ink-2);font-size:14px}
+  .admin ul li{margin-bottom:6px}
 
   /* Sample data */
-  .scenario{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:0;overflow:hidden;margin-bottom:14px}
-  .scenario h4{
-    margin:0;padding:12px 18px;background:#f5f1e6;border-bottom:1px solid var(--line);
-    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600
-  }
-  .scenario table{width:100%;border-collapse:collapse;font-size:13.5px}
-  .scenario th,.scenario td{padding:10px 16px;text-align:left;border-bottom:1px solid var(--line);font-family:ui-monospace,monospace;font-size:12.5px}
-  .scenario tr:last-child td{border-bottom:none}
-  .scenario th{background:#fbf7ee;color:var(--muted);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;font-family:"Inter Tight",sans-serif}
-  .scenario td.no{color:var(--rose)}
-  .scenario td.yes{color:var(--green)}
-  .scenario td .ppl{font-family:"Inter Tight",sans-serif;color:var(--ink);font-size:13px}
+  .data-card{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:12px}
+  .data-card h4{margin:0;padding:11px 18px;background:var(--paper-2);border-bottom:1px solid var(--line);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;color:var(--gold)}
+  .data-card .scroll{overflow-x:auto}
+  .data-card table{width:100%;border-collapse:collapse;font-size:13px}
+  .data-card th,.data-card td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--line);font-family:ui-monospace,monospace;font-size:12px;white-space:nowrap}
+  .data-card td.wrap-cell{white-space:normal;font-family:"Inter Tight",sans-serif;font-size:12.5px}
+  .data-card tr:last-child td{border-bottom:none}
+  .data-card th{background:var(--paper-3);color:var(--muted);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;font-family:"Inter Tight",sans-serif}
+  .data-card td.yes{color:var(--green);font-weight:600}
+  .data-card td.no{color:var(--rose);font-weight:600}
+  .data-card td.brc{color:var(--rose);font-weight:600}
+  .data-card td.closed{color:var(--violet);font-weight:600}
+  .data-card td .ppl{font-family:"Inter Tight",sans-serif;color:var(--ink);font-size:13px}
+  .data-card td .pill{display:inline-block;font-family:"Inter Tight",sans-serif;font-size:10.5px;background:var(--violet-soft);color:var(--violet);padding:2px 7px;border-radius:2px;letter-spacing:.06em;font-weight:600;margin-left:4px;text-transform:uppercase}
+  .data-card td .trail{font-family:"Inter Tight",sans-serif;color:var(--ink);font-size:12.5px}
+  .data-card td .trail .arrow{color:var(--muted);margin:0 2px;font-family:ui-monospace,monospace}
+  .data-card td .trail .none{color:var(--muted);font-style:italic}
 
-  /* Visibility matrix */
-  .matrix{background:var(--paper);border:1px solid var(--line);border-radius:6px;overflow-x:auto}
-  .matrix table{width:100%;border-collapse:collapse;font-size:13.5px}
-  .matrix th,.matrix td{padding:11px 14px;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  /* Three view matrices */
+  .matrix-row{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}
+  .matrix-card{border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+  .matrix-card .mhead{padding:11px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;font-size:11px;letter-spacing:.14em;font-weight:600;text-transform:uppercase}
+  .matrix-card.act .mhead{background:var(--rose-soft);color:var(--rose)}
+  .matrix-card.all .mhead{background:var(--blue-soft);color:var(--blue)}
+  .matrix-card.his .mhead{background:var(--green-soft);color:var(--green)}
+  .matrix-card .mhead .dot{width:9px;height:9px;border-radius:50%}
+  .matrix-card.act .mhead .dot{background:var(--rose)}
+  .matrix-card.all .mhead .dot{background:var(--blue)}
+  .matrix-card.his .mhead .dot{background:var(--green)}
+  .matrix-card .scroll{overflow-x:auto}
+  .matrix{width:100%;border-collapse:collapse;font-size:13px}
+  .matrix th,.matrix td{padding:9px 9px;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
   .matrix th:last-child,.matrix td:last-child{border-right:none}
   .matrix tr:last-child td{border-bottom:none}
-  .matrix thead th{
-    background:#f5f1e6;font-size:11px;letter-spacing:.06em;font-weight:600;color:var(--ink);
-    font-family:ui-monospace,monospace;
-  }
-  .matrix thead th:first-child{font-family:"Inter Tight",sans-serif;letter-spacing:0;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
-  .matrix tbody th{
-    text-align:left;font-weight:600;background:#fbf7ee;font-size:13.5px;
-    color:var(--ink);padding-left:18px;border-right:1px solid var(--line)
-  }
-  .matrix tbody th .role{display:block;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);font-weight:500;letter-spacing:.06em;margin-top:2px;text-transform:uppercase}
-  .matrix .y{color:var(--green);font-weight:700;font-size:16px}
-  .matrix .n{color:#d4cfbf;font-size:16px}
-  .matrix tr.gov td{background:#fbf7ee}
+  .matrix thead th{background:var(--paper-3);font-size:11px;font-weight:600;color:var(--ink);font-family:ui-monospace,monospace;padding:10px 9px}
+  .matrix thead th:first-child{font-family:"Inter Tight",sans-serif;letter-spacing:.12em;font-size:10.5px;color:var(--muted);text-transform:uppercase;text-align:left;padding-left:18px;width:200px}
+  .matrix tbody th{text-align:left;font-weight:600;background:#fbf7ee;font-size:13px;color:var(--ink);padding:9px 18px;border-right:1px solid var(--line)}
+  .matrix tbody th .role{display:block;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);font-weight:500;letter-spacing:.04em;margin-top:2px}
+  .matrix .y{font-weight:700;font-size:14px}
+  .matrix-card.act .y{color:var(--rose)}
+  .matrix-card.all .y{color:var(--blue)}
+  .matrix-card.his .y{color:var(--green)}
+  .matrix .n{color:#d4cfbf;font-size:14px}
+  .matrix tr.gov td{background:var(--paper-3)}
   .matrix tr.gov th{background:var(--gold-soft)}
   .matrix tr.gov th .role{color:var(--gold)}
+  .matrix tr.adm th{background:var(--violet-soft)}
+  .matrix tr.adm th .role{color:var(--violet)}
 
-  .legend{display:flex;gap:18px;margin-top:10px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
-  .legend span b{color:var(--green);font-weight:700;margin-right:4px}
+  .scenario-list{counter-reset:sc;display:grid;gap:8px;margin-top:8px}
+  .sc{display:grid;grid-template-columns:48px 1fr;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:13px 18px}
+  .sc:before{counter-increment:sc;content:counter(sc,decimal-leading-zero);font-family:ui-monospace,monospace;color:var(--gold);font-size:13px;font-weight:600;padding-top:1px}
+  .sc b{color:var(--ink);font-weight:600;font-size:13.5px;display:block;margin-bottom:2px}
+  .sc span{color:var(--ink-2);font-size:13px;line-height:1.5}
+
+  .callout{background:var(--gold-soft);border-left:3px solid var(--gold);border-radius:0 4px 4px 0;padding:14px 18px;margin-top:14px}
+  .callout p{color:var(--ink);font-size:14.5px}
+
+  /* Comments feature */
+  .cmt-block{margin-top:18px;border-top:1px dashed var(--line-2);padding-top:14px}
+  .cmt-block details{background:var(--paper-3);border:1px solid var(--line);border-radius:5px;padding:0 14px}
+  .cmt-block details[open]{padding:0 14px 12px}
+  .cmt-block summary{cursor:pointer;padding:11px 0;font-size:12.5px;color:var(--muted);font-weight:500;list-style:none;display:flex;align-items:center;gap:8px}
+  .cmt-block summary::-webkit-details-marker{display:none}
+  .cmt-block summary::before{content:"💬";font-size:13px}
+  .cmt-block summary:hover{color:var(--gold)}
+  .cmt-block textarea{width:100%;min-height:80px;border:1px solid var(--line);background:var(--paper);padding:10px 12px;font-family:"Inter Tight",sans-serif;font-size:13px;color:var(--ink);border-radius:4px;resize:vertical;line-height:1.5}
+  .cmt-block textarea:focus{outline:none;border-color:var(--gold)}
+  .cmt-block .tip{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic}
+
+  /* Floating comment toolbar */
+  .cmt-bar{position:fixed;bottom:20px;right:20px;z-index:50;display:flex;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:8px;box-shadow:0 4px 16px rgba(28,25,23,.08)}
+  .cmt-bar button{font-family:"Inter Tight",sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:5px;cursor:pointer;transition:all .15s;letter-spacing:.02em}
+  .cmt-bar button:hover{background:var(--paper-2);border-color:var(--gold)}
+  .cmt-bar button.primary{background:var(--gold);color:#fff;border-color:var(--gold)}
+  .cmt-bar button.primary:hover{background:#8a6a26}
+  .cmt-bar .count{font-size:11px;color:var(--muted);padding:8px 4px 8px 8px;font-weight:500}
 
   footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);font-family:ui-monospace,monospace;letter-spacing:.05em;display:flex;justify-content:space-between}
 
-  @media (max-width:720px){
-    .wrap{padding:28px 22px}
+  @media (max-width:780px){
+    .wrap{padding:28px 22px 100px}
     .head h1{font-size:34px}
-    .who{grid-template-columns:1fr}
-    .who .role{border-right:none}
-    .three{grid-template-columns:1fr}
-    .matrix table{min-width:600px}
+    .views{grid-template-columns:1fr}
+    .gate{grid-template-columns:1fr}
+    .gate .op{display:none}
+    .notif-flow{grid-template-columns:1fr}
+    .matrix-card .scroll{overflow-x:auto}
+    .matrix{min-width:780px}
+    .role-views td.role{width:auto}
+    .cmt-bar{right:10px;bottom:10px}
   }
 </style>
 </head>
@@ -125,148 +234,552 @@
   <header class="head">
     <div class="sup">
       <span>Business Document</span>
-      <span class="id">EH-RULES-002 · DRAFT</span>
+      <span class="id">EH-RULES-004 · DRAFT</span>
     </div>
-    <h1>Exception Hub<br/><b>access &amp; notification rules</b></h1>
-    <p class="lede">Who can log in, what they see, when they can act, and who gets notified — written to be read once, with a worked example at the end.</p>
+    <h1>Exception Hub<br/><b>access, views &amp; notifications</b></h1>
+    <p class="lede">A working reference for business and technology teams. Covers how the application identifies who you are, what you see in each of the three dashboard views (Actions Required, All Exceptions, My History), how notifications fan out per L4, and the parallel Admin role for managing notification and SLA configuration.</p>
   </header>
 
-  <!-- 01 LOGIN -->
+  <!-- 01 ENTITLEMENT FLOW -->
   <section>
-    <span class="marker">§ 01 — Login</span>
-    <h2>The user must hold a <b>TB BB role</b> in finportal</h2>
-    <p>Roles live in finportal. When a user opens Exception Hub, the app reads their roles from finportal.</p>
-    <div class="rule">
-      <h3><span class="tag">If</span>No TB BB role</h3>
-      <p>The user is blocked at the landing screen. They cannot view exceptions and cannot act on anything.</p>
+    <span class="marker">S 01 · How the app finds your role</span>
+    <h2>Roles live in finportal. <b>Exception Hub looks them up.</b></h2>
+    <p>The user logs in to finportal first. When they open Exception Hub, the application checks for the user's TB BB roles. Roles are not stored anywhere inside Exception Hub long term. They are sourced fresh from finportal so that any role change made in finportal is reflected the next time the user logs in.</p>
+
+    <h3>The lookup sequence</h3>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><div><b>UI calls the local entitlement service</b><span>Returns the user's TB BB roles if they are already on file in our database.</span></div></div>
+      <div class="step"><div class="n">02</div><div><b>If no roles found, the Python filewatcher service is asked to fetch fresh entitlements</b><span>The filewatcher calls the finportal entitlement API for the user's BRID, persists any returned roles into our database, and returns them to the UI.</span></div></div>
+      <div class="step"><div class="n">03</div><div><b>If finportal does not know the user, return 403 Forbidden</b><span>This is a hard stop. The user has no business identity in finportal, so the application cannot grant access.</span></div></div>
+      <div class="step"><div class="n">04</div><div><b>If finportal knows the user but no TB BB role is present, block at the landing screen</b><span>The user is recognized but holds no role that grants access to Exception Hub for TB BB.</span></div></div>
+      <div class="step"><div class="n">05</div><div><b>If a TB BB role is present, save it locally and route to the dashboard</b><span>The dashboard then shows the three views described in S 02.</span></div></div>
     </div>
-    <div class="rule">
-      <h3><span class="tag">If</span>One or more TB BB roles</h3>
-      <p>The user is navigated to the dashboard. The dashboard shows the data they're entitled to, based on the rules below.</p>
+
+    <p style="margin-top:14px"><span class="it">Why this sequence is interim.</span> The current design pulls roles per user on demand. Once finportal can deliver the full entitlement set as a daily file (or via Autosys extract), the Python filewatcher will switch to processing that bulk feed nightly, and per user lookups will only run as a fallback for truly new users.</p>
+
+    <p><b>One user can hold up to two roles.</b> The first is a primary role from the list (Front Office, Product Control, Risk, Regulatory, Reg Policy, IT, or Governance Forum). The second is the optional Admin role described in S 06. The Admin role grants no exception visibility. It only unlocks the configuration screens.</p>
+
+    <div class="cmt-block">
+      <details><summary>Comments on S 01 Entitlement flow</summary>
+        <textarea placeholder="Add review comments here. Saved automatically in your browser. Use Export at the bottom right when done." data-cmt-key="01-entitlement"></textarea>
+        <div class="tip">Saved in your browser. Click Export to download all comments.</div>
+      </details>
     </div>
   </section>
 
-  <!-- 02 WHO SEES WHAT -->
+  <!-- 02 THREE VIEWS -->
   <section>
-    <span class="marker">§ 02 — What each role sees</span>
-    <h2>Four categories, <b>four rules</b></h2>
-    <div class="who">
-      <div class="role">Front Office Owner<span class="src">via NPL FO data</span></div>
-      <div class="desc">Sees only exceptions for master books where they appear as FO Owner, Delegate, or Supervisor. Book-level access.</div>
+    <span class="marker">S 02 · The three dashboard views</span>
+    <h2>Every user sees three lists. <b>What's in each list depends on the role.</b></h2>
+    <p class="lede-mini">The dashboard splits exceptions into three views. The headers are the same for everyone, but the contents follow rules that vary by role.</p>
 
-      <div class="role">Product Control<span class="src">via PC L4 data</span></div>
-      <div class="desc">Sees only exceptions on Business Area L4s where they appear as the PC owner. L4-level access.</div>
-
-      <div class="role">Risk · Regulatory · IT central team<span class="src">FO-initiated only</span></div>
-      <div class="desc">Sees every exception <span class="it">where Front Office has initiated the workflow</span>. Exceptions that are still pre-workflow are invisible to these roles. The UI surfaces only the workflow steps relevant to their role.</div>
-
-      <div class="role">Governance Forum<span class="src">read-only · everything</span></div>
-      <div class="desc">Sees <span class="it">all</span> exceptions regardless of whether the workflow has been initiated. Read-only — there is no workflow step assigned to this role, so no actions are ever available.</div>
-    </div>
-    <p style="margin-top:10px;font-size:13.5px;color:var(--muted)"><span class="serif it">Note on naming.</span> The "IT central team" role is what finportal labels as the FO IT role. They are the same set of users.</p>
-  </section>
-
-  <!-- 03 WHEN CAN THEY ACT -->
-  <section>
-    <span class="marker">§ 03 — When can they act</span>
-    <h2>Seeing an exception is <b>not the same</b> as being able to act on it</h2>
-    <p>A user can act on an exception only when all three are true:</p>
-    <div class="three">
-      <div class="c"><b>Check 1</b><span>They hold a TB BB role for that exception's category</span></div>
-      <div class="c"><b>Check 2</b><span>The current workflow step is configured for their role</span></div>
-      <div class="c"><b>Check 3</b><span>That step is the <span class="it">active</span> step on this exception right now</span></div>
-    </div>
-    <p style="margin-top:14px">Any one missing → action denied. Governance Forum users always fail Check 2 by design — they have no step assignment, so they can view but never act.</p>
-  </section>
-
-  <!-- 04 NOTIFICATIONS -->
-  <section>
-    <span class="marker">§ 04 — Notifications</span>
-    <h2>The L4 Governance table drives <b>who gets emailed</b></h2>
-    <p>The Business Area L4 Governance table holds discipline owners, supervisors, and the governance forum for each L4. It is <span class="it">not</span> used to filter what anyone sees — it is used only to decide who gets notified when an exception advances.</p>
-    <div class="callout">
-      <p><b>Example.</b> An exception on L4 <span class="serif it">FX_OPTIONS_AMER</span> advances to "Reg Reporting Review". The notification engine looks up the Reg Reporting owner and supervisor for that L4 in the governance table and emails them. They open Exception Hub, see the exception (because Risk/Reg/IT roles see all FO-initiated exceptions), and act on it (because the active step matches their role).</p>
-    </div>
-  </section>
-
-  <!-- 05 WORKED EXAMPLE -->
-  <section>
-    <span class="marker">§ 05 — Worked example</span>
-    <h2>Five exceptions, <b>five users</b></h2>
-    <p>To make the rules concrete, here is one snapshot. Five exceptions exist; one of them is pre-workflow (FO has not initiated yet). Five users with different roles open the dashboard.</p>
-
-    <div class="scenario">
-      <h4>The five exceptions</h4>
-      <table>
-        <thead><tr><th>Exception</th><th>Master book</th><th>Business Area L4</th><th>Active step</th><th>FO initiated?</th></tr></thead>
-        <tbody>
-          <tr><td>EX-1001</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td>FO Review</td><td class="yes">Yes</td></tr>
-          <tr><td>EX-1002</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td>PC Review</td><td class="yes">Yes</td></tr>
-          <tr><td>EX-1003</td><td>MB_8829</td><td>RATES_EMEA</td><td>Reg Reporting Review</td><td class="yes">Yes</td></tr>
-          <tr><td>EX-1004</td><td>MB_5512</td><td>EQ_DERIV_APAC</td><td>—</td><td class="no">No</td></tr>
-          <tr><td>EX-1005</td><td>MB_8829</td><td>RATES_EMEA</td><td>Risk Review</td><td class="yes">Yes</td></tr>
-        </tbody>
-      </table>
+    <div class="views">
+      <div class="vcard act">
+        <h4><span class="dot"></span>Actions Required</h4>
+        <div class="body"><p>Items currently waiting on this user. The work queue.</p></div>
+      </div>
+      <div class="vcard all">
+        <h4><span class="dot"></span>All Exceptions</h4>
+        <div class="body"><p>Everything the user is entitled to see, regardless of who is acting on it now.</p></div>
+      </div>
+      <div class="vcard his">
+        <h4><span class="dot"></span>My History</h4>
+        <div class="body"><p>Every exception this user has acted on personally.</p></div>
+      </div>
     </div>
 
-    <div class="scenario">
-      <h4>Ownership reference</h4>
-      <table>
-        <thead><tr><th>Source</th><th>Key</th><th>Owner</th></tr></thead>
-        <tbody>
-          <tr><td>NPL FO data</td><td>MB_4471</td><td><span class="ppl">alice (FO)</span></td></tr>
-          <tr><td>NPL FO data</td><td>MB_8829</td><td><span class="ppl">bob (FO)</span></td></tr>
-          <tr><td>NPL FO data</td><td>MB_5512</td><td><span class="ppl">charlie (FO)</span></td></tr>
-          <tr><td>PC L4 data</td><td>FX_OPTIONS_AMER</td><td><span class="ppl">paul (PC)</span></td></tr>
-          <tr><td>PC L4 data</td><td>RATES_EMEA</td><td><span class="ppl">priya (PC)</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="matrix">
+    <h3>The rule per role, side by side</h3>
+    <div class="role-views">
       <table>
         <thead>
           <tr>
-            <th>Who sees what</th>
-            <th>EX-1001</th><th>EX-1002</th><th>EX-1003</th><th>EX-1004</th><th>EX-1005</th>
+            <th>Role</th>
+            <th>Actions Required</th>
+            <th>All Exceptions</th>
+            <th>My History</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <th>alice<span class="role">FO Owner · MB_4471</span></th>
-            <td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="n">○</td><td class="n">○</td>
+            <td class="role">Front Office<span class="src">NPL FO data</span></td>
+            <td class="act">Exceptions on books they own where the workflow has not been initiated yet. The list of items waiting for somebody to start the workflow.</td>
+            <td class="all">Every exception on books they own, at any stage, including pre workflow and closed.</td>
+            <td class="his">Exceptions where this user personally clicked an action button, typically the one who initiated the workflow.</td>
           </tr>
           <tr>
-            <th>paul<span class="role">PC · FX_OPTIONS_AMER</span></th>
-            <td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="n">○</td><td class="n">○</td>
+            <td class="role">Product Control<span class="src">GMIS data</span></td>
+            <td class="act">Exceptions on their L4 currently at the PC Review step.</td>
+            <td class="all">Every exception on their L4, at any stage, including pre workflow.</td>
+            <td class="his">Exceptions where this PC user personally approved or rejected the PC step.</td>
           </tr>
           <tr>
-            <th>rachel<span class="role">Risk — Credit Risk</span></th>
-            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="y">●</td>
-          </tr>
-          <tr>
-            <th>ian<span class="role">IT central team</span></th>
-            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="n">○</td><td class="y">●</td>
+            <td class="role">Risk · Regulatory · Reg Policy · IT<span class="src">role + step match</span></td>
+            <td class="act">Exceptions where the workflow has been initiated and the active step is configured for this user's role.</td>
+            <td class="all">Exceptions where the workflow has been initiated and the user's role is either active now or was already completed by another user holding the same role.</td>
+            <td class="his">Exceptions where this user personally clicked the action on their step.</td>
           </tr>
           <tr class="gov">
-            <th>gary<span class="role">Governance Forum · RO</span></th>
-            <td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="y">●</td><td class="y">●</td>
+            <td class="role">Governance Forum<span class="src">read only · all data</span></td>
+            <td class="act"><span class="empty">Empty by design. No step is ever assigned to this role.</span></td>
+            <td class="all">Every exception in the system, regardless of workflow status.</td>
+            <td class="his"><span class="empty">Empty by design. This role never acts.</span></td>
           </tr>
         </tbody>
       </table>
     </div>
-    <div class="legend"><span><b>●</b> visible</span><span style="color:var(--muted)"><b style="color:#d4cfbf">○</b> not visible</span></div>
 
-    <p style="margin-top:18px">Reading the matrix: <b>alice</b> and <b>paul</b> only see exceptions tied to their book or L4 respectively. <b>rachel</b> and <b>ian</b> see every <span class="it">FO-initiated</span> exception — note how they both miss EX-1004, which is still pre-workflow. <b>gary</b> is the only user who sees EX-1004, because the Governance Forum role sees everything regardless of workflow status, but he can only look — he cannot act on any of them.</p>
+    <div class="callout">
+      <p><b>Two FO users, same book.</b> When two FO users have access to the same master book (one as FO Owner, the other as Delegate), both see all exceptions on that book in All Exceptions. Both also see any pre workflow exception in Actions Required. Whoever clicks first to start the workflow gets it in their My History. After that, the exception leaves Actions Required for both, and the other user still sees it in All Exceptions but not in their personal history.</p>
+    </div>
 
-    <p>For action: <b>alice</b> can act on EX-1001 (active step is FO Review), <b>paul</b> can act on EX-1002 (PC Review), <b>rachel</b> can act on EX-1005 (Risk Review). On the others, they may see the exception but the active step does not belong to them, so the action buttons are disabled.</p>
+    <div class="cmt-block">
+      <details><summary>Comments on S 02 Three views</summary>
+        <textarea placeholder="Comments on the view definitions. For example, edge cases, role variations." data-cmt-key="02-views"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- 03 ACTING -->
+  <section>
+    <span class="marker">S 03 · When can a user act</span>
+    <h2>Seeing an exception is not the same as being able to <b>move it forward</b></h2>
+    <p>Visibility puts a row on the screen. Acting on a row, meaning approving, rejecting, sending back, or advancing the workflow, depends on three checks. All three must be true for the action buttons to enable.</p>
+    <div class="gate">
+      <div class="check"><b>Check 1</b><span>The user holds a TB BB role</span></div>
+      <div class="op">+</div>
+      <div class="check"><b>Check 2</b><span>The active step is configured for that role</span></div>
+      <div class="op">+</div>
+      <div class="check"><b>Check 3</b><span>The step is the active step on this exception right now</span></div>
+      <div class="op">=</div>
+      <div class="res"><b>Action allowed</b><span>Buttons enabled</span></div>
+    </div>
+    <p>Two consequences worth noting. Governance Forum users always fail Check 2, so they never act. Product Control users see exceptions at every stage including FO Review and Risk Review, but their action buttons enable only when the active step lands on a PC step.</p>
+
+    <div class="cmt-block">
+      <details><summary>Comments on S 03 Action gating</summary>
+        <textarea placeholder="Comments on the action gate logic." data-cmt-key="03-action"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- 04 NOTIFICATIONS -->
+  <section>
+    <span class="marker">S 04 · Notifications and SLA escalation</span>
+    <h2>Two triggers, <b>one wide notification table</b></h2>
+    <p>The Business Area L4 Notification table holds, for each L4, one column pair per role: an Owner column with the recipient address (a BRID or a distribution list), and a Supervisor column used only on SLA breach. Layout looks like this:</p>
+
+    <div class="data-card">
+      <h4>business_area_l4_notification (transposed by role)</h4>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>L4</th>
+              <th>pc_owner</th>
+              <th>pc_supervisor</th>
+              <th>credit_risk_owner</th>
+              <th>credit_risk_supervisor</th>
+              <th>reg_reporting_owner</th>
+              <th>reg_reporting_supervisor</th>
+              <th>...</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>FX_OPTIONS_AMER</td>
+              <td>DL_PC_FXAMER@bcs</td>
+              <td>sup.fxamer.pc@bcs</td>
+              <td>DL_CR_FXAMER@bcs</td>
+              <td>sup.fxamer.cr@bcs</td>
+              <td>DL_RR_FXAMER@bcs</td>
+              <td>sup.fxamer.rr@bcs</td>
+              <td>...</td>
+            </tr>
+            <tr>
+              <td>RATES_EMEA</td>
+              <td>DL_PC_RATESEMEA@bcs</td>
+              <td>sup.ratesemea.pc@bcs</td>
+              <td>DL_CR_RATESEMEA@bcs</td>
+              <td>sup.ratesemea.cr@bcs</td>
+              <td>DL_RR_RATESEMEA@bcs</td>
+              <td>sup.ratesemea.rr@bcs</td>
+              <td>...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:6px">Real table has owner and supervisor pairs for every role: PC, the five Risk sub roles, Reg Reporting, Reg Policy, IT central, plus a single column for Governance Forum (no notifications).</p>
+
+    <div class="notif-flow" style="margin-top:14px">
+      <div class="notif-card">
+        <h4><span class="dot norm"></span>Step transition (regular)</h4>
+        <div class="body">
+          <p>An exception advances to a new step. The role that owns that step gets notified.</p>
+          <div class="recipients">
+            <span class="label">To</span>
+            owner column for that role on this L4
+          </div>
+          <p style="margin-top:10px;font-size:13px;color:var(--muted)">Supervisor is not included on regular triggers for any role.</p>
+        </div>
+      </div>
+      <div class="notif-card brc">
+        <h4><span class="dot brc"></span>SLA breach (escalation)</h4>
+        <div class="body">
+          <p>The step has been pending longer than its configured SLA. The same recipients are notified, with the Supervisor added in cc.</p>
+          <div class="recipients">
+            <span class="label">To</span>
+            owner column for that role on this L4
+            <span class="label" style="margin-top:8px">Cc</span>
+            supervisor column for the same role on this L4
+          </div>
+          <p style="margin-top:10px;font-size:13px;color:var(--muted)">SLA thresholds are configured per workflow step in the SLA configuration table, managed by the Admin role.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:14px">
+      <p><b>The notification table is not used to filter visibility.</b> It only decides where notification emails go. The same row can list five different distribution lists. None of those lists changes what their members see when they log in. Visibility is governed by S 02. Notifications are a separate concern.</p>
+    </div>
+
+    <div class="cmt-block">
+      <details><summary>Comments on S 04 Notifications and SLA</summary>
+        <textarea placeholder="Comments on the notification model, table layout, SLA thresholds." data-cmt-key="04-notif"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- 05 ADMIN ROLE -->
+  <section>
+    <span class="marker">S 05 · The Admin role</span>
+    <h2>A parallel role for <b>configuration management</b></h2>
+    <div class="admin">
+      <h3><span class="role-tag">ADMIN-TB BB-USER-RW</span></h3>
+      <p>A dedicated finportal role created specifically for managing Exception Hub configuration. It runs in parallel to a primary role. For example, a user holding <span class="serif it">Product Control-TB BB-User-RW</span> can also hold <span class="serif it">ADMIN-TB BB-USER-RW</span>. Their primary role still governs what exceptions they see. The Admin role unlocks two configuration screens that are otherwise hidden.</p>
+      <p style="margin-top:10px"><b>What Admin can do</b></p>
+      <ul>
+        <li>Maintain the Business Area L4 Notification table. Add or amend the owner and supervisor entries per role per L4.</li>
+        <li>Maintain SLA configuration. Adjust the time thresholds that determine when a step is considered breached.</li>
+      </ul>
+      <p style="margin-top:10px"><b>What Admin does not do.</b> The Admin role grants no additional exception visibility. There is no business area level entitlement attached to it. A PC plus Admin user still sees only PC's L4 in the exception views. Admin is global for configuration only.</p>
+    </div>
+
+    <div class="cmt-block">
+      <details><summary>Comments on S 05 Admin role</summary>
+        <textarea placeholder="Comments on the Admin role scope, audit, edge cases." data-cmt-key="05-admin"></textarea>
+      </details>
+    </div>
+  </section>
+
+  <!-- 06 WORKED EXAMPLE -->
+  <section>
+    <span class="marker">S 06 · Worked example with ten exceptions</span>
+    <h2>Ten exceptions, eight users, <b>three views each</b></h2>
+    <p>A realistic snapshot covering pre workflow, partial completion, full closure, multiple FO users on the same book, an SLA breach, and an Admin user. Read the data tables first, then the three matrices below.</p>
+
+    <h3>The ten exceptions</h3>
+    <div class="data-card">
+      <h4>main_exception</h4>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>id</th><th>Book</th><th>L4</th><th>Initiated?</th><th>Active step</th><th>SLA</th><th>Acted by trail</th></tr></thead>
+          <tbody>
+            <tr><td>EX-2001</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="no">false</td><td>(awaiting FO)</td><td>OK</td><td><span class="trail none">none yet</span></td></tr>
+            <tr><td>EX-2002</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="yes">true</td><td>PC Review</td><td>OK</td><td><span class="trail">alice</span></td></tr>
+            <tr><td>EX-2003</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="yes">true</td><td>Credit Risk Review</td><td>OK</td><td><span class="trail">alice <span class="arrow">→</span> paul</span></td></tr>
+            <tr><td>EX-2004</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="yes">true</td><td>PC Review</td><td>OK</td><td><span class="trail">anna</span></td></tr>
+            <tr><td>EX-2005</td><td>MB_8829</td><td>RATES_EMEA</td><td class="no">false</td><td>(awaiting FO)</td><td>OK</td><td><span class="trail none">none yet</span></td></tr>
+            <tr><td>EX-2006</td><td>MB_8829</td><td>RATES_EMEA</td><td class="yes">true</td><td>Reg Reporting Review</td><td>OK</td><td><span class="trail">bob <span class="arrow">→</span> priya <span class="arrow">→</span> rachel</span></td></tr>
+            <tr><td>EX-2007</td><td>MB_8829</td><td>RATES_EMEA</td><td class="yes">true</td><td class="closed">Closed</td><td>OK</td><td><span class="trail">bob <span class="arrow">→</span> priya <span class="arrow">→</span> rachel <span class="arrow">→</span> rita</span></td></tr>
+            <tr><td>EX-2008</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="yes">true</td><td>Reg Reporting Review</td><td>OK</td><td><span class="trail">alice <span class="arrow">→</span> paul <span class="arrow">→</span> rachel</span></td></tr>
+            <tr><td>EX-2009</td><td>MB_4471</td><td>FX_OPTIONS_AMER</td><td class="yes">true</td><td>PC Review</td><td class="brc">BREACHED</td><td><span class="trail">alice</span></td></tr>
+            <tr><td>EX-2010</td><td>MB_8829</td><td>RATES_EMEA</td><td class="yes">true</td><td>Credit Risk Review</td><td>OK</td><td><span class="trail">bob <span class="arrow">→</span> priya</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>What each exception is showing</h3>
+    <div class="scenario-list">
+      <div class="sc"><div><b>Pre workflow on alice's book</b><span>EX-2001 sits on MB_4471, FX_OPTIONS_AMER. Nobody has done anything yet. alice and anna both have FO access to this book through NPL FO data, so both see it as something to start.</span></div></div>
+      <div class="sc"><div><b>Workflow started by alice, sitting at PC Review</b><span>EX-2002. alice clicked initiate. paul now needs to act. anna can see it but did not start it.</span></div></div>
+      <div class="sc"><div><b>PC done, now at Credit Risk Review</b><span>EX-2003. alice initiated, paul approved at PC. The exception now waits on Credit Risk. rachel sees it on her queue.</span></div></div>
+      <div class="sc"><div><b>Anna started a different exception on the same book</b><span>EX-2004 was initiated by anna instead of alice. Same book, same L4, but different exception. alice sees it in All Exceptions but not in My History.</span></div></div>
+      <div class="sc"><div><b>Pre workflow on bob's book</b><span>EX-2005, MB_8829, RATES_EMEA. Same shape as EX-2001 but for the other FO user.</span></div></div>
+      <div class="sc"><div><b>Past PC and Risk, sitting at Reg Reporting</b><span>EX-2006. bob initiated, priya approved PC, rachel approved Credit Risk. Now at Reg Reporting. rita has it in Actions Required.</span></div></div>
+      <div class="sc"><div><b>Closed workflow</b><span>EX-2007. The full chain bob → priya → rachel → rita is complete. The exception is closed. Everyone whose role touched it sees it in My History. All Exceptions view still shows it.</span></div></div>
+      <div class="sc"><div><b>Reg Reporting on a different book</b><span>EX-2008. alice initiated, paul approved PC, rachel approved Credit Risk. Same shape as EX-2006 but on FX_OPTIONS_AMER. rita has Actions Required for this one too.</span></div></div>
+      <div class="sc"><div><b>SLA breached at PC Review</b><span>EX-2009. alice initiated, but paul did not act in time. SLA breached. Notification fans out to PC owner with Supervisor in cc.</span></div></div>
+      <div class="sc"><div><b>Past PC, now at Credit Risk Review</b><span>EX-2010. bob initiated, priya approved PC. Now waits on Credit Risk. rachel has it in her queue.</span></div></div>
+    </div>
+
+    <h3>The eight users</h3>
+    <div class="data-card">
+      <h4>user_info plus user_info_roles</h4>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>BRID</th><th>Primary role</th><th>Scope</th><th>Admin?</th></tr></thead>
+          <tbody>
+            <tr><td>alice</td><td>Front Office</td><td>MB_4471 (Owner)</td><td class="no">no</td></tr>
+            <tr><td>anna</td><td>Front Office</td><td>MB_4471 (Delegate)</td><td class="no">no</td></tr>
+            <tr><td>bob</td><td>Front Office</td><td>MB_8829 (Owner)</td><td class="no">no</td></tr>
+            <tr><td>paul</td><td>Product Control</td><td>FX_OPTIONS_AMER</td><td class="yes">yes <span class="pill">+ admin</span></td></tr>
+            <tr><td>priya</td><td>Product Control</td><td>RATES_EMEA</td><td class="no">no</td></tr>
+            <tr><td>rachel</td><td>Risk · Credit Risk</td><td>(role based)</td><td class="no">no</td></tr>
+            <tr><td>rita</td><td>Reg Reporting</td><td>(role based)</td><td class="no">no</td></tr>
+            <tr><td>gary</td><td>Governance Forum</td><td>(all, read only)</td><td class="no">no</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3>Each user's dashboard, the way it actually appears</h3>
+    <p>The three views are tabs at the top of the real Exception Hub dashboard. The widget below renders that dashboard for any user in the example. Pick a user from the row at the top, then switch tabs to see what they see when they log in.</p>
+
+    <style>
+      .dashpreview{margin-top:12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);overflow:hidden}
+      .dp-userrow{background:var(--paper-2);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+      .dp-userrow-label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-right:4px}
+      .dp-userbtn{border:1px solid var(--line);background:var(--paper);padding:6px 11px;border-radius:4px;font-family:inherit;font-size:12.5px;cursor:pointer;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+      .dp-userbtn:hover{border-color:var(--gold);color:var(--ink)}
+      .dp-userbtn.active{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:600}
+      .dp-userbtn .ubtag{font-size:9.5px;padding:1px 5px;border-radius:2px;background:var(--paper-3);color:var(--muted);letter-spacing:.06em;font-weight:600;text-transform:uppercase}
+      .dp-userbtn.active .ubtag{background:rgba(255,255,255,.25);color:#fff}
+      .dp-userbtn .ubtag.adm{background:var(--violet);color:#fff}
+      .dp-userbtn.active .ubtag.adm{background:rgba(255,255,255,.4)}
+      .dp-titlebar{background:var(--paper);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .dp-app-name{font-weight:600;color:var(--ink);font-size:13px}
+      .dp-arrow{color:var(--muted);font-size:14px;font-family:ui-monospace,monospace}
+      .dp-name{font-weight:600;color:var(--gold);font-size:13.5px;font-family:ui-monospace,monospace}
+      .dp-role-pill{background:var(--paper-2);color:var(--ink-2);padding:3px 10px;border-radius:11px;font-size:11.5px;border:1px solid var(--line)}
+      .dp-admin-badge{background:var(--violet);color:#fff;padding:2px 8px;border-radius:3px;font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-left:auto}
+      .dp-tabs{display:flex;background:var(--paper-2);border-bottom:1px solid var(--line)}
+      .dp-tab{flex:1;background:none;border:none;padding:13px 18px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;border-bottom:3px solid transparent;transition:all .15s}
+      .dp-tab:hover{color:var(--ink-2)}
+      .dp-tab.active{color:var(--ink);font-weight:600;border-bottom-color:var(--gold);background:var(--paper)}
+      .dp-tab-count{background:var(--paper-3);color:var(--muted);border-radius:10px;padding:2px 8px;font-size:11px;font-weight:600;min-width:22px;text-align:center}
+      .dp-tab.active .dp-tab-count{background:var(--gold);color:#fff}
+      .dp-list{padding:14px 16px;background:var(--paper-3);min-height:120px}
+      .dp-empty{padding:36px 20px;text-align:center;color:var(--muted);font-size:13px;font-style:italic}
+      .dp-row{background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:13px 16px;margin-bottom:8px;display:grid;grid-template-columns:140px 1fr auto;gap:14px;align-items:center}
+      .dp-row:last-child{margin-bottom:0}
+      .dp-row.breach{background:linear-gradient(90deg,var(--rose-soft) 0%,var(--paper) 35%);border-color:#e8c5c5}
+      .dp-row.closed{opacity:.75}
+      .dp-row-id{font-family:ui-monospace,monospace;font-weight:600;font-size:13px;color:var(--ink);margin-bottom:3px}
+      .dp-row-status{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--muted)}
+      .dp-row-status.pending{color:var(--gold)}
+      .dp-row-status.breach{color:var(--rose)}
+      .dp-row-status.closed{color:var(--violet)}
+      .dp-row-status.progress{color:var(--gold)}
+      .dp-row-meta{font-size:12.5px;color:var(--ink);margin-bottom:3px}
+      .dp-row-book{font-family:ui-monospace,monospace;font-weight:600}
+      .dp-row-l4{font-family:ui-monospace,monospace;color:var(--muted)}
+      .dp-row-step{font-size:12px;color:var(--ink-2);margin-bottom:2px}
+      .dp-row-step b{color:var(--ink);font-weight:600}
+      .dp-row-trail{font-size:11px;color:var(--muted);font-style:italic}
+      .dp-row-btn{background:var(--gold);color:#fff;border:none;padding:7px 13px;border-radius:4px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+      .dp-row-btn:hover{background:#8a6a26}
+      .dp-row-readonly{font-size:10.5px;color:var(--muted);font-style:italic;letter-spacing:.04em}
+      @media (max-width:780px){
+        .dp-row{grid-template-columns:1fr;gap:8px}
+        .dp-tab{padding:10px 8px;font-size:11.5px;flex-direction:column;gap:4px}
+        .dp-titlebar{font-size:12px}
+      }
+    </style>
+
+    <div class="dashpreview">
+      <div class="dp-userrow">
+        <span class="dp-userrow-label">Log in as</span>
+        <button class="dp-userbtn active" data-user="alice">alice<span class="ubtag">FO</span></button>
+        <button class="dp-userbtn" data-user="anna">anna<span class="ubtag">FO</span></button>
+        <button class="dp-userbtn" data-user="bob">bob<span class="ubtag">FO</span></button>
+        <button class="dp-userbtn" data-user="paul">paul<span class="ubtag">PC</span><span class="ubtag adm">+A</span></button>
+        <button class="dp-userbtn" data-user="priya">priya<span class="ubtag">PC</span></button>
+        <button class="dp-userbtn" data-user="rachel">rachel<span class="ubtag">Risk</span></button>
+        <button class="dp-userbtn" data-user="rita">rita<span class="ubtag">Reg</span></button>
+        <button class="dp-userbtn" data-user="gary">gary<span class="ubtag">Gov</span></button>
+      </div>
+      <div class="dp-titlebar">
+        <span class="dp-app-name">Exception Hub</span>
+        <span class="dp-arrow">›</span>
+        <span class="dp-name" id="dpUserName">alice</span>
+        <span class="dp-role-pill" id="dpUserRole">Front Office · MB_4471 (Owner)</span>
+        <span class="dp-admin-badge" id="dpAdminBadge" style="display:none">+ Admin</span>
+      </div>
+      <div class="dp-tabs">
+        <button class="dp-tab active" data-tab="act"><span>Actions Required</span><span class="dp-tab-count" id="dpCountAct">1</span></button>
+        <button class="dp-tab" data-tab="all"><span>All Exceptions</span><span class="dp-tab-count" id="dpCountAll">6</span></button>
+        <button class="dp-tab" data-tab="his"><span>My History</span><span class="dp-tab-count" id="dpCountHis">4</span></button>
+      </div>
+      <div class="dp-list" id="dpList"></div>
+    </div>
+
+    <script>
+    (function(){
+      const dpEx={
+    'EX-2001':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'Awaiting FO action',sla:'OK',trail:'(none yet)',init:false,sts:'pending'},
+    'EX-2002':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'PC Review',sla:'OK',trail:'alice',init:true,sts:'progress'},
+    'EX-2003':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'Credit Risk Review',sla:'OK',trail:'alice → paul',init:true,sts:'progress'},
+    'EX-2004':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'PC Review',sla:'OK',trail:'anna',init:true,sts:'progress'},
+    'EX-2005':{book:'MB_8829',l4:'RATES_EMEA',step:'Awaiting FO action',sla:'OK',trail:'(none yet)',init:false,sts:'pending'},
+    'EX-2006':{book:'MB_8829',l4:'RATES_EMEA',step:'Reg Reporting Review',sla:'OK',trail:'bob → priya → rachel',init:true,sts:'progress'},
+    'EX-2007':{book:'MB_8829',l4:'RATES_EMEA',step:'Closed',sla:'OK',trail:'bob → priya → rachel → rita',init:true,sts:'closed'},
+    'EX-2008':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'Reg Reporting Review',sla:'OK',trail:'alice → paul → rachel',init:true,sts:'progress'},
+    'EX-2009':{book:'MB_4471',l4:'FX_OPTIONS_AMER',step:'PC Review',sla:'BREACHED',trail:'alice',init:true,sts:'breach'},
+    'EX-2010':{book:'MB_8829',l4:'RATES_EMEA',step:'Credit Risk Review',sla:'OK',trail:'bob → priya',init:true,sts:'progress'}
+      };
+      const dpU={
+    'alice':{role:'Front Office',scope:'MB_4471 (Owner)',tag:'FO',adm:false,act:['EX-2001'],all:['EX-2001','EX-2002','EX-2003','EX-2004','EX-2008','EX-2009'],his:['EX-2002','EX-2003','EX-2008','EX-2009']},
+    'anna':{role:'Front Office',scope:'MB_4471 (Delegate)',tag:'FO',adm:false,act:['EX-2001'],all:['EX-2001','EX-2002','EX-2003','EX-2004','EX-2008','EX-2009'],his:['EX-2004']},
+    'bob':{role:'Front Office',scope:'MB_8829 (Owner)',tag:'FO',adm:false,act:['EX-2005'],all:['EX-2005','EX-2006','EX-2007','EX-2010'],his:['EX-2006','EX-2007','EX-2010']},
+    'paul':{role:'Product Control',scope:'FX_OPTIONS_AMER',tag:'PC',adm:true,act:['EX-2002','EX-2004','EX-2009'],all:['EX-2001','EX-2002','EX-2003','EX-2004','EX-2008','EX-2009'],his:['EX-2003','EX-2008']},
+    'priya':{role:'Product Control',scope:'RATES_EMEA',tag:'PC',adm:false,act:[],all:['EX-2005','EX-2006','EX-2007','EX-2010'],his:['EX-2006','EX-2007','EX-2010']},
+    'rachel':{role:'Risk · Credit Risk',scope:'role-based',tag:'Risk',adm:false,act:['EX-2003','EX-2010'],all:['EX-2003','EX-2006','EX-2007','EX-2008','EX-2010'],his:['EX-2006','EX-2007','EX-2008']},
+    'rita':{role:'Reg Reporting',scope:'role-based',tag:'Reg',adm:false,act:['EX-2006','EX-2008'],all:['EX-2006','EX-2007','EX-2008'],his:['EX-2007']},
+    'gary':{role:'Governance Forum',scope:'all, read only',tag:'Gov',adm:false,act:[],all:['EX-2001','EX-2002','EX-2003','EX-2004','EX-2005','EX-2006','EX-2007','EX-2008','EX-2009','EX-2010'],his:[]}
+      };
+      let cu='alice', ct='act';
+      function actLbl(uid,eid){
+        const u=dpU[uid], e=dpEx[eid];
+        if(u.tag==='FO'&&!e.init) return 'Start workflow';
+        if(e.step==='PC Review'&&u.tag==='PC') return 'Approve / Reject';
+        if(e.step==='Credit Risk Review'&&u.tag==='Risk') return 'Approve / Reject';
+        if(e.step==='Reg Reporting Review'&&u.tag==='Reg') return 'Approve / Reject';
+        return null;
+      }
+      function statusLabel(e){
+        if(e.sla==='BREACHED') return 'SLA BREACHED';
+        if(e.sts==='closed') return 'CLOSED';
+        if(e.sts==='pending') return 'AWAITING FO';
+        return 'IN PROGRESS';
+      }
+      function render(){
+        const u=dpU[cu];
+        document.querySelectorAll('.dp-userbtn').forEach(b=>b.classList.toggle('active',b.dataset.user===cu));
+        document.getElementById('dpUserName').textContent=cu;
+        document.getElementById('dpUserRole').textContent=u.role+' · '+u.scope;
+        document.getElementById('dpAdminBadge').style.display=u.adm?'inline-block':'none';
+        document.getElementById('dpCountAct').textContent=u.act.length;
+        document.getElementById('dpCountAll').textContent=u.all.length;
+        document.getElementById('dpCountHis').textContent=u.his.length;
+        document.querySelectorAll('.dp-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===ct));
+        const list=u[ct];
+        const wrap=document.getElementById('dpList');
+        if(list.length===0){
+          let msg='No items in this view.';
+          if(u.tag==='Gov'&&ct==='act') msg='Governance Forum has no actionable queue. This view is empty by design.';
+          else if(u.tag==='Gov'&&ct==='his') msg='Governance Forum is read-only and never acts. This view is empty by design.';
+          else if(ct==='act') msg='Nothing in the queue right now for '+cu+'.';
+          else if(ct==='his') msg=cu+' has not acted on any exceptions in this snapshot.';
+          wrap.innerHTML='<div class="dp-empty">'+msg+'</div>';
+          return;
+        }
+        wrap.innerHTML=list.map(id=>{
+          const e=dpEx[id];
+          const action=ct==='act'?actLbl(cu,id):null;
+          const cls=e.sla==='BREACHED'?'breach':e.sts==='closed'?'closed':'';
+          const stsCls=e.sla==='BREACHED'?'breach':e.sts;
+          return '<div class="dp-row '+cls+'">'+
+            '<div>'+
+              '<div class="dp-row-id">'+id+'</div>'+
+              '<div class="dp-row-status '+stsCls+'">'+statusLabel(e)+'</div>'+
+            '</div>'+
+            '<div>'+
+              '<div class="dp-row-meta"><span class="dp-row-book">'+e.book+'</span> · <span class="dp-row-l4">'+e.l4+'</span></div>'+
+              '<div class="dp-row-step">Active step: <b>'+e.step+'</b></div>'+
+              '<div class="dp-row-trail">Trail: '+e.trail+'</div>'+
+            '</div>'+
+            '<div>'+
+              (action?'<button class="dp-row-btn">'+action+'</button>':'<span class="dp-row-readonly">View only</span>')+
+            '</div>'+
+          '</div>';
+        }).join('');
+      }
+      document.addEventListener('DOMContentLoaded',function(){
+        document.querySelectorAll('.dp-userbtn').forEach(b=>b.addEventListener('click',function(){cu=this.dataset.user;render();}));
+        document.querySelectorAll('.dp-tab').forEach(t=>t.addEventListener('click',function(){ct=this.dataset.tab;render();}));
+        render();
+      });
+    })();
+    </script>
+
+    <h3>Reading the dashboard preview</h3>
+    <p><b>alice and anna both have access to MB_4471.</b> Click alice, then click anna in the user row above. Their tab counts are identical for Actions Required and All Exceptions, but their My History counts differ. Their All Exceptions row is identical (six exceptions on MB_4471). Their Actions Required is also identical, both seeing the one pre workflow exception EX-2001. Their My History is different. alice initiated four exceptions (2002, 2003, 2008, 2009). anna initiated only one (2004). The same access set, but personal action history diverges.</p>
+    <p><b>paul carries the Admin badge.</b> In Actions Required he has the three exceptions currently at PC Review (2002, 2004, 2009 with the breach). In All Exceptions he has the full six on his L4 including the pre workflow EX-2001. In My History he has the two where he completed his PC step (2003, 2008). The Admin role does not change any of these. It only unlocks the configuration menu.</p>
+    <p><b>rachel has a typical Risk queue.</b> She has Actions Required on EX-2003 and EX-2010 (both at Credit Risk Review). Her All Exceptions includes those plus three more where Credit Risk has already completed (2006, 2007, 2008, all moved past Credit Risk by her own actions). My History shows only the three she actually approved. EX-2003 and EX-2010 are in her queue but not yet acted on.</p>
+    <p><b>rita has a tight queue.</b> Two exceptions at Reg Reporting Review (2006, 2008). One closed exception where she acted (2007). Her All Exceptions is just those three. EX-2003 and EX-2010 are at earlier stages, so she does not see them.</p>
+    <p><b>gary the Governance Forum user is the bookkeeper.</b> All ten exceptions appear in his All Exceptions tab. His Actions Required and My History are completely empty. He is read only by design.</p>
+
+    <h3>Notifications fired in this snapshot</h3>
+    <p><b>EX-2009 SLA breached.</b> The PC owner column for FX_OPTIONS_AMER (DL_PC_FXAMER@bcs) is the To address. The PC supervisor column (sup.fxamer.pc@bcs) is in cc because the SLA fired. paul gets the email through the DL.</p>
+    <p><b>EX-2003 transitioned to Credit Risk Review.</b> The Credit Risk owner column for FX_OPTIONS_AMER (DL_CR_FXAMER@bcs) is the To address. No supervisor in cc because no breach has occurred.</p>
+    <p><b>EX-2006 transitioned to Reg Reporting Review.</b> Reg Reporting owner column for RATES_EMEA receives the email. Same pattern. No supervisor on a regular trigger.</p>
+
+    <div class="cmt-block">
+      <details><summary>Comments on S 06 Worked example</summary>
+        <textarea placeholder="Comments on the scenarios, missing edge cases, additional examples needed." data-cmt-key="06-example"></textarea>
+      </details>
+    </div>
   </section>
 
   <footer>
-    <span>EH-RULES-002 · Exception Hub — Access &amp; Notification Rules · Draft</span>
+    <span>EH-RULES-004 · Exception Hub Business Document · Draft</span>
     <span>Finance Technology · TB BB</span>
   </footer>
 
 </div>
+
+<!-- Floating comment toolbar -->
+<div class="cmt-bar">
+  <span class="count" id="cmtCount">0 comments</span>
+  <button onclick="exportCmts()" class="primary">Export</button>
+  <button onclick="clearCmts()">Clear</button>
+</div>
+
+<script>
+function getCmts(){return JSON.parse(localStorage.getItem('eh_business_cmts')||'{}');}
+function saveCmt(key,val){const c=getCmts();c[key]=val;localStorage.setItem('eh_business_cmts',JSON.stringify(c));updateCount();}
+function loadCmts(){const c=getCmts();document.querySelectorAll('[data-cmt-key]').forEach(el=>{if(c[el.dataset.cmtKey])el.value=c[el.dataset.cmtKey];});updateCount();}
+function updateCount(){const c=getCmts();let n=0;for(const k in c){if(c[k]&&c[k].trim())n++;}document.getElementById('cmtCount').textContent=n+(n===1?' comment':' comments');}
+function exportCmts(){
+  const c=getCmts();
+  let txt='Exception Hub Business Document · Review Comments\n';
+  txt+='Document: EH-RULES-004\n';
+  txt+='Exported: '+new Date().toLocaleString()+'\n\n';
+  let any=false;
+  const sectionTitles={
+    '01-entitlement':'S 01 Entitlement flow',
+    '02-views':'S 02 Three views',
+    '03-action':'S 03 Action gating',
+    '04-notif':'S 04 Notifications and SLA',
+    '05-admin':'S 05 Admin role',
+    '06-example':'S 06 Worked example'
+  };
+  for(const k of Object.keys(sectionTitles)){
+    if(c[k]&&c[k].trim()){
+      txt+='## '+sectionTitles[k]+'\n'+c[k].trim()+'\n\n';
+      any=true;
+    }
+  }
+  if(!any){alert('No comments to export.');return;}
+  const blob=new Blob([txt],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='eh-business-comments-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function clearCmts(){
+  if(confirm('Clear all your comments? This cannot be undone.')){
+    localStorage.removeItem('eh_business_cmts');
+    document.querySelectorAll('[data-cmt-key]').forEach(el=>el.value='');
+    updateCount();
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  loadCmts();
+  document.querySelectorAll('[data-cmt-key]').forEach(el=>{el.addEventListener('input',function(){saveCmt(this.dataset.cmtKey,this.value);});});
+});
+</script>
+
 </body>
 </html>
