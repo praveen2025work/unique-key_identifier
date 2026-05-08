@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P&L Workflow → Agent Architecture · Anthropic Discussion Prep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:    #0A2540;
+    --navy-2:  #13315C;
+    --navy-3:  #1B3A60;
+    --cyan:    #00B4D8;
+    --cyan-d:  #0077B6;
+    --amber:   #F4A261;
+    --amber-d: #C77F3F;
+    --teal:    #06A77D;
+    --red:     #D62828;
+    --ink:     #1A1F36;
+    --body:    #3D4A5C;
+    --muted:   #8B95A1;
+    --muted-2: #B8C0CC;
+    --line:    #E1E6EE;
+    --bg-soft: #F6F8FB;
+    --bg-card: #FFFFFF;
+    --paper:   #FBFAF7;
+
+    --serif: 'Fraunces', Georgia, serif;
+    --sans:  'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+    --mono:  'Geist Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    color: var(--body);
+    background: var(--paper);
+    line-height: 1.65;
+    font-size: 16px;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--serif);
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    background: var(--navy);
+    color: white;
+    padding: 5rem 2rem 7rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 6px; height: 100%;
+    background: var(--cyan);
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,180,216,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+  .hero .eyebrow {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--cyan);
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+    font-weight: 400;
+    color: white;
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--cyan);
+    font-weight: 400;
+  }
+  .hero .lede {
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: #C9D6E2;
+    max-width: 720px;
+    margin-bottom: 3rem;
+    font-weight: 300;
+  }
+  .pills {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 900px;
+  }
+  .pill {
+    background: var(--navy-2);
+    border-left: 3px solid var(--cyan);
+    padding: 1rem 1.25rem;
+    border-radius: 4px;
+  }
+  .pill .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--cyan);
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  .pill .value {
+    font-size: 1rem;
+    color: white;
+    font-weight: 500;
+  }
+  .meta {
+    margin-top: 3rem;
+    font-size: 0.85rem;
+    color: #8FA3B5;
+    font-family: var(--mono);
+  }
+
+  /* ---------- LAYOUT ---------- */
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  section {
+    padding: 5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  section:last-of-type { border-bottom: none; }
+
+  .section-head {
+    margin-bottom: 3rem;
+  }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--cyan-d);
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    font-weight: 400;
+    margin-bottom: 0.75rem;
+  }
+  h2 em { font-style: italic; color: var(--cyan-d); }
+  .section-sub {
+    font-size: 1.1rem;
+    color: var(--muted);
+    max-width: 720px;
+    line-height: 1.55;
+  }
+
+  /* ---------- GOAL CARDS ---------- */
+  .goal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  .goal-card {
+    background: var(--bg-card);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--cyan);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .goal-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(10, 37, 64, 0.08);
+  }
+  .goal-icon {
+    width: 48px; height: 48px;
+    background: var(--navy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cyan);
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+  }
+  .goal-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-family: var(--serif);
+  }
+  .goal-card p {
+    color: var(--body);
+    font-size: 0.95rem;
+  }
+
+  .principle-banner {
+    margin-top: 3rem;
+    background: var(--navy);
+    color: white;
+    padding: 1.25rem 1.75rem;
+    border-radius: 8px;
+    font-style: italic;
+    font-family: var(--serif);
+    font-size: 1.05rem;
+    border-left: 4px solid var(--cyan);
+  }
+  .principle-banner strong {
+    font-style: normal;
+    font-weight: 500;
+    color: var(--cyan);
+  }
+
+  /* ---------- SWIM LANES ---------- */
+  .swim-lanes {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    padding: 1.75rem;
+    overflow-x: auto;
+  }
+  .lane {
+    display: flex;
+    align-items: stretch;
+    margin-bottom: 0.6rem;
+    min-width: 1000px;
+  }
+  .lane:last-child { margin-bottom: 0; }
+  .lane-role {
+    flex: 0 0 170px;
+    color: white;
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 6px 0 0 6px;
+    position: relative;
+  }
+  .lane-role::after {
+    content: "";
+    position: absolute;
+    right: -16px; top: 0;
+    width: 0; height: 0;
+    border-top: 50px solid transparent;
+    border-bottom: 50px solid transparent;
+    border-left: 16px solid currentColor;
+  }
+  .lane-role .role-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+    color: white;
+  }
+  .lane-role .role-sub {
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+  .lane-trader   { background: var(--cyan-d); color: var(--cyan-d); }
+  .lane-avp      { background: var(--navy-2); color: var(--navy-2); }
+  .lane-ctl      { background: var(--amber-d); color: var(--amber-d); }
+  .lane-vp       { background: var(--teal);    color: var(--teal); }
+
+  .lane-stages {
+    display: flex;
+    gap: 0.45rem;
+    padding-left: 1.25rem;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+  .stage {
+    color: white;
+    padding: 0.55rem 0.6rem;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-align: center;
+    min-width: 92px;
+    line-height: 1.2;
+  }
+  .stage--auto { background: var(--cyan); }
+  .stage--exc  { background: var(--amber); }
+  .stage--rev  { background: var(--navy-2); }
+  .stage--ctl  { background: var(--amber-d); }
+  .stage--sgn  { background: var(--teal); }
+  .arrow-thin {
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .eod-pill {
+    background: var(--ink);
+    color: white;
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .complete-pill {
+    background: var(--teal);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .swim-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px dashed var(--line);
+    font-size: 0.82rem;
+    color: var(--body);
+  }
+  .swim-legend > span { display: flex; align-items: center; gap: 0.4rem; }
+  .swim-legend i {
+    width: 12px; height: 12px; border-radius: 2px;
+    display: inline-block;
+  }
+
+  /* ---------- 3-COLUMN ---------- */
+  .three-col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .lev-card {
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .lev-card .lev-head {
+    padding: 1.25rem 1.5rem;
+    color: var(--navy);
+  }
+  .lev-card .lev-head h3 {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    margin-bottom: 0.2rem;
+  }
+  .lev-card .lev-head .lev-sub {
+    font-size: 0.78rem;
+    opacity: 0.75;
+  }
+  .lev-card.cyan .lev-head { background: var(--cyan); color: var(--navy); }
+  .lev-card.cyan .lev-head h3 { color: var(--navy); }
+  .lev-card.amber .lev-head { background: var(--amber); color: var(--navy); }
+  .lev-card.amber .lev-head h3 { color: var(--navy); }
+  .lev-card.red .lev-head { background: var(--red); color: white; }
+  .lev-card.red .lev-head h3 { color: white; }
+  .lev-card.red .lev-head .lev-sub { color: rgba(255,255,255,0.85); }
+
+  .lev-list {
+    list-style: none;
+    padding: 1.25rem 1.5rem;
+  }
+  .lev-list li {
+    padding: 0.45rem 0 0.45rem 1.4rem;
+    position: relative;
+    font-size: 0.92rem;
+    color: var(--body);
+    border-bottom: 1px solid var(--line);
+  }
+  .lev-list li:last-child { border-bottom: none; }
+  .lev-list li::before {
+    content: "■";
+    position: absolute;
+    left: 0;
+    color: var(--cyan-d);
+    font-size: 0.6rem;
+    top: 0.85rem;
+  }
+
+  /* ---------- ARCHITECTURE ---------- */
+  .arch {
+    border: 1px dashed var(--muted-2);
+    border-radius: 12px;
+    padding: 2rem;
+    background: var(--bg-card);
+    position: relative;
+  }
+  .arch-label {
+    position: absolute;
+    top: -0.7rem; left: 1.5rem;
+    background: var(--paper);
+    padding: 0 0.6rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+    letter-spacing: 0.05em;
+  }
+  .arch-layer {
+    margin-bottom: 0.75rem;
+    text-align: center;
+  }
+  .arch-bar {
+    background: var(--navy);
+    color: white;
+    padding: 0.85rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.92rem;
+  }
+  .arch-bar.orchestrator {
+    background: var(--cyan-d);
+    width: 60%;
+    margin: 0 auto;
+  }
+  .arch-bar.tools {
+    background: var(--teal);
+  }
+  .arch-arrow {
+    color: var(--muted);
+    margin: 0.4rem 0;
+    font-size: 1.1rem;
+    display: block;
+  }
+  .arch-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+  }
+  .arch-row.systems { grid-template-columns: repeat(5, 1fr); }
+  .arch-cell {
+    background: var(--cyan);
+    color: white;
+    padding: 0.65rem 0.5rem;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .arch-cell .ac-name { font-weight: 600; font-size: 0.85rem; display: block; }
+  .arch-cell .ac-sub  { font-size: 0.7rem; opacity: 0.85; display: block; margin-top: 0.15rem; }
+  .arch-cell.system {
+    background: var(--bg-soft);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .arch-cell.system .ac-sub { color: var(--muted); opacity: 1; }
+  .arch-foot {
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 0.85rem;
+    margin-top: 1rem;
+  }
+
+  /* ---------- AGENT TABLE ---------- */
+  .agent-list {
+    background: var(--bg-card);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .agent-row {
+    display: grid;
+    grid-template-columns: 60px 200px 1fr;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.2s;
+  }
+  .agent-row:last-child { border-bottom: none; }
+  .agent-row:hover { background: var(--bg-soft); }
+  .agent-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .agent-num.navy { background: var(--navy); }
+  .agent-num.cyan { background: var(--cyan); }
+  .agent-num.amber { background: var(--amber); }
+  .agent-num.teal { background: var(--teal); }
+  .agent-name { font-weight: 600; color: var(--ink); font-size: 0.95rem; }
+  .agent-line { color: var(--body); font-size: 0.92rem; }
+
+  /* ---------- HITL FLOW ---------- */
+  .hitl-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding: 1rem 0;
+    margin-bottom: 2rem;
+  }
+  .hitl-stage, .hitl-gate {
+    flex-shrink: 0;
+  }
+  .hitl-stage {
+    background: var(--cyan);
+    color: white;
+    padding: 1.25rem 1rem;
+    border-radius: 10px;
+    width: 175px;
+    text-align: center;
+  }
+  .hitl-stage h4 {
+    font-family: var(--serif);
+    color: white;
+    font-size: 1.15rem;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+  }
+  .hitl-stage .role {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.85);
+  }
+  .hitl-gate {
+    width: 70px;
+    align-self: center;
+    text-align: center;
+    margin: 0 0.4rem;
+  }
+  .hitl-gate .gate-icon {
+    background: var(--amber);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    margin: 0 auto 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.78rem;
+  }
+  .hitl-gate .gate-label {
+    font-size: 0.7rem;
+    color: var(--amber-d);
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .hitl-principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+  .hitl-card {
+    background: var(--bg-card);
+    border-left: 4px solid var(--amber-d);
+    padding: 1.25rem 1.5rem;
+    border-radius: 0 8px 8px 0;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .hitl-card h4 {
+    font-family: var(--serif);
+    font-size: 1.15rem;
+    color: var(--ink);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+  .hitl-card p {
+    font-size: 0.9rem;
+    color: var(--body);
+  }
+
+  /* ---------- TIMELINE BAR ---------- */
+  .cycle-bar {
+    display: flex;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0.5rem 0 1.5rem;
+    box-shadow: 0 2px 8px rgba(10, 37, 64, 0.08);
+  }
+  .cycle-seg {
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.2;
+    padding: 0 0.4rem;
+    text-align: center;
+  }
+  .cycle-seg .cs-time {
+    font-size: 0.7rem;
+    opacity: 0.85;
+    margin-top: 2px;
+  }
+  .cycle-label {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .cycle-label strong {
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .cycle-label.after strong {
+    color: var(--cyan-d);
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.75rem;
+  }
+  .stat-card .stat-num {
+    font-family: var(--serif);
+    font-size: 4rem;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+  }
+  .stat-card .stat-num.cyan { color: var(--cyan); }
+  .stat-card .stat-num.cyan-d { color: var(--cyan-d); }
+  .stat-card .stat-num.red { color: var(--red); }
+  .stat-card .stat-label {
+    color: var(--body);
+    font-size: 0.92rem;
+  }
+
+  /* ---------- CONSIDERATIONS GRID ---------- */
+  .consider-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .consider-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--cyan);
+    border-radius: 0 8px 8px 0;
+    padding: 1.25rem 1.5rem;
+  }
+  .consider-card h4 {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .consider-card p { font-size: 0.92rem; color: var(--body); }
+
+  /* ---------- QUESTIONS ---------- */
+  .q-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .q-item {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber-d);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .q-num {
+    background: var(--amber);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.82rem;
+    margin-top: 0.1rem;
+  }
+  .q-text { color: var(--body); font-size: 0.95rem; }
+
+  /* ---------- BUILD TIMELINE ---------- */
+  .build-timeline {
+    position: relative;
+    padding-top: 1rem;
+  }
+  .bt-line {
+    position: absolute;
+    top: 60px;
+    left: 5%;
+    right: 5%;
+    height: 3px;
+    background: var(--cyan);
+    z-index: 0;
+  }
+  .bt-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+  }
+  .bt-step { text-align: center; }
+  .bt-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--navy);
+    border: 4px solid var(--cyan);
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-size: 2.2rem;
+    font-weight: 500;
+    color: var(--cyan);
+  }
+  .bt-step h4 {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .bt-step p {
+    font-size: 0.82rem;
+    color: var(--body);
+    margin-bottom: 0.75rem;
+  }
+  .bt-week {
+    background: var(--bg-soft);
+    color: var(--cyan-d);
+    font-size: 0.72rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    display: inline-block;
+    border: 1px solid var(--line);
+    font-family: var(--mono);
+  }
+  .build-callout {
+    margin-top: 3rem;
+    background: var(--navy);
+    color: white;
+    padding: 1.25rem 2rem;
+    border-radius: 8px;
+    font-style: italic;
+    font-family: var(--serif);
+    font-size: 1rem;
+    text-align: center;
+  }
+  .build-callout .x { color: var(--red); font-style: normal; font-weight: 600; margin-right: 0.4rem; }
+
+  /* ---------- FOOTER ---------- */
+  footer {
+    background: var(--navy);
+    color: var(--muted-2);
+    padding: 4rem 2rem;
+  }
+  .footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+  footer h3 {
+    color: var(--cyan);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 1.25rem;
+    font-family: var(--sans);
+    font-weight: 600;
+  }
+  footer ul { list-style: none; }
+  footer li {
+    padding: 0.4rem 0 0.4rem 1.2rem;
+    position: relative;
+    color: #C9D6E2;
+    font-size: 0.92rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  footer li::before {
+    content: "■";
+    position: absolute;
+    left: 0;
+    color: var(--cyan);
+    font-size: 0.55rem;
+    top: 0.85rem;
+  }
+  .footer-banner {
+    max-width: 1100px;
+    margin: 3rem auto 0;
+    background: var(--cyan);
+    color: var(--navy);
+    padding: 1.25rem;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .footer-meta {
+    max-width: 1100px;
+    margin: 3rem auto 0;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    color: #6B7C8E;
+    font-size: 0.82rem;
+    font-family: var(--mono);
+  }
+
+  /* ---------- ANIMATIONS ---------- */
+  @media (prefers-reduced-motion: no-preference) {
+    section { animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 900px) {
+    .pills, .goal-grid, .three-col, .hitl-principles, .stat-grid, .consider-grid {
+      grid-template-columns: 1fr;
+    }
+    .bt-grid { grid-template-columns: repeat(2, 1fr); }
+    .bt-line { display: none; }
+    .footer-inner { grid-template-columns: 1fr; }
+    .arch-row { grid-template-columns: repeat(3, 1fr); }
+    .arch-row.systems { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Anthropic discussion prep · Internal</div>
+    <h1>P&amp;L workflow <em>→</em> agent architecture</h1>
+    <p class="lede">Human-in-the-loop design for fast-track, optimized, on-time P&amp;L delivery — converting today's controller workflow into an orchestrator + specialist agent pattern.</p>
+    <div class="pills">
+      <div class="pill">
+        <div class="label">Pilot scope</div>
+        <div class="value">3 P&amp;Ls</div>
+      </div>
+      <div class="pill">
+        <div class="label">Approach</div>
+        <div class="value">Agents + humans at toll gates</div>
+      </div>
+      <div class="pill">
+        <div class="label">North star</div>
+        <div class="value">Faster cycle, same controls</div>
+      </div>
+    </div>
+    <div class="meta">Praveen Kumar Nandyala · Finance Technology Architecture · May 2026</div>
+  </div>
+</header>
+
+<!-- ============ §1 GOAL ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 01 — Goal</div>
+      <h2>Convert today's P&amp;L workflow into an agent-driven flow that compresses cycle time <em>without weakening controls</em>.</h2>
+      <p class="section-sub">Three goals, all achievable simultaneously if the agent layer is designed around behaviours rather than tools, and humans stay accountable at every toll gate.</p>
+    </div>
+
+    <div class="goal-grid">
+      <div class="goal-card">
+        <div class="goal-icon">→</div>
+        <h3>Fast-track</h3>
+        <p>Agents run rule-based stages without queueing. Trader-lane reconciles, AVP-lane adjusts and finalizes — in parallel, not in series.</p>
+      </div>
+      <div class="goal-card">
+        <div class="goal-icon">✓</div>
+        <h3>Optimize</h3>
+        <p>Anomaly triage, P&amp;L explain, and commentary draft auto-generate. Controllers review exceptions instead of producing them.</p>
+      </div>
+      <div class="goal-card">
+        <div class="goal-icon">◷</div>
+        <h3>On-time</h3>
+        <p>Predictable EOD delivery. Schedulers replaced by event-driven agents that respond to book-open events from MOTIF in real time.</p>
+      </div>
+    </div>
+
+    <div class="principle-banner">
+      <strong>Peter Warlock principle —</strong> if you can't describe an agent in one sentence, it is too complex.
+    </div>
+  </div>
+</section>
+
+<!-- ============ §2 CURRENT STATE ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 02 — Current state</div>
+      <h2>How the Daily P&amp;L runs today</h2>
+      <p class="section-sub">Four roles, end-of-day toll gates, mostly sequential. Reproduced from the existing user-journey diagram.</p>
+    </div>
+
+    <div class="swim-lanes">
+      <!-- Trader -->
+      <div class="lane">
+        <div class="lane-role lane-trader">
+          <div class="role-name">Individual Contributor</div>
+          <div class="role-sub">(Trader)</div>
+        </div>
+        <div class="lane-stages">
+          <div class="stage stage--auto">P&amp;L</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--auto">Execute Agreement</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--auto">Run Scenario Alloc</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--auto">Reconcile Flow</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--exc">P&amp;L Explain Brokers</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--exc">Daily PnL Balance</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--exc">Hold in Ctrl Expiries</div>
+          <div class="eod-pill">EOD</div>
+        </div>
+      </div>
+
+      <!-- AVP -->
+      <div class="lane">
+        <div class="lane-role lane-avp">
+          <div class="role-name">Review Contributor</div>
+          <div class="role-sub">(AVP)</div>
+        </div>
+        <div class="lane-stages">
+          <div class="stage stage--rev">Inter Account</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--rev">Flow</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--rev">Adjustments</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--rev">P&amp;L Expenses</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--rev">Finalize Control</div>
+          <div class="eod-pill">EOD</div>
+        </div>
+      </div>
+
+      <!-- Controller -->
+      <div class="lane">
+        <div class="lane-role lane-ctl">
+          <div class="role-name">Process</div>
+          <div class="role-sub">(Controller)</div>
+        </div>
+        <div class="lane-stages">
+          <div class="stage stage--ctl">EOD Submit</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--ctl">Exception Flow</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--ctl">Time Bal Approval</div>
+          <div class="eod-pill">EOD</div>
+        </div>
+      </div>
+
+      <!-- VP -->
+      <div class="lane">
+        <div class="lane-role lane-vp">
+          <div class="role-name">Sign-off</div>
+          <div class="role-sub">(VP)</div>
+        </div>
+        <div class="lane-stages">
+          <div class="stage stage--sgn">VP Sign-off</div>
+          <span class="arrow-thin">→</span>
+          <div class="stage stage--sgn">Unrealization Report</div>
+          <div class="complete-pill">Workflow Complete</div>
+        </div>
+      </div>
+
+      <div class="swim-legend">
+        <span><i style="background:var(--cyan)"></i>Rule-based / automation-capable</span>
+        <span><i style="background:var(--amber)"></i>Exception-notification</span>
+        <span><i style="background:var(--navy-2)"></i>Review / reconciliation</span>
+        <span><i style="background:var(--amber-d)"></i>Controller scheduling</span>
+        <span><i style="background:var(--teal)"></i>Sign-off</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §3 LEVERAGE ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 03 — Leverage</div>
+      <h2>Where automation has the most leverage</h2>
+      <p class="section-sub">Same workflow, classified by what an agent can confidently own vs. where humans must stay in the loop.</p>
+    </div>
+
+    <div class="three-col">
+      <div class="lev-card cyan">
+        <div class="lev-head">
+          <h3>Agent owns</h3>
+          <div class="lev-sub">Read-only and rule-based</div>
+        </div>
+        <ul class="lev-list">
+          <li>Book monitoring (MOTIF events)</li>
+          <li>Execute Agreement</li>
+          <li>Run Scenario Allocation</li>
+          <li>Reconcile Flow</li>
+          <li>Inter-account / Flow checks</li>
+          <li>Lineage queries (GL → trade)</li>
+          <li>Commentary draft</li>
+        </ul>
+      </div>
+      <div class="lev-card amber">
+        <div class="lev-head">
+          <h3>Agent proposes</h3>
+          <div class="lev-sub">Human approves</div>
+        </div>
+        <ul class="lev-list">
+          <li>Adjustment journals</li>
+          <li>Exception classification &amp; routing</li>
+          <li>Reclassification (FI Credit)</li>
+          <li>P&amp;L Expenses tie-out</li>
+          <li>Finalize Control checklist</li>
+          <li>Anomaly triage above threshold</li>
+        </ul>
+      </div>
+      <div class="lev-card red">
+        <div class="lev-head">
+          <h3>Human only</h3>
+          <div class="lev-sub">Toll gates stay manual</div>
+        </div>
+        <ul class="lev-list">
+          <li>GL posting of journals</li>
+          <li>Time PnL Balance Approval</li>
+          <li>VP Sign-off</li>
+          <li>Material variance override</li>
+          <li>Unrealization Reporting attestation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §4 ARCHITECTURE ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 04 — Target architecture</div>
+      <h2>Supervisor + specialists, with a tool layer between agents and source systems</h2>
+      <p class="section-sub">All wrapped in a control plane handling entitlement, audit, model risk, and four-eyes enforcement.</p>
+    </div>
+
+    <div class="arch">
+      <div class="arch-label">Control plane · entitlement · audit · model risk · four-eyes</div>
+
+      <div class="arch-layer">
+        <div class="arch-bar">Controller cockpit · ask · review · sign off · override</div>
+      </div>
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer">
+        <div class="arch-bar orchestrator">Orchestrator agent · routes work, owns end-to-end state</div>
+      </div>
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-row">
+        <div class="arch-cell"><span class="ac-name">Monitoring</span><span class="ac-sub">Book ready</span></div>
+        <div class="arch-cell"><span class="ac-name">FOBO</span><span class="ac-sub">FO ↔ BO recon</span></div>
+        <div class="arch-cell"><span class="ac-name">Adjustment</span><span class="ac-sub">Drafts journals</span></div>
+        <div class="arch-cell"><span class="ac-name">Exception</span><span class="ac-sub">Classify, route</span></div>
+        <div class="arch-cell"><span class="ac-name">P&amp;L Prep</span><span class="ac-sub">Assemble desk</span></div>
+        <div class="arch-cell"><span class="ac-name">Commentary</span><span class="ac-sub">Draft narrative</span></div>
+      </div>
+
+      <div class="arch-arrow">↓</div>
+      <div class="arch-layer">
+        <div class="arch-bar tools">MCP tool layer · deterministic reads · controlled writes · no autonomous posts</div>
+      </div>
+      <div class="arch-arrow">↓</div>
+
+      <div class="arch-row systems">
+        <div class="arch-cell system"><span class="ac-name">MOTIF</span><span class="ac-sub">Book events</span></div>
+        <div class="arch-cell system"><span class="ac-name">BOFC / GL</span><span class="ac-sub">Sub-ledger</span></div>
+        <div class="arch-cell system"><span class="ac-name">P&amp;L Engine</span><span class="ac-sub">Mark to market</span></div>
+        <div class="arch-cell system"><span class="ac-name">Exception Hub</span><span class="ac-sub">Break records</span></div>
+        <div class="arch-cell system"><span class="ac-name">GMS</span><span class="ac-sub">Upload</span></div>
+      </div>
+
+      <div class="arch-foot">Agents propose · humans post · everything logged</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §5 AGENT INVENTORY ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 05 — Agent inventory</div>
+      <h2>One sentence each — per Peter's rule</h2>
+      <p class="section-sub">If it doesn't fit on one line, the agent is too complex and should be decomposed further.</p>
+    </div>
+
+    <div class="agent-list">
+      <div class="agent-row">
+        <div class="agent-num navy">1</div>
+        <div class="agent-name">Orchestrator</div>
+        <div class="agent-line">Routes work between specialists and owns end-to-end state per name PNL.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num cyan">2</div>
+        <div class="agent-name">Monitoring agent</div>
+        <div class="agent-line">Detects when books are ready in CFC and triggers downstream agents.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num cyan">3</div>
+        <div class="agent-name">FOBO agent</div>
+        <div class="agent-line">Runs front-office to back-office reconciliation and surfaces breaks.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num amber">4</div>
+        <div class="agent-name">Adjustment agent</div>
+        <div class="agent-line">Drafts adjustment journals with policy citation; never posts.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num amber">5</div>
+        <div class="agent-name">Exception agent</div>
+        <div class="agent-line">Classifies breaks, suggests resolution, routes to controller.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num cyan">6</div>
+        <div class="agent-name">P&amp;L Prep agent</div>
+        <div class="agent-line">Assembles desk-level P&amp;L and reconciles to manual baseline.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num cyan">7</div>
+        <div class="agent-name">Commentary agent</div>
+        <div class="agent-line">Drafts desk-head commentary in their voice from historical patterns.</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-num teal">8</div>
+        <div class="agent-name">Sign-off chase agent</div>
+        <div class="agent-line">Tracks attestation state, nudges laggards, escalates aging items.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §6 HITL ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 06 — Human-in-the-loop</div>
+      <h2>Where agents act, where humans stay</h2>
+      <p class="section-sub">Four toll gates between five agent stages. Each gate exposes the upstream agents' inputs, outputs, and tool calls so PC can drill back to root cause.</p>
+    </div>
+
+    <div class="hitl-flow">
+      <div class="hitl-stage">
+        <h4>Trigger</h4>
+        <div style="font-size:0.78rem; opacity:0.9;">Book event from MOTIF</div>
+        <div class="role" style="margin-top:0.5rem; font-style:italic;">Monitoring agent</div>
+      </div>
+      <div class="hitl-gate">
+        <div class="gate-icon">PC</div>
+        <div class="gate-label">Drills into agent's recon</div>
+      </div>
+      <div class="hitl-stage">
+        <h4>Reconcile</h4>
+        <div style="font-size:0.78rem; opacity:0.9;">FOBO + flow + lineage</div>
+        <div class="role" style="margin-top:0.5rem; font-style:italic;">FOBO + Lineage</div>
+      </div>
+      <div class="hitl-gate">
+        <div class="gate-icon">PC</div>
+        <div class="gate-label">Posts journal</div>
+      </div>
+      <div class="hitl-stage">
+        <h4>Adjust</h4>
+        <div style="font-size:0.78rem; opacity:0.9;">Draft journals</div>
+        <div class="role" style="margin-top:0.5rem; font-style:italic;">Adjustment agent</div>
+      </div>
+      <div class="hitl-gate">
+        <div class="gate-icon">AVP</div>
+        <div class="gate-label">Reviews variance commentary</div>
+      </div>
+      <div class="hitl-stage">
+        <h4>Prepare</h4>
+        <div style="font-size:0.78rem; opacity:0.9;">Assemble P&amp;L</div>
+        <div class="role" style="margin-top:0.5rem; font-style:italic;">Prep + Commentary</div>
+      </div>
+      <div class="hitl-gate">
+        <div class="gate-icon">VP</div>
+        <div class="gate-label">Signs off</div>
+      </div>
+      <div class="hitl-stage">
+        <h4>Deliver</h4>
+        <div style="font-size:0.78rem; opacity:0.9;">To front office</div>
+        <div class="role" style="margin-top:0.5rem; font-style:italic;">Sign-off chase</div>
+      </div>
+    </div>
+
+    <div class="hitl-principles">
+      <div class="hitl-card">
+        <h4>Propose, not post</h4>
+        <p>Agents draft adjustments and reclassifications. Humans authorize the GL write. No exceptions, no overrides, no "trusted" agents.</p>
+      </div>
+      <div class="hitl-card">
+        <h4>Drill-back at every gate</h4>
+        <p>PC clicks any number → sees which agent produced it, with which prompt, calling which tools, returning what data. Full provenance.</p>
+      </div>
+      <div class="hitl-card">
+        <h4>Risk-based oversight</h4>
+        <p>Above-threshold variance auto-routes to senior controller for review; sub-threshold auto-resolves with full audit trail.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §7 CYCLE TIME ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 07 — Cycle time</div>
+      <h2>Before &amp; after — for a single name P&amp;L</h2>
+      <p class="section-sub">Indicative compression. Numbers are illustrative — to be calibrated against current PNL workflow telemetry before commitment.</p>
+    </div>
+
+    <div class="cycle-label">
+      <span>Today</span>
+      <strong>≈ 10 hours from book-open to VP sign-off</strong>
+    </div>
+    <div class="cycle-bar">
+      <div class="cycle-seg" style="background:var(--cyan-d); flex:2.0">Trader auto<span class="cs-time">2.0h</span></div>
+      <div class="cycle-seg" style="background:var(--amber); flex:1.5">Trader exc<span class="cs-time">1.5h</span></div>
+      <div class="cycle-seg" style="background:var(--navy-2); flex:2.5">AVP review<span class="cs-time">2.5h</span></div>
+      <div class="cycle-seg" style="background:var(--amber-d); flex:2.0">Controller<span class="cs-time">2.0h</span></div>
+      <div class="cycle-seg" style="background:var(--teal); flex:1.0">VP<span class="cs-time">1.0h</span></div>
+      <div class="cycle-seg" style="background:var(--muted); flex:1.0">Wait<span class="cs-time">1.0h</span></div>
+    </div>
+
+    <div class="cycle-label after">
+      <span>With agents</span>
+      <strong>≈ 4 hours — agents collapse parallel rule-based work, humans focus on toll gates</strong>
+    </div>
+    <div class="cycle-bar">
+      <div class="cycle-seg" style="background:var(--cyan); flex:1.0">Agents<span class="cs-time">1.0h</span></div>
+      <div class="cycle-seg" style="background:var(--amber); flex:0.5">PC gate 1<span class="cs-time">0.5h</span></div>
+      <div class="cycle-seg" style="background:var(--cyan); flex:0.5">Agents<span class="cs-time">0.5h</span></div>
+      <div class="cycle-seg" style="background:var(--amber); flex:0.75">PC posts<span class="cs-time">0.75h</span></div>
+      <div class="cycle-seg" style="background:var(--cyan); flex:0.25">Assembly<span class="cs-time">0.25h</span></div>
+      <div class="cycle-seg" style="background:var(--teal); flex:1.0">VP sign-off<span class="cs-time">1.0h</span></div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-num cyan">60<span style="font-size:2.5rem;">%</span></div>
+        <div class="stat-label">Cycle time reduction</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num cyan-d">3×</div>
+        <div class="stat-label">More parallelism in trader lane</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num red">0</div>
+        <div class="stat-label">Agent autonomous GL posts</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §8 CONSIDERATIONS ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 08 — Considerations</div>
+      <h2>Key constraints for design</h2>
+      <p class="section-sub">What Anthropic's design must account for, given the Barclays operating context.</p>
+    </div>
+
+    <div class="consider-grid">
+      <div class="consider-card">
+        <h4>MRM compliance</h4>
+        <p>Any agent influencing a number on the GL or regulatory report falls under SR 11-7 and PRA SS1/23. Validation pack, drift monitoring, override-rate tracking are required from day one.</p>
+      </div>
+      <div class="consider-card">
+        <h4>Determinism for numbers</h4>
+        <p>LLMs reason; deterministic tools compute. Same inputs must produce same numbers at T+1. Snapshot the prompt and tool outputs as the audit record; the LLM narrative sits on top of the numbers, not in their place.</p>
+      </div>
+      <div class="consider-card">
+        <h4>Workflow variation</h4>
+        <p>FI Credit asset class had FOBO removed in June '25; reclassification still runs in workflow. The agent layer must accommodate variants without forking the codebase.</p>
+      </div>
+      <div class="consider-card">
+        <h4>Master book vs name PNL</h4>
+        <p>Granularity drives orchestration: ~200 name PNLs to monitor. One orchestrator instance per name PNL with shared toolset and isolated state.</p>
+      </div>
+      <div class="consider-card">
+        <h4>Audit trail</h4>
+        <p>Every prompt, tool call, and agent decision goes to immutable storage with hash-chain anchoring. WORM-grade retrievability for MRM and Internal Audit.</p>
+      </div>
+      <div class="consider-card">
+        <h4>Reconciliation to baseline</h4>
+        <p>Agent-produced P&amp;L must reconcile to the manual baseline before any cut-over. Run in shadow mode for a full quarter alongside the existing process.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §9 QUESTIONS ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 09 — Open questions</div>
+      <h2>What we want Anthropic's view on</h2>
+      <p class="section-sub">Before we lock the design.</p>
+    </div>
+
+    <div class="q-list">
+      <div class="q-item">
+        <div class="q-num">1</div>
+        <div class="q-text">How do we validate the agent layer for MRM (SR 11-7 / PRA equivalent) when LLMs introduce non-determinism?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-num">2</div>
+        <div class="q-text">Risk-based human oversight: does PC review every step or only above threshold? What does the regulator expect?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-num">3</div>
+        <div class="q-text">Fan-out pattern for ~200 name PNLs — one orchestrator instance per PNL, or shared with state isolation?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-num">4</div>
+        <div class="q-text">Failure modes: when an agent errors mid-flow, what is the rollback / human handoff pattern?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-num">5</div>
+        <div class="q-text">Learning loop: how do we capture controller corrections to improve agents over time without retraining?</div>
+      </div>
+      <div class="q-item">
+        <div class="q-num">6</div>
+        <div class="q-text">Recommended build sequence: which agent ships first, and which is the last to be granted any write capability?</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ §10 BUILD SEQUENCE ============ -->
+<section>
+  <div class="container">
+    <div class="section-head">
+      <div class="section-num">§ 10 — Build sequence</div>
+      <h2>Earn the right to write</h2>
+      <p class="section-sub">A trust ladder: every step earns the next. No autonomous GL posting, ever.</p>
+    </div>
+
+    <div class="build-timeline">
+      <div class="bt-line"></div>
+      <div class="bt-grid">
+        <div class="bt-step">
+          <div class="bt-circle">1</div>
+          <h4>Read-only Q&amp;A</h4>
+          <p>Lineage, P&amp;L, breaks. Zero write capability. Builds controller trust + audit corpus.</p>
+          <span class="bt-week">Week 1–3</span>
+        </div>
+        <div class="bt-step">
+          <div class="bt-circle">2</div>
+          <h4>Commentary draft</h4>
+          <p>Variance commentary draft. Controller edits and signs. 30–60 min/desk/day saved.</p>
+          <span class="bt-week">Week 4–6</span>
+        </div>
+        <div class="bt-step">
+          <div class="bt-circle">3</div>
+          <h4>Exception triage</h4>
+          <p>Agent classifies and routes to Exception Hub. Human resolves. Cycle-time win.</p>
+          <span class="bt-week">Week 7–10</span>
+        </div>
+        <div class="bt-step">
+          <div class="bt-circle">4</div>
+          <h4>Adjustment proposal</h4>
+          <p>Agent drafts journal with policy citation. Human posts. Four-eyes enforced.</p>
+          <span class="bt-week">Week 11–14</span>
+        </div>
+        <div class="bt-step">
+          <div class="bt-circle">5</div>
+          <h4>Auto-resolve micro</h4>
+          <p>Sub-threshold breaks auto-resolve via controlled tool. First true agent write.</p>
+          <span class="bt-week">Week 15–18</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="build-callout">
+      <span class="x">×</span>There is no Step 6 (autonomous posting). The marginal economic value is small relative to the regulatory exposure.
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER / NEXT STEPS ============ -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <h3>From Anthropic</h3>
+      <ul>
+        <li>Reference architecture for orchestrator + specialist pattern in regulated finance</li>
+        <li>Toll-gate design pattern for human-in-the-loop</li>
+        <li>Multi-PNL orchestration pattern (~200 name PNLs)</li>
+        <li>MRM-friendly audit model</li>
+        <li>Recommended build sequence and risk gates</li>
+      </ul>
+    </div>
+    <div>
+      <h3>From us</h3>
+      <ul>
+        <li>Workflow JSON for the 3 pilot P&amp;Ls (stage names, toll gates)</li>
+        <li>Volumetrics: cycle times, exception rates, manual touch hours</li>
+        <li>MRM contact and validation requirements</li>
+        <li>Existing system inventory: MOTIF, BOFC, GMS, Exception Hub</li>
+        <li>Controller cohort for shadow-mode pilot</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-banner">
+    Target outcome from Monday: aligned principles, agreed pilot scope, dated next session.
+  </div>
+
+  <div class="footer-meta">
+    P&amp;L Agent Architecture · Anthropic Discussion Prep · Internal · Praveen Kumar Nandyala · May 2026
+  </div>
+</footer>
+
+</body>
+</html>
