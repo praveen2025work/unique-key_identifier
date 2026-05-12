@@ -1,0 +1,17 @@
+SELECT owner, ROUND(SUM(bytes)/1024/1024, 2) AS size_mb
+FROM dba_segments
+WHERE owner = 'YOUR_SCHEMA'
+GROUP BY owner;
+
+
+SELECT segment_type, segment_name,
+       ROUND(bytes/1024/1024, 2) AS size_mb
+FROM dba_segments
+WHERE owner = 'YOUR_SCHEMA'
+ORDER BY bytes DESC;
+
+SELECT tablespace_name,
+       ROUND(SUM(bytes)/1024/1024/1024, 2) AS size_gb
+FROM dba_segments
+WHERE owner = 'YOUR_SCHEMA'
+GROUP BY tablespace_name;
