@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TB-BB Exception Hub — DBA Ask v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #18201c; --paper: #faf7f2; --rule: #d8d2c6; --muted: #5a625b;
+    --accent: #b8651a; --accent-soft: #f3e7d6; --teal: #2f4f4a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 760px; margin: 0 auto; padding: 40px 36px 56px; }
+
+  .mast { border-top: 3px solid var(--ink); padding-top: 16px; margin-bottom: 28px; }
+  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 28px; margin: 0 0 4px; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  .ask { background: var(--teal); color: #faf7f2; padding: 24px 28px; margin-bottom: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .ask .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.7; margin-bottom: 6px; }
+  .ask .value { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 500; line-height: 1.15; }
+  .ask .sub { font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: 0.8; margin-top: 4px; }
+
+  h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 17px; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+  h2 .num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent); margin-right: 8px; font-weight: 600; }
+
+  ul.spec { list-style: none; padding: 0; margin: 0; }
+  ul.spec li { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dotted var(--rule); font-size: 13.5px; }
+  ul.spec li:last-child { border-bottom: none; }
+  ul.spec li .k { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--muted); }
+  ul.spec li .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  code { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; background: var(--accent-soft); padding: 1px 5px; border-radius: 2px; }
+
+  .files { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 10px 0; }
+  .files div { background: var(--accent-soft); padding: 9px 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: center; line-height: 1.4; }
+
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; font-style: italic; }
+
+  footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--rule); font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--muted); letter-spacing: 0.08em; display: flex; justify-content: space-between; }
+
+  @media (max-width: 600px) {
+    .page { padding: 24px 18px; }
+    .ask { grid-template-columns: 1fr; gap: 16px; }
+    .files { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="mast">
+    <div class="eyebrow">DBA Reference · Oracle 19c · v2</div>
+    <h1>TB-BB Exception Hub <em>— DBA Ask</em></h1>
+    <div class="meta">5-year horizon · Java Spring Boot + Python services</div>
+  </div>
+
+  <div class="ask">
+    <div>
+      <div class="label">Storage (5-year)</div>
+      <div class="value">100 GB</div>
+      <div class="sub">tablespace · autoextend → 150 GB</div>
+    </div>
+    <div>
+      <div class="label">Connections (max)</div>
+      <div class="value">~120</div>
+      <div class="sub">Java 100 · Python 10 · admin 10</div>
+    </div>
+  </div>
+
+  <h2><span class="num">01</span>Storage</h2>
+  <ul class="spec">
+    <li><span class="k">Daily load (5 files combined)</span><span class="v">~35–50 MB</span></li>
+    <li><span class="k">Effective annual growth</span><span class="v">20 GB / year</span></li>
+    <li><span class="k">5-year projection</span><span class="v">~100 GB</span></li>
+    <li><span class="k">Initial tablespace</span><span class="v">100 GB</span></li>
+    <li><span class="k">Autoextend cap</span><span class="v">150 GB</span></li>
+  </ul>
+  <p class="note">Starting point of 20 GB/year accounts for audit, indexes, and workflow metadata growth. OLTP compression on <code>exception_main</code> and <code>*_AUD</code> recommended — may reduce effective growth by 30–40%.</p>
+
+  <h2><span class="num">02</span>Connections</h2>
+  <ul class="spec">
+    <li><span class="k">Java Spring Boot (HikariCP)</span><span class="v">10 min / 100 max</span></li>
+    <li><span class="k">Python (file processor, batch)</span><span class="v">max 10</span></li>
+    <li><span class="k">Admin / monitoring</span><span class="v">~10</span></li>
+    <li><span class="k">Total ceiling</span><span class="v">~120</span></li>
+  </ul>
+  <p class="note">Python pool runs once daily to load all 5 files. Not concurrent with peak Java traffic.</p>
+
+  <h2><span class="num">03</span>Oracle Parameters</h2>
+  <ul class="spec">
+    <li><span class="k">processes</span><span class="v">≥ 150</span></li>
+    <li><span class="k">sessions</span><span class="v">≥ 225</span></li>
+    <li><span class="k">open_cursors</span><span class="v">≥ 500</span></li>
+  </ul>
+
+  <h2><span class="num">04</span>Daily File Sources</h2>
+  <div class="files">
+    <div>Atlas<br/>Exceptions</div>
+    <div>RAMP<br/>Data</div>
+    <div>GMIS<br/>Data</div>
+    <div>Manual<br/>Exceptions</div>
+    <div>Reassignment<br/>Data</div>
+  </div>
+  <p class="note">All 5 files loaded once per day via Python batch. UPDATE-heavy workflow operations afterward generate minimal storage growth.</p>
+
+  <footer>
+    <span>TB-BB EXCEPTION HUB · DBA SIZING v2</span>
+    <span>FINANCE TECH ARCHITECTURE</span>
+  </footer>
+
+</div>
+</body>
+</html>
