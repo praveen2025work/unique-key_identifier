@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>P&L Workflow — Knowledge & Agentic Architecture Guide</title>
+<style>
+  :root {
+    --navy: #0D1B2A;
+    --blue: #1A3C5E;
+    --mid: #2B5F8C;
+    --accent: #1E90D6;
+    --teal: #0AABB4;
+    --amber: #E68A00;
+    --red: #C0392B;
+    --green: #1A7A4A;
+    --bg: #F4F6F9;
+    --card: #FFFFFF;
+    --border: #D8DDE6;
+    --text: #1A2433;
+    --muted: #5A6780;
+    --light: #EAF2FF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); font-size: 13.5px; line-height: 1.7; }
+
+  /* COVER */
+  .cover { background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 60%, var(--mid) 100%); color: #fff; padding: 60px 80px 50px; }
+  .cover-label { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 14px; }
+  .cover h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .cover-sub { font-size: 16px; color: rgba(255,255,255,0.7); margin-bottom: 32px; }
+  .cover-meta { display: flex; gap: 32px; flex-wrap: wrap; }
+  .cover-meta-item { font-size: 12px; color: rgba(255,255,255,0.55); }
+  .cover-meta-item strong { display: block; color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 2px; }
+
+  /* TOC */
+  .toc { background: var(--navy); color: #fff; padding: 32px 80px; }
+  .toc h2 { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 18px; }
+  .toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; }
+  .toc-item { font-size: 13px; color: rgba(255,255,255,0.7); display: flex; gap: 10px; align-items: baseline; }
+  .toc-num { font-size: 11px; color: var(--accent); font-weight: 600; min-width: 24px; }
+
+  /* MAIN */
+  .main { max-width: 1100px; margin: 0 auto; padding: 48px 40px; }
+
+  /* SECTION HEADER */
+  .section-header { display: flex; align-items: center; gap: 14px; margin: 48px 0 20px; padding-bottom: 12px; border-bottom: 2px solid var(--border); }
+  .section-num { width: 36px; height: 36px; background: var(--accent); color: #fff; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+  .section-header h2 { font-size: 20px; font-weight: 700; color: var(--navy); }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 12px 0; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin: 16px 0; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 10px 14px; font-size: 11.5px; letter-spacing: 0.04em; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #F8FAFC; }
+  td.mono { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; color: var(--mid); }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 12px; white-space: nowrap; }
+  .b-blue { background: #DBEAFE; color: #1D4ED8; }
+  .b-amber { background: #FEF3C7; color: #92400E; }
+  .b-green { background: #D1FAE5; color: #065F46; }
+  .b-red { background: #FEE2E2; color: #991B1B; }
+  .b-gray { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+  .b-teal { background: #CCFBF1; color: #0F766E; }
+  .b-navy { background: var(--navy); color: #fff; }
+
+  /* STATUS FLOW */
+  .status-flow { display: flex; align-items: center; flex-wrap: wrap; gap: 0; margin: 20px 0; }
+  .sf-item { background: var(--card); border: 1.5px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; min-width: 140px; flex: 1; }
+  .sf-item .sf-num { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sf-item .sf-label { font-size: 12.5px; font-weight: 600; color: var(--navy); margin: 3px 0; }
+  .sf-item .sf-sub { font-size: 11px; color: var(--muted); }
+  .sf-arrow { font-size: 18px; color: var(--accent); padding: 0 4px; }
+  .sf-active { border-color: var(--accent); background: var(--light); }
+
+  /* HIGHLIGHT BOXES */
+  .hbox { border-left: 4px solid var(--accent); background: var(--light); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 13px; }
+  .hbox.warn { border-color: var(--amber); background: #FFFBEB; }
+  .hbox.success { border-color: var(--green); background: #F0FDF4; }
+  .hbox.danger { border-color: var(--red); background: #FFF5F5; }
+  .hbox strong { color: var(--navy); }
+
+  /* EXTRACT CARDS */
+  .extract-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .ec-num { font-size: 10px; color: var(--accent); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .ec-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .ec-desc { font-size: 12px; color: var(--muted); line-height: 1.55; }
+  .ec-source { font-size: 11px; color: var(--accent); margin-top: 8px; font-weight: 600; }
+
+  /* REPORT CARDS */
+  .report-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 14px 0; }
+  .rc-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .rc-icon { width: 40px; height: 40px; background: var(--light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .rc-title { font-size: 15px; font-weight: 700; color: var(--navy); }
+  .rc-sub { font-size: 12px; color: var(--muted); }
+  .rc-rules { list-style: none; padding: 0; margin-top: 10px; }
+  .rc-rules li { font-size: 12.5px; color: var(--text); padding: 5px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; }
+  .rc-rules li:last-child { border-bottom: none; }
+  .rc-rules li::before { content: "→"; color: var(--accent); font-weight: 600; flex-shrink: 0; }
+  .indicator { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 6px; }
+  .ind-g { background: #D1FAE5; color: #065F46; }
+  .ind-a { background: #FEF3C7; color: #92400E; }
+  .ind-r { background: #FEE2E2; color: #991B1B; }
+
+  /* AGENTIC SECTION */
+  .agent-tier { background: var(--navy); color: #fff; border-radius: 12px; padding: 24px 28px; margin: 14px 0; }
+  .at-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  .at-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+  .at-desc { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 14px; }
+  .at-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 12px; font-size: 12px; color: rgba(255,255,255,0.85); }
+  .chip.accent { background: rgba(30,144,214,0.3); border-color: var(--accent); color: #fff; }
+
+  .mcp-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; }
+  .mcp-card .mcp-type { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .mcp-card .mcp-name { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .mcp-card .mcp-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tool-chip { background: #EEF4FF; border: 1px solid #C7D9FF; border-radius: 5px; padding: 3px 10px; font-size: 11px; color: #1D4ED8; font-family: 'Cascadia Code', Consolas, monospace; }
+
+  .skill-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; }
+  .skill-card .sk-type { font-size: 10px; font-weight: 700; color: var(--teal); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .skill-card .sk-name { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+  .skill-card .sk-desc { font-size: 12px; color: var(--muted); }
+
+  /* CODE BLOCKS */
+  pre { background: #0D1B2A; color: #E0E6F0; border-radius: 8px; padding: 18px 22px; margin: 14px 0; overflow-x: auto; font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; line-height: 1.6; }
+  .code-label { font-size: 11px; font-weight: 600; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; margin-top: 16px; }
+  code { background: #EEF4FF; color: var(--mid); padding: 2px 6px; border-radius: 4px; font-family: Consolas, monospace; font-size: 12px; }
+
+  /* ARCHITECTURE DIAGRAM */
+  .arch-diagram { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin: 20px 0; }
+  .arch-layer { margin: 12px 0; }
+  .arch-layer-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 8px; }
+  .arch-nodes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .arch-node { border-radius: 8px; padding: 10px 14px; font-size: 12.5px; font-weight: 600; }
+  .an-blue { background: #DBEAFE; color: #1D4ED8; border: 1px solid #BFDBFE; }
+  .an-teal { background: #CCFBF1; color: #0F766E; border: 1px solid #99F6E4; }
+  .an-amber { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
+  .an-navy { background: var(--navy); color: #fff; }
+  .an-green { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
+  .arch-arrows { text-align: center; color: var(--accent); font-size: 20px; margin: 4px 0; }
+
+  /* PROSE */
+  p { font-size: 13.5px; color: var(--muted); margin: 10px 0; line-height: 1.7; }
+  h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin: 20px 0 8px; }
+  h4 { font-size: 13.5px; font-weight: 700; color: var(--mid); margin: 14px 0 6px; }
+  .divider { height: 1px; background: var(--border); margin: 36px 0; }
+
+  /* FOOTER */
+  .footer { background: var(--navy); color: rgba(255,255,255,0.45); padding: 24px 80px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center; }
+  .footer strong { color: rgba(255,255,255,0.75); }
+
+  @media print {
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .section-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-label">Finance Technology · Barclays</div>
+  <h1>P&amp;L Workflow — Knowledge &amp; Agentic Architecture Guide</h1>
+  <p class="cover-sub">Named PNL Daily Process · FAS / Workflow · AOF Agent Design · MCP Integration</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><strong>Scope</strong>Named PNL · Master Books · MOTIF DB · GMIS</div>
+    <div class="cover-meta-item"><strong>Systems</strong>FAS · RAMP · Chorus · TDB · Finance Portal</div>
+    <div class="cover-meta-item"><strong>Agent Platform</strong>AOF (Agent One Finance) · AWS Bedrock</div>
+    <div class="cover-meta-item"><strong>Classification</strong>Internal · Finance Technology</div>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Contents</h2>
+  <div class="toc-grid">
+    <div class="toc-item"><span class="toc-num">01</span>Named PNL &amp; Book Mapping</div>
+    <div class="toc-item"><span class="toc-num">06</span>Trial Balance — Key Concepts</div>
+    <div class="toc-item"><span class="toc-num">02</span>Daily Workflow Stages</div>
+    <div class="toc-item"><span class="toc-num">07</span>Analytics &amp; Reporting Use Cases</div>
+    <div class="toc-item"><span class="toc-num">03</span>Master Book Status Lifecycle</div>
+    <div class="toc-item"><span class="toc-num">08</span>Agentic Architecture Overview</div>
+    <div class="toc-item"><span class="toc-num">04</span>Core Data Extracts</div>
+    <div class="toc-item"><span class="toc-num">09</span>MCP Servers Required</div>
+    <div class="toc-item"><span class="toc-num">05</span>PC User Edit Actions</div>
+    <div class="toc-item"><span class="toc-num">10</span>Skills, Plugins &amp; AOF Integration</div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ===================== SECTION 1 ===================== -->
+<div class="section-header">
+  <div class="section-num">1</div>
+  <h2>Named PNL &amp; Book Mapping</h2>
+</div>
+<p>A <strong>Named PNL</strong> is the fundamental unit of P&amp;L ownership. Product Controllers (PCs) own one or more Named PNLs. Each is a logical container for a set of Master Books tracked in RAMP and processed daily by FAS against the MOTIF database.</p>
+
+<table>
+  <tr><th>Concept</th><th>Definition</th><th>System</th></tr>
+  <tr><td><strong>Named PNL</strong></td><td>Logical grouping of Master Books for P&amp;L reporting. Created and owned by users. e.g. "DA Funding and Discarded"</td><td><span class="badge b-blue">RAMP</span></td></tr>
+  <tr><td><strong>Master Book</strong></td><td>A financial ledger in Chorus (front-office system). Multiple books map to one Named PNL. Feeds arrive from front-office via TDB.</td><td><span class="badge b-teal">Chorus / TDB</span></td></tr>
+  <tr><td><strong>RAMP</strong></td><td>Upstream configuration system. Users define Named PNL ↔ Master Book mapping here. Fully editable in production with immediate effect.</td><td><span class="badge b-blue">RAMP</span></td></tr>
+  <tr><td><strong>FAS</strong></td><td>The service/workflow layer. No separate database. All data reads/writes go through MOTIF DB. Calls RAMP at SOD to fetch book mapping, caches in FAS cache.</td><td><span class="badge b-gray">FAS / Workflow</span></td></tr>
+  <tr><td><strong>MOTIF DB</strong></td><td>Central back-office database. Source of truth for balances, book status, journal entries, adjustments. All FAS SQL queries target this.</td><td><span class="badge b-amber">MOTIF</span></td></tr>
+  <tr><td><strong>GMIS</strong></td><td>Group Management System. The downstream submission target. Validates FTD = Σ P-Lex categories on upload. Also provides GMIS Review reports for user validation pre-submission.</td><td><span class="badge b-navy">GMIS</span></td></tr>
+</table>
+
+<div class="hbox">
+  <strong>Example:</strong> Named PNL "DA Funding and Discarded" has 122 Master Books. FAS calls RAMP at SOD, fetches and caches the 122-book list. All subsequent daily processing runs against those 122 books until next SOD refresh.
+</div>
+
+<!-- ===================== SECTION 2 ===================== -->
+<div class="section-header">
+  <div class="section-num">2</div>
+  <h2>Daily Workflow Stages</h2>
+</div>
+<p>Every business day, the following stages execute sequentially for each Named PNL. FAS orchestrates the full pipeline; approximately 628 distinct extract artefacts are produced across all Named PNLs daily.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Stage 1 — SOD Role (Start of Day)</div>
+    <div class="card-body">FAS calls RAMP to fetch the current Master Book list for the Named PNL. Result is cached in FAS. SOD balance snapshots (FTD=0, MTD and YTD from yesterday's finalised values) are created for each book.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Stage 2 — Book Open for Correction</div>
+    <div class="card-body">FAS polls the MOTIF book status table every 5 minutes. Books must receive all feeds (Trades, Cash Flows, Valuations, Instruments, Starting Balance) from front-office systems via TDB before moving to "Open for Correction." Once all books open, stage completes and Rec Factory trigger file is created.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Stages 3–4 — Mandatory Functionalities</div>
+    <div class="card-body">~15 mandatory features that are enabled for all Named PNLs regardless of asset class or trading desk. These are system-level prerequisites that must pass before any PC activity is permitted for the day.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Stages 5–10+ — Extract Generation</div>
+    <div class="card-body">FAS fires SQL queries to MOTIF DB to generate the 8 core extract reports: FX Rates, FX Exposure, Adjustments, Book Completeness, Trial Balance, P-Lex, Consolidated Validation, GMIS Review. Reports are written to the user path for retrieval.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">PC Review &amp; Edit</div>
+    <div class="card-body">Product Controllers review extracts. They post adjustments (permanent or reversing) and/or reclassify P-Lex explain categories via Finance Portal or Workflow upload templates (Excel). Both actions write directly to MOTIF.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Tollgate 1 — Lock &amp; Submit to GMIS</div>
+    <div class="card-body">PC formalises P&amp;L and attests at Tollgate 1. FAS calls GMIS/MOTIF to lock all books (status → Assigned Locked for Edit). Final Trial Balance + P-Lex + GMIS Review are submitted. Tollgate 2 rejection returns books to "Undersigned" status.</div>
+  </div>
+</div>
+
+<!-- ===================== SECTION 3 ===================== -->
+<div class="section-header">
+  <div class="section-num">3</div>
+  <h2>Master Book Status Lifecycle</h2>
+</div>
+<p>Each Master Book progresses through distinct statuses on a given business day. Only "Open for Correction" permits PC edit activity.</p>
+
+<div class="status-flow">
+  <div class="sf-item">
+    <div class="sf-num">① Start</div>
+    <div class="sf-label">Open for Input</div>
+    <div class="sf-sub">Awaiting feeds from TDB</div>
+  </div>
+  <div class="sf-arrow">→</div>
+  <div class="sf-item sf-active">
+    <div class="sf-num">② Active</div>
+    <div class="sf-label">Open for Correction</div>
+    <div class="sf-sub">All feeds received · PC can edit</div>
+  </div>
+  <div class="sf-arrow">→</div>
+  <div class="sf-item">
+    <div class="sf-num">③ TG1 Pass</div>
+    <div class="sf-label">Assigned Locked</div>
+    <div class="sf-sub">Locked in MOTIF after TG1</div>
+  </div>
+  <div class="sf-arrow">→</div>
+  <div class="sf-item">
+    <div class="sf-num">④ TG2 Reject</div>
+    <div class="sf-label">Undersigned</div>
+    <div class="sf-sub">Intermediate rejection state</div>
+  </div>
+  <div class="sf-arrow">→</div>
+  <div class="sf-item">
+    <div class="sf-num">⑤ EOD</div>
+    <div class="sf-label">Closed (Daily End)</div>
+    <div class="sf-sub">FAS triggers EOD files</div>
+  </div>
+</div>
+
+<table>
+  <tr><th>Status</th><th>Trigger</th><th>PC Can Post?</th><th>Notes</th></tr>
+  <tr><td><span class="badge b-gray">Open for Input</span></td><td>SOD; feeds incomplete</td><td class="mono">No</td><td>Default start state. All 122 books start here each day.</td></tr>
+  <tr><td><span class="badge b-blue">Open for Correction</span></td><td>All feeds received from front-office</td><td class="mono">Yes</td><td>Rec Factory trigger file created. FAS polls every 5 min.</td></tr>
+  <tr><td><span class="badge b-amber">Assigned Locked for Edit</span></td><td>Tollgate 1 passed</td><td class="mono">No</td><td>FAS calls MOTIF/GMIS to lock books. Rollback requires TG2 reject.</td></tr>
+  <tr><td><span class="badge b-red">Undersigned</span></td><td>Tollgate 2 rejected</td><td class="mono">No</td><td>Intermediate state. Does not revert to Open for Correction.</td></tr>
+  <tr><td><span class="badge b-green">Closed (Daily End)</span></td><td>FAS EOD trigger</td><td class="mono">No</td><td>Final state for the business day. FTD carried to next day as SOD balance.</td></tr>
+</table>
+
+<div class="hbox warn">
+  <strong>Holiday Logic:</strong> On regional holidays (APAC, EMEA, Americas), books will not open. Holiday flag = "Yes", status stays "Closed", trigger files are not created. APAC books open earliest each day, followed by EMEA, then Americas. Feed delay detection must account for regional opening patterns.
+</div>
+
+<!-- ===================== SECTION 4 ===================== -->
+<div class="section-header">
+  <div class="section-num">4</div>
+  <h2>Core Data Extracts</h2>
+</div>
+<p>Eight major data artefacts are produced daily for each Named PNL. All data is sourced from MOTIF DB via FAS SQL queries. Extracts are deposited into the user path and optionally consumed by the GMIS submission flow.</p>
+
+<div class="grid-3">
+  <div class="extract-card">
+    <div class="ec-num">Extract 1</div>
+    <div class="ec-title">FX Rates</div>
+    <div class="ec-desc">Daily currency conversion rates sourced from the MOTIF FX rate table. Foundation data for FX Exposure calculation. One rate per currency pair per business day.</div>
+    <div class="ec-source">Source: MOTIF FX rates table</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 2</div>
+    <div class="ec-title">FX Exposure</div>
+    <div class="ec-desc">Today's P&amp;L balance converted to the reporting currency (e.g. 100 GBP → USD) using current FX rates. Currency config derives from Chorus accounting calendar per book — not a FAS-configured parameter.</div>
+    <div class="ec-source">Source: MOTIF balance + FX rates</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 3</div>
+    <div class="ec-title">Adjustments</div>
+    <div class="ec-desc">All active adjustments for today's business date across all mapped books. Separates permanent adjustments (no expiry) from reversing adjustments (auto-reverses after N days). Used as PC reference for reviewing outstanding entries.</div>
+    <div class="ec-source">Source: MOTIF adjustments table</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 4</div>
+    <div class="ec-title">Book Completeness</div>
+    <div class="ec-desc">Validates all Chorus books mapped to this Named PNL are present in the workflow. Orphaned books (in Chorus but not tracked) are flagged. A completeness check only — no financial values.</div>
+    <div class="ec-source">Source: RAMP mapping vs Chorus registry</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 5</div>
+    <div class="ec-title">Trial Balance</div>
+    <div class="ec-desc">Core financial report. Daily FTD / MTD / YTD balance per Master Book. Sourced from MOTIF's <em>Opening Balance</em> and <em>Journal Line Item</em> tables. Drillable by GL, SL Account, Cost Centre, or Chorus aggregation level.</div>
+    <div class="ec-source">Source: MOTIF JLI + Opening Balance tables</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 6</div>
+    <div class="ec-title">P-Lex (P&amp;L Explains)</div>
+    <div class="ec-desc">Explains every dollar of Trial Balance FTD across ~200 explain categories (Interest, Commission, Risk Amount, Brokerage, etc.). GMIS enforces: Σ P-Lex categories must equal FTD. Any residual is flagged as "Unexplained P&amp;L."</div>
+    <div class="ec-source">Source: MOTIF P-Lex assignment tables</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 7</div>
+    <div class="ec-title">Consolidated Validation</div>
+    <div class="ec-desc">A combined view of FX Exposure + P-Lex + Adjustments in one report. Also exposes the two edit vectors: manual adjustment posting and explain category reclassification. Provides the "full picture" before GMIS submission.</div>
+    <div class="ec-source">Source: Composite of Extracts 2, 3, 6</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extract 8</div>
+    <div class="ec-title">GMIS Review</div>
+    <div class="ec-desc">Submission-ready view combining Trial Balance + P-Lex. This is the file uploaded to GMIS. GMIS validates FTD = Σ explains before accepting. Residual unexplained P&amp;L amounts surface here and must be addressed before submission.</div>
+    <div class="ec-source">Source: Extracts 5 + 6; GMIS validation</div>
+  </div>
+  <div class="extract-card">
+    <div class="ec-num">Extra</div>
+    <div class="ec-title">Flash vs Formal</div>
+    <div class="ec-desc">Trader-published flash P&amp;L estimate vs PC-formalised FTD. Deviation &gt;250 GBP requires PC commentary per attestation policy. Data available in workflow output files for analytical comparison.</div>
+    <div class="ec-source">Source: Trader flash + Trial Balance FTD</div>
+  </div>
+</div>
+
+<!-- ===================== SECTION 5 ===================== -->
+<div class="section-header">
+  <div class="section-num">5</div>
+  <h2>PC User Edit Actions</h2>
+</div>
+<p>Product Controllers perform two types of edits during the daily workflow. Both write immediately to MOTIF DB and affect all subsequent extract outputs.</p>
+
+<table>
+  <tr><th>Action</th><th>Purpose</th><th>Types</th><th>Entry Point</th></tr>
+  <tr>
+    <td><strong>Manual Adjustment</strong></td>
+    <td>Post a delta (+/−) to a book's FTD balance when feed data doesn't match expected business value</td>
+    <td><span class="badge b-blue">Permanent</span> — retained indefinitely<br/><br/><span class="badge b-amber">Reversing</span> — auto-reverses after N days</td>
+    <td>Finance Portal (Adjustments screen) or Workflow upload template (Excel)</td>
+  </tr>
+  <tr>
+    <td><strong>Explain Reclassification</strong></td>
+    <td>Move balance between explain categories. E.g. $20 from "Interest Income" → "Trade Amendment." P-Lex total unchanged.</td>
+    <td>Always immediate; affects GMIS Review P-Lex balance</td>
+    <td>Finance Portal (Reclass screen) or Workflow upload template (Excel)</td>
+  </tr>
+</table>
+
+<div class="hbox warn">
+  <strong>Re-run Gap:</strong> There is currently no automated re-run of extracts after a user posts an adjustment or reclass. Users must manually regenerate the report, or use the GMIS Review screen to see the updated figure. Some PCs skip the re-run and validate directly from GMIS Review before Tollgate 1. This is a known functional gap flagged for future remediation.
+</div>
+
+<div class="hbox">
+  <strong>Attestation Threshold:</strong> Single adjustment value &gt;250 GBP requires an attestation entry in RAMP per policy. The Adjustments extract and Consolidated Validation report are the primary audit trail for this.
+</div>
+
+<!-- ===================== SECTION 6 ===================== -->
+<div class="section-header">
+  <div class="section-num">6</div>
+  <h2>Trial Balance — Key Concepts</h2>
+</div>
+
+<table>
+  <tr><th>Balance Type</th><th>Meaning</th><th>Behaviour at SOD</th></tr>
+  <tr><td><strong>FTD</strong><br/><span style="font-size:11px;color:#5A6780">For The Day</span></td><td>Intraday formal daily P&amp;L. Starts at 0 each day. Accumulates as feeds arrive from front-office throughout the day. User adjustments add/subtract from this.</td><td>Resets to 0. Previous day's FTD becomes SOD seed for MTD/YTD.</td></tr>
+  <tr><td><strong>MTD</strong><br/><span style="font-size:11px;color:#5A6780">Month To Date</span></td><td>Cumulative P&amp;L since month start. Updated every time a feed or adjustment hits FTD: MTD += FTD delta.</td><td>Carries forward from prior day's MTD. Resets to 0 at month start.</td></tr>
+  <tr><td><strong>YTD</strong><br/><span style="font-size:11px;color:#5A6780">Year To Date</span></td><td>Cumulative P&amp;L since year start. Same accumulation logic as MTD.</td><td>Carries forward from prior day's YTD. Resets to 0 at year start.</td></tr>
+  <tr><td><strong>SOD Balance</strong><br/><span style="font-size:11px;color:#5A6780">Start of Day</span></td><td>Yesterday's finalised FTD rolled to today as the opening balance. MTD and YTD also roll forward unchanged.</td><td>Created by FAS SOD role from yesterday's final MOTIF values.</td></tr>
+  <tr><td><strong>Feed / Seed</strong></td><td>Data arriving from front-office systems via TDB. 5 types: Trades, Cash Flows, Valuations, Instrument Details, Starting Balance. Stored in Journal Line Item table in MOTIF.</td><td>Feeds processed region-by-region: APAC first, then EMEA, then Americas.</td></tr>
+</table>
+
+<div class="hbox success">
+  <strong>GMIS Validation Rule:</strong> FTD (Trial Balance) must exactly equal Σ(all P-Lex explain categories) before GMIS will accept the submission. Any residual is "Unexplained P&amp;L" and must be cleared or acknowledged with commentary before Tollgate 1.
+</div>
+
+<!-- ===================== SECTION 7 ===================== -->
+<div class="section-header">
+  <div class="section-num">7</div>
+  <h2>Analytics &amp; Reporting Use Cases</h2>
+</div>
+<p>Five high-value reporting use cases derivable from existing workflow data. All data is already in MOTIF DB — this is a pure visualisation and aggregation layer requiring no new data capture.</p>
+
+<div class="report-card">
+  <div class="rc-header">
+    <div class="rc-icon">📊</div>
+    <div><div class="rc-title">Report 1 — Book OFC Timing Analysis (Feed Delay Detection)</div>
+    <div class="rc-sub">Source: Book OFC stage completion timestamps · MOTIF status table</div></div>
+  </div>
+  <p>Track the time each Named PNL achieves "Open for Correction" status each day. Deviations from the expected window signal front-office feed delays or MOTIF processing issues.</p>
+  <div style="margin: 10px 0;"><span class="indicator ind-g">✓ On time</span><span class="indicator ind-a">⚠ Minor delay</span><span class="indicator ind-r">✗ Feed delay</span></div>
+  <ul class="rc-rules">
+    <li>Record OFC timestamp per Named PNL per business day into a historical table</li>
+    <li>Flag days where OFC time exceeds a configurable threshold (e.g. &gt;2 hours past expected window)</li>
+    <li>Compare OFC times week-on-week and month-on-month to identify systemic patterns or degradation</li>
+    <li>Map delays to specific regions — APAC opens earliest, EMEA next, Americas last; regional delays are distinguishable</li>
+    <li>Distinguish holiday closures (holiday=Yes, expected) from genuine feed failures (holiday=No, books still closed late in day)</li>
+    <li>Generate weekly trend report: "Books for PNL X opened 47 min later this week vs prior week average"</li>
+  </ul>
+</div>
+
+<div class="report-card">
+  <div class="rc-header">
+    <div class="rc-icon">📉</div>
+    <div><div class="rc-title">Report 2 — Adjustment Volume &amp; Threshold Monitoring</div>
+    <div class="rc-sub">Source: Adjustments extract (Extract 3) · MOTIF adjustments table</div></div>
+  </div>
+  <p>Monitor adjustment count and total value per Named PNL over time. High volumes indicate poor feed quality or recurring business issues. Adjustments &gt;250 GBP individually trigger RAMP attestation policy.</p>
+  <ul class="rc-rules">
+    <li>Count of adjustments (permanent + reversing) per Named PNL per business day</li>
+    <li>Total GBP value of adjustments — flag when single adjustment exceeds 250 GBP attestation threshold</li>
+    <li>Week-on-week trend: is adjustment count increasing (feed quality degradation) or decreasing (upstream fix applied)?</li>
+    <li>Identify PNLs that chronically post high volumes — candidates for front-office data quality review</li>
+    <li>Separate reversing vs permanent breakdown to identify structural vs one-off corrections</li>
+  </ul>
+</div>
+
+<div class="report-card">
+  <div class="rc-header">
+    <div class="rc-icon">⚡</div>
+    <div><div class="rc-title">Report 3 — Flash vs Formal Deviation Tracker</div>
+    <div class="rc-sub">Source: Flash data (trader-published) vs finalised FTD from Trial Balance</div></div>
+  </div>
+  <p>Traders publish a flash P&amp;L estimate each day. The PC's finalised FTD should be within a configured tolerance of this flash value. Deviations beyond the threshold require documented commentary.</p>
+  <ul class="rc-rules">
+    <li>Compare flash FTD vs finalised FTD per Named PNL per day; calculate absolute and percentage deviation</li>
+    <li>Flag Named PNLs where deviation exceeds configurable threshold (e.g. &gt;250 GBP)</li>
+    <li>Surface commentary captured in workflow against each deviation for audit trail</li>
+    <li>Trend: is deviation pattern between trader and PC improving or worsening over time?</li>
+    <li>Identify books where flash is consistently inaccurate — suggests trader estimation methodology issues</li>
+  </ul>
+</div>
+
+<div class="report-card">
+  <div class="rc-header">
+    <div class="rc-icon">❓</div>
+    <div><div class="rc-title">Report 4 — Unexplained P&amp;L Monitor</div>
+    <div class="rc-sub">Source: GMIS Review extract (Extract 8) · FTD vs Σ P-Lex categories</div></div>
+  </div>
+  <p>Every dollar of FTD must be attributed to a P-Lex explain category. Residual unexplained amounts are a GMIS submission blocker and indicate incomplete P-Lex attribution.</p>
+  <ul class="rc-rules">
+    <li>Unexplained Amount = FTD − Σ(all explain categories) per Named PNL per day</li>
+    <li>Flag PNLs where unexplained amount exceeds a configurable per-PNL threshold (Finance to define, e.g. &gt;$50)</li>
+    <li>Trend: is unexplained balance shrinking during the day (user reclassing) or static (user not acting)?</li>
+    <li>Identify PNLs that chronically carry unexplained balances — signals P-Lex category mapping gaps in MOTIF config</li>
+    <li>Intraday notification: alert PC when unexplained amount exceeds threshold so they can reclass before EOD</li>
+  </ul>
+</div>
+
+<div class="report-card">
+  <div class="rc-header">
+    <div class="rc-icon">🚦</div>
+    <div><div class="rc-title">Report 5 — GMIS Submission Readiness Dashboard</div>
+    <div class="rc-sub">Source: All stages — OFC status, adjustments, P-Lex balance check, Tollgate 1 status</div></div>
+  </div>
+  <p>Single-pane view for PC, BTP, or manager showing which Named PNLs are submission-ready vs blocked and why. Aggregatable across multiple PNLs for team-level visibility.</p>
+  <ul class="rc-rules">
+    <li>Per Named PNL: Book OFC status · Adjustment count today · P-Lex balance check (FTD = Σ explains?) · Tollgate 1 status</li>
+    <li>RAG (Red/Amber/Green) indicator per PNL — Green = ready for submission, Amber = issues present, Red = blocked</li>
+    <li>Drill-down: which specific books within a PNL are still "Open for Input" and blocking OFC completion?</li>
+    <li>Compare today's readiness status against same day prior week / prior month for anomaly detection</li>
+    <li>Aggregate across multiple Named PNLs for BTP / Product Control Manager-level oversight view</li>
+  </ul>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===================== SECTION 8 ===================== -->
+<div class="section-header">
+  <div class="section-num">8</div>
+  <h2>Agentic Architecture Overview</h2>
+</div>
+<p>To make the P&amp;L workflow agentic using AOF (Agent One Finance) on AWS Bedrock with Claude, the following architecture is required. The agent monitors the workflow, surfaces anomalies, generates reports, and answers PC/manager queries in natural language — replacing manual polling and spreadsheet-based analysis.</p>
+
+<div class="arch-diagram">
+  <div class="arch-layer">
+    <div class="arch-layer-label">User Interface Layer</div>
+    <div class="arch-nodes">
+      <div class="arch-node an-navy">Finance Portal Chat Widget</div>
+      <div class="arch-node an-navy">Teams Bot (FAS Notifications)</div>
+      <div class="arch-node an-navy">Workflow Dashboard (existing)</div>
+    </div>
+  </div>
+  <div class="arch-arrows">↓ Natural language queries &amp; scheduled triggers ↓</div>
+  <div class="arch-layer">
+    <div class="arch-layer-label">AOF Agent Layer (AWS Bedrock · Claude)</div>
+    <div class="arch-nodes">
+      <div class="arch-node an-blue">P&amp;L Controller Agent</div>
+      <div class="arch-node an-blue">Book Monitoring Agent</div>
+      <div class="arch-node an-blue">Reporting &amp; Analytics Agent</div>
+    </div>
+  </div>
+  <div class="arch-arrows">↓ Tool calls via MCP ↓</div>
+  <div class="arch-layer">
+    <div class="arch-layer-label">MCP Server Layer (FastAPI adapters)</div>
+    <div class="arch-nodes">
+      <div class="arch-node an-teal">MOTIF DB MCP</div>
+      <div class="arch-node an-teal">RAMP API MCP</div>
+      <div class="arch-node an-teal">GMIS API MCP</div>
+      <div class="arch-node an-teal">Notification MCP</div>
+      <div class="arch-node an-teal">FAS Service MCP</div>
+    </div>
+  </div>
+  <div class="arch-arrows">↓ Native connections ↓</div>
+  <div class="arch-layer">
+    <div class="arch-layer-label">Data &amp; System Layer</div>
+    <div class="arch-nodes">
+      <div class="arch-node an-amber">Oracle 19c (MOTIF DB)</div>
+      <div class="arch-node an-amber">RAMP API</div>
+      <div class="arch-node an-amber">GMIS REST API</div>
+      <div class="arch-node an-green">FAS Service (existing)</div>
+      <div class="arch-node an-green">Finance Portal (existing)</div>
+    </div>
+  </div>
+</div>
+
+<h3>Agent Personas</h3>
+<div class="grid-3">
+  <div class="card">
+    <div class="card-title">P&amp;L Controller Agent</div>
+    <div class="card-body">Answers PC queries: "What is my Trial Balance for today?" / "Which books haven't opened yet?" / "Show me my unexplained P&amp;L." Proactively alerts on threshold breaches.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Book Monitoring Agent</div>
+    <div class="card-body">Continuously monitors book OFC status. Alerts when expected OFC window is exceeded. Detects holiday vs genuine feed delay. Fires notifications to Teams/email.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Reporting &amp; Analytics Agent</div>
+    <div class="card-body">Generates on-demand analytics reports: adjustment trends, flash-vs-formal deviations, submission readiness dashboard. Produces summaries for BTP/manager consumption.</div>
+  </div>
+</div>
+
+<!-- ===================== SECTION 9 ===================== -->
+<div class="section-header">
+  <div class="section-num">9</div>
+  <h2>MCP Servers Required</h2>
+</div>
+<p>Each MCP server is a FastAPI adapter exposing typed tools to the AOF agent. These wrap existing FAS/MOTIF capabilities — no new backend logic is needed, only an MCP protocol adapter layer.</p>
+
+<div class="grid-2">
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 1</div>
+    <div class="mcp-name">MOTIF DB MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">FastAPI adapter exposing read-only MOTIF Oracle DB queries via JDBC. Used by all three agents. Wraps the existing SQL queries FAS already executes.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">get_book_status(pnl_id, date)</span>
+      <span class="tool-chip">get_trial_balance(pnl_id, date)</span>
+      <span class="tool-chip">get_plex(pnl_id, date)</span>
+      <span class="tool-chip">get_adjustments(pnl_id, date)</span>
+      <span class="tool-chip">get_fx_rates(date)</span>
+      <span class="tool-chip">get_ofc_timestamp(book_id, date)</span>
+      <span class="tool-chip">get_journal_line_items(book_id, date)</span>
+    </div>
+  </div>
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 2</div>
+    <div class="mcp-name">RAMP API MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Wraps RAMP REST API to expose Named PNL configuration and book mapping data. Read-only for agents; write operations remain in RAMP UI.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">get_named_pnls(user_id)</span>
+      <span class="tool-chip">get_book_mapping(pnl_id)</span>
+      <span class="tool-chip">get_holiday_calendar(region, date)</span>
+      <span class="tool-chip">get_attestation_threshold(pnl_id)</span>
+    </div>
+  </div>
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 3</div>
+    <div class="mcp-name">GMIS API MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Wraps GMIS REST API to expose submission status, validation results, and review data. Enables agent to check GMIS readiness and surface validation failures to PC.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">get_gms_review(pnl_id, date)</span>
+      <span class="tool-chip">get_submission_status(pnl_id, date)</span>
+      <span class="tool-chip">validate_plex_balance(pnl_id, date)</span>
+      <span class="tool-chip">get_unexplained_pnl(pnl_id, date)</span>
+    </div>
+  </div>
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 4</div>
+    <div class="mcp-name">Notification MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Enables agents to fire alerts to Teams channels and email. Supports threshold-based alerting (book delay, adjustment breach, unexplained P&amp;L) and scheduled summary reports.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">send_teams_alert(channel, message)</span>
+      <span class="tool-chip">send_email_summary(recipients, report)</span>
+      <span class="tool-chip">create_scheduled_job(trigger, agent_id)</span>
+    </div>
+  </div>
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 5</div>
+    <div class="mcp-name">FAS Service MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Wraps FAS's existing service API to trigger extract regeneration (addressing the re-run gap) and query workflow stage status. Provides the agentic re-run capability currently missing from the workflow.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">get_stage_status(pnl_id, date)</span>
+      <span class="tool-chip">trigger_extract_rerun(pnl_id, extract_type)</span>
+      <span class="tool-chip">get_workflow_history(pnl_id, days)</span>
+    </div>
+  </div>
+  <div class="mcp-card">
+    <div class="mcp-type">MCP Server 6</div>
+    <div class="mcp-name">Analytics Store MCP</div>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">A lightweight Oracle 19c historical analytics schema (separate schema in MOTIF DB or dedicated schema). Persists daily snapshots of OFC times, adjustment counts, deviations — enabling the trend analytics reports in Section 7.</p>
+    <div class="mcp-tools">
+      <span class="tool-chip">store_daily_snapshot(pnl_id, date, metrics)</span>
+      <span class="tool-chip">get_ofc_trend(pnl_id, weeks)</span>
+      <span class="tool-chip">get_adjustment_trend(pnl_id, weeks)</span>
+      <span class="tool-chip">get_flash_deviation_trend(pnl_id)</span>
+    </div>
+  </div>
+</div>
+
+<h3>MCP Server Implementation Pattern (FastAPI)</h3>
+<div class="code-label">Python · FastAPI MCP Adapter — MOTIF DB MCP</div>
+<pre>
+# MOTIF_mcp_server.py — FastAPI MCP adapter for MOTIF Oracle DB
+from fastapi import FastAPI
+from mcp.server.fastapi import MCPRouter
+from pydantic import BaseModel
+import cx_Oracle, os
+
+app = FastAPI(title="MOTIF DB MCP Server")
+router = MCPRouter()
+
+pool = cx_Oracle.SessionPool(
+    user=os.getenv("MOTIVE_USER"),
+    password=os.getenv("MOTIVE_PASS"),
+    dsn=os.getenv("MOTIVE_DSN"),
+    min=2, max=10, increment=1
+)
+
+@router.tool(description="Get current status of all books for a Named PNL on a given date")
+async def get_book_status(pnl_id: str, business_date: str) -> dict:
+    query = """
+        SELECT mb.book_id, mb.book_name, bs.current_status,
+               bs.ofc_timestamp, hol.is_holiday, hol.region
+        FROM   master_book mb
+        JOIN   book_status bs  ON mb.book_id = bs.book_id
+                              AND bs.business_date = TO_DATE(:bdate, 'YYYY-MM-DD')
+        JOIN   pnl_book_map pm ON mb.book_id = pm.book_id AND pm.pnl_id = :pnl
+        LEFT JOIN holiday_calendar hol ON hol.business_date = bs.business_date
+                              AND hol.region = mb.region
+        ORDER  BY mb.book_name
+    """
+    with pool.acquire() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, bdate=business_date, pnl=pnl_id)
+            cols = [c[0].lower() for c in cur.description]
+            return {"books": [dict(zip(cols, row)) for row in cur.fetchall()]}
+
+@router.tool(description="Get Trial Balance FTD/MTD/YTD for a Named PNL")
+async def get_trial_balance(pnl_id: str, business_date: str,
+                             drill_level: str = "book") -> dict:
+    query = """
+        SELECT ob.book_id, ob.account_level, ob.gl_account,
+               ob.ftd_balance, ob.mtd_balance, ob.ytd_balance
+        FROM   opening_balance ob
+        JOIN   pnl_book_map pm ON ob.book_id = pm.book_id AND pm.pnl_id = :pnl
+        WHERE  ob.business_date = TO_DATE(:bdate, 'YYYY-MM-DD')
+        AND    ob.drill_level   = :level
+    """
+    with pool.acquire() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, pnl=pnl_id, bdate=business_date, level=drill_level)
+            cols = [c[0].lower() for c in cur.description]
+            return {"trial_balance": [dict(zip(cols, row)) for row in cur.fetchall()]}
+
+app.include_router(router, prefix="/mcp")
+</pre>
+
+<!-- ===================== SECTION 10 ===================== -->
+<div class="section-header">
+  <div class="section-num">10</div>
+  <h2>Skills, Plugins &amp; AOF Integration</h2>
+</div>
+
+<h3>AOF Plugin: P&amp;L Controller Plugin</h3>
+<p>The P&amp;L Controller Plugin is the primary AOF plugin that registers the agent's tools, system prompt, and trigger configuration into the AOF platform on AWS Bedrock.</p>
+
+<div class="grid-2">
+  <div class="skill-card">
+    <div class="sk-type">AOF Plugin</div>
+    <div class="sk-name">P&amp;L Controller Plugin</div>
+    <div class="sk-desc">Registered in AOF with the system prompt defining agent persona, tool bindings (MCP servers), memory context (Named PNL list, user role), and scheduled triggers (SOD, EOD, mid-day check-in). This is the entry point for all P&amp;L agent interactions.</div>
+  </div>
+  <div class="skill-card">
+    <div class="sk-type">AOF Plugin</div>
+    <div class="sk-name">Book Monitoring Plugin</div>
+    <div class="sk-desc">Separate plugin with a scheduled trigger: runs every 5 minutes during business hours. Checks OFC status for all active Named PNLs. Fires Teams alerts when delay threshold is exceeded. Low-latency, narrow scope — purposely separate from P&amp;L Controller for isolation.</div>
+  </div>
+  <div class="skill-card">
+    <div class="sk-type">Skill (Claude CLI / AOF)</div>
+    <div class="sk-name">PNL Workflow Knowledge Skill</div>
+    <div class="sk-desc">SKILL.md-style prompt file injected as context when agent answers workflow questions. Contains the book status lifecycle, extract definitions, P-Lex rules, GMIS validation rules, and attestation thresholds. Enables the agent to interpret data correctly without hallucination.</div>
+  </div>
+  <div class="skill-card">
+    <div class="sk-type">Skill (Claude CLI / AOF)</div>
+    <div class="sk-name">Analytics Reporting Skill</div>
+    <div class="sk-desc">Defines the 5 report templates (OFC timing, adjustment monitor, flash-formal, unexplained P&amp;L, readiness dashboard). Includes threshold configs, RAG logic, and output format. Used by Reporting Agent to structure outputs consistently for Finance Portal and email delivery.</div>
+  </div>
+</div>
+
+<h3>AOF Plugin Registration (Manifest)</h3>
+<div class="code-label">YAML · AOF Plugin Manifest — P&amp;L Controller Plugin</div>
+<pre>
+# aof-plugin-pnl-controller.yaml
+name: pnl-controller-agent
+version: "1.0.0"
+description: "P&L Controller Agent for Named PNL daily workflow monitoring and analytics"
+
+agent:
+  model: anthropic.claude-sonnet-4-20250514-v1:0
+  region: eu-west-2                # Barclays EU Bedrock endpoint
+  max_tokens: 4096
+  temperature: 0.1                 # Low temp for finance — deterministic
+
+system_prompt: |
+  You are the P&L Controller Agent for Finance Technology at Barclays.
+  You assist Product Controllers, BTPs, and Finance Managers with:
+  - Daily Named PNL workflow status (book OFC, adjustments, P-Lex, GMIS readiness)
+  - Analytics queries (OFC delay trends, adjustment volumes, flash deviations)
+  - Threshold alerts (adjustment >250 GBP, unexplained P&L, feed delays)
+  
+  Key rules you must follow:
+  - FTD must equal Σ(P-Lex categories). Any residual is unexplained P&L.
+  - Adjustments >250 GBP individually trigger attestation policy in RAMP.
+  - Holiday status must be checked before treating a closed book as a feed failure.
+  - Books can only be edited when status is "Open for Correction."
+  - Never recommend posting adjustments — surface data, leave decisions to the PC.
+
+mcp_servers:
+  - name: MOTIF-db-mcp
+    url: "https://internal.barclays.com/mcp/MOTIF-db"
+    auth: mtls
+  - name: ramp-api-mcp
+    url: "https://internal.barclays.com/mcp/ramp"
+    auth: mtls
+  - name: gms-api-mcp
+    url: "https://internal.barclays.com/mcp/gms"
+    auth: mtls
+  - name: notification-mcp
+    url: "https://internal.barclays.com/mcp/notify"
+    auth: mtls
+  - name: fast-service-mcp
+    url: "https://internal.barclays.com/mcp/fast"
+    auth: mtls
+  - name: analytics-store-mcp
+    url: "https://internal.barclays.com/mcp/analytics"
+    auth: mtls
+
+triggers:
+  - type: schedule
+    cron: "0 6 * * 1-5"          # 6am Mon-Fri → SOD monitoring starts
+    action: start_book_monitoring
+  - type: schedule
+    cron: "0 8 * * 1-5"          # 8am Mon-Fri → morning readiness summary
+    action: generate_readiness_dashboard
+  - type: schedule
+    cron: "0 17 * * 1-5"         # 5pm Mon-Fri → EOD adjustment summary
+    action: generate_eod_adjustment_report
+
+memory:
+  user_context:
+    - named_pnls          # List of PNLs the user owns
+    - user_role           # PC / BTP / Manager
+    - region              # APAC / EMEA / Americas
+    - attestation_threshold
+</pre>
+
+<h3>What Needs to Be Built — Summary</h3>
+<table>
+  <tr><th>Component</th><th>Build Effort</th><th>Depends On</th><th>Priority</th></tr>
+  <tr>
+    <td>MOTIF DB MCP (FastAPI)</td>
+    <td>Medium — wrap existing FAS SQL queries in MCP protocol</td>
+    <td>MOTIF Oracle 19c connectivity, cx_Oracle JDBC</td>
+    <td><span class="badge b-red">P1</span></td>
+  </tr>
+  <tr>
+    <td>RAMP API MCP</td>
+    <td>Low — RAMP already has REST API; thin MCP wrapper</td>
+    <td>RAMP REST API spec, mTLS cert</td>
+    <td><span class="badge b-red">P1</span></td>
+  </tr>
+  <tr>
+    <td>GMIS API MCP</td>
+    <td>Medium — GMIS API may have limited read endpoints; validate scope</td>
+    <td>GMIS API spec, read-only access grant</td>
+    <td><span class="badge b-amber">P2</span></td>
+  </tr>
+  <tr>
+    <td>FAS Service MCP</td>
+    <td>Medium — exposes trigger re-run (new functionality); risk of side effects</td>
+    <td>FAS service API, PC approval for re-run scope</td>
+    <td><span class="badge b-amber">P2</span></td>
+  </tr>
+  <tr>
+    <td>Notification MCP</td>
+    <td>Low — wrap existing Teams webhook and email relay</td>
+    <td>Teams webhook, SMTP relay</td>
+    <td><span class="badge b-amber">P2</span></td>
+  </tr>
+  <tr>
+    <td>Analytics Store Schema</td>
+    <td>Low — new Oracle schema with 5–6 daily snapshot tables</td>
+    <td>Oracle 19c schema grant, DBA setup</td>
+    <td><span class="badge b-amber">P2</span></td>
+  </tr>
+  <tr>
+    <td>PNL Workflow Knowledge Skill</td>
+    <td>Low — SKILL.md document based on this guide</td>
+    <td>This document; AOF skill registration</td>
+    <td><span class="badge b-red">P1</span></td>
+  </tr>
+  <tr>
+    <td>AOF Plugin Registration</td>
+    <td>Low — YAML manifest + system prompt once MCP servers are live</td>
+    <td>AOF platform access, all MCP servers</td>
+    <td><span class="badge b-green">P3</span></td>
+  </tr>
+  <tr>
+    <td>Finance Portal Chat Integration</td>
+    <td>High — React chat widget in existing Finance Portal UI</td>
+    <td>AOF public API, Finance Portal React codebase</td>
+    <td><span class="badge b-green">P3</span></td>
+  </tr>
+</table>
+
+<div class="hbox success">
+  <strong>Recommended Phased Approach:</strong><br/>
+  <strong>Phase 1 (2–3 weeks):</strong> MOTIF DB MCP + RAMP MCP + PNL Workflow Skill + AOF Plugin (read-only agent answering natural language queries from Teams).<br/>
+  <strong>Phase 2 (3–4 weeks):</strong> GMIS MCP + Notification MCP + Analytics Store + Book Monitoring Plugin (scheduled alerts).<br/>
+  <strong>Phase 3 (4–6 weeks):</strong> FAS Service MCP (re-run capability) + Finance Portal Chat Widget + full Reporting Dashboard integration.
+</div>
+
+<div class="divider"></div>
+
+<h3>End-to-End Data Flow Summary</h3>
+<table>
+  <tr><th>#</th><th>Step</th><th>System</th><th>Action</th></tr>
+  <tr><td>1</td><td>Book setup</td><td>RAMP</td><td>User creates Named PNL, maps Master Books. Full production access.</td></tr>
+  <tr><td>2</td><td>SOD role</td><td>FAS → RAMP</td><td>Fetch book list, cache in FAS, create SOD balance snapshots per book.</td></tr>
+  <tr><td>3</td><td>Feed ingestion</td><td>Front Office → TDB → MOTIF</td><td>Trades, valuations, cash flows written to Journal Line Item table in MOTIF.</td></tr>
+  <tr><td>4</td><td>Book opens</td><td>MOTIF status table → FAS</td><td>FAS polls every 5 min. All books hit OFC → stage complete, Rec Factory trigger file created.</td></tr>
+  <tr><td>5</td><td>Extracts</td><td>FAS → MOTIF DB</td><td>SQL queries generate Trial Balance, P-Lex, FX Exposure, Adjustments, Consolidated Validation, GMIS Review.</td></tr>
+  <tr><td>6</td><td>PC review &amp; edit</td><td>Finance Portal / Workflow</td><td>PC posts adjustments &amp; reclasses to MOTIF; reviews GMIS Review extract.</td></tr>
+  <tr><td>7</td><td>Tollgate 1 submission</td><td>Workflow → GMIS</td><td>TG1 passed → books locked → GMIS upload (validates FTD = Σ P-Lex) → Closed (Daily End).</td></tr>
+</table>
+
+</div>
+
+<div class="footer">
+  <span>P&amp;L Workflow Knowledge &amp; Agentic Architecture · Finance Technology · Barclays</span>
+  <span>Source: Working session with Shamila · FAS / Workflow · <strong>Internal — Not for Distribution</strong></span>
+</div>
+
+</body>
+</html>
