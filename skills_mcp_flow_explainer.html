@@ -1,0 +1,418 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+body{font-family:var(--font-sans);color:var(--color-text-primary);font-size:13px}
+.progress{display:flex;gap:6px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary);cursor:pointer;transition:background .2s;border:none}
+.dot.on{background:var(--color-text-primary)}
+.step{display:none}
+.step.on{display:block}
+.step-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--color-text-tertiary);margin-bottom:4px}
+.step-title{font-size:16px;font-weight:500;margin-bottom:12px;color:var(--color-text-primary)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.col-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.col-hdr{padding:8px 12px;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.4px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.col-body{padding:10px 12px}
+.mono{font-family:var(--font-mono);font-size:11px;line-height:1.8;white-space:pre-wrap}
+.c-purple{color:#534AB7}
+.c-teal{color:#0F6E56}
+.c-amber{color:#854F0B}
+.c-blue{color:#185FA5}
+.c-gray{color:var(--color-text-tertiary)}
+.c-green{color:#3B6D11}
+.c-red{color:#A32D2D}
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:500;margin-right:4px}
+.b-skill{background:#EEEDFE;color:#3C3489}
+.b-tool{background:#E1F5EE;color:#085041}
+.b-wire{background:#FAEEDA;color:#633806}
+.b-llm{background:#E6F1FB;color:#0C447C}
+.flow-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.flow-row:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.flow-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:500;flex-shrink:0;margin-top:1px}
+.flow-content{flex:1;font-size:12px;line-height:1.6}
+.flow-file{font-size:10px;font-family:var(--font-mono);color:var(--color-text-tertiary);margin-top:2px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:0.5px solid var(--color-border-tertiary)}
+.nav-counter{font-size:11px;color:var(--color-text-secondary)}
+.insight{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;font-size:11px;color:var(--color-text-secondary);line-height:1.7;margin-bottom:12px}
+.insight strong{color:var(--color-text-primary)}
+</style>
+
+<h2 class="sr-only">How skills and MCP tools work together in the FOBO agent</h2>
+
+<div class="progress" id="dots"></div>
+
+<div id="steps">
+
+<div class="step on">
+  <div class="step-label">Concept</div>
+  <div class="step-title">Skill vs MCP tool — two different things</div>
+  <div class="insight"><strong>Skill</strong> = a prompt template. It tells the LLM <em>what to do and in what order</em>. No code runs. It lives in <code>.claude/commands/</code> as a markdown file.<br><br><strong>MCP tool</strong> = a callable Python function. It <em>actually executes</em>: loads data, runs logic, returns JSON. It lives in <code>src/mcp_server.py</code> as a <code>@mcp.tool()</code> decorated function.<br><br>The skill triggers LLM reasoning. The LLM then decides which MCP tools to call and in what order. Neither works without the other.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr" style="background:#EEEDFE;color:#3C3489"><span class="badge b-skill">Skill</span> .claude/commands/recon.md</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-gray">Run a complete FOBO recon cycle
+for trade date: $ARGUMENTS
+
+Step 1: Call reconcile_all(...)
+Step 2: For each HIGH/MEDIUM break
+  → call create_exception(...)
+Step 3: Skip AUTO_RESOLVE breaks
+Step 4: Call generate_report(...)
+Step 5: Write plain-English summary</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr" style="background:#E1F5EE;color:#085041"><span class="badge b-tool">MCP tool</span> src/mcp_server.py</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-teal">@mcp.tool()
+def reconcile_all(
+    trade_date: str,
+    book: str = "ALL"
+) -> dict:
+    """Loads FO+BO, matches,
+    classifies all breaks."""
+    fo = data_layer.get_fo_trades(...)
+    bo = data_layer.get_bo_settlements(...)
+    results = reconciler.match_all(...)
+    return {"summary": ..., ...}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Startup — step 1 of 3</div>
+  <div class="step-title">Claude Code reads .mcp.json and starts the server</div>
+  <div class="insight"><strong>When you run <code>claude</code> in the project folder</strong>, Claude Code looks for <code>.mcp.json</code> in the working directory. It reads the server config and spawns the MCP server as a child process via stdio.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-skill">Config</span> .mcp.json</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-blue">{
+  "mcpServers": {
+    "fobo": {
+      "command": "python",
+      "args": [
+        "src/mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "."
+      }
+    }
+  }
+}</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-wire">Process</span> What Claude Code does</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-gray">1. Read .mcp.json
+2. Spawn subprocess:
+   python src/mcp_server.py
+
+3. Connect stdin/stdout pipes
+   (this IS the MCP transport)
+
+4. Send: initialize request
+5. Wait for: initialize response
+6. Send: tools/list
+7. Store all tool schemas in memory
+
+Server is now "connected"</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Startup — step 2 of 3</div>
+  <div class="step-title">The tools/list handshake — what Claude Code learns</div>
+  <div class="insight">FastMCP automatically generates JSON schemas from your Python function signatures and docstrings. Claude Code receives these schemas and stores them. The LLM can now reference all 5 tools by name.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-wire">JSON-RPC</span> tools/list request (Claude Code → server)</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-blue">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-tool">JSON-RPC</span> tools/list response (server → Claude Code)</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-teal">{
+  "result": {
+    "tools": [
+      {
+        "name": "reconcile_all",
+        "description": "Run the complete
+  FOBO reconciliation...",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "trade_date": {
+              "type": "string"
+            },
+            "book": {
+              "type": "string",
+              "default": "ALL"
+            }
+          }
+        }
+      },
+      { "name": "create_exception" },
+      { "name": "get_exceptions" },
+      { "name": "reload_rules" },
+      { "name": "generate_report" }
+    ]
+  }
+}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Startup — step 3 of 3</div>
+  <div class="step-title">Claude Code also discovers the skills</div>
+  <div class="insight">Claude Code scans <code>.claude/commands/</code> for markdown files. Each file becomes a slash command. When the user types <code>/recon</code>, Claude Code reads that file and expands <code>$ARGUMENTS</code> with whatever the user typed after the command name.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-skill">Skill discovery</span> .claude/commands/</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-purple">recon.md        → /recon
+recon-desk.md   → /recon-desk
+reload-rules.md → /reload-rules
+exceptions.md   → /exceptions
+
+Each .md file:
+- First line = command description
+- $ARGUMENTS = user's input text
+- Rest = instructions to the LLM</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-skill">Skill</span> What /recon looks like expanded</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-purple">User types:
+  /recon 2025-05-19
+
+Claude Code reads recon.md,
+replaces $ARGUMENTS → "2025-05-19"
+
+Sends to LLM as user message:
+"Run a complete FOBO recon cycle
+for trade date: 2025-05-19
+
+Step 1: Call reconcile_all with
+  trade_date=2025-05-19, book=ALL
+Step 2: For each HIGH/MEDIUM break
+  call create_exception..."</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Execution — step 1 of 3</div>
+  <div class="step-title">LLM reads the skill and generates a tool_use block</div>
+  <div class="insight">The LLM (Claude) reads the expanded skill text as instructions and the tool schemas as its vocabulary. It generates a <code>tool_use</code> content block specifying which tool to call and with what arguments. Claude Code intercepts this and executes the tool via MCP.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-llm">LLM output</span> Claude's first response</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-blue">{
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_01",
+      "name": "reconcile_all",
+      "input": {
+        "trade_date": "2025-05-19",
+        "book": "ALL"
+      }
+    }
+  ],
+  "stop_reason": "tool_use"
+}</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-wire">MCP wire</span> Claude Code → fobo server (stdio)</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-amber">{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "reconcile_all",
+    "arguments": {
+      "trade_date": "2025-05-19",
+      "book": "ALL"
+    }
+  }
+}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Execution — step 2 of 3</div>
+  <div class="step-title">FastMCP routes the call through your Python stack</div>
+  <div class="insight">FastMCP receives the JSON-RPC message, finds the <code>reconcile_all</code> function by name, validates inputs against the Pydantic schema, calls the function, and wraps the return value as a tool result.</div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#FAEEDA;color:#633806">1</div>
+    <div class="flow-content">FastMCP receives <code>tools/call {name: "reconcile_all"}</code> on stdin<div class="flow-file">mcp library internal routing</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#FAEEDA;color:#633806">2</div>
+    <div class="flow-content">Pydantic validates: <code>trade_date</code> is str ✓, <code>book</code> is str ✓<div class="flow-file">auto-generated from function type hints</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">3</div>
+    <div class="flow-content"><code>reconcile_all()</code> calls <code>DataLayer.get_fo_trades("2025-05-19", "ALL")</code> → 6 trades<div class="flow-file">src/mcp_server.py → src/data_layer.py</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">4</div>
+    <div class="flow-content"><code>RulesEngine.resolve("EQ-DESK-A")</code> → loads EQ-DESK-A-STRICT rule set (priority=10)<div class="flow-file">src/mcp_server.py → src/rules_engine.py → config/fobo_rules.json</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">5</div>
+    <div class="flow-content"><code>FoboReconciler.match_and_classify(fo, bo, book)</code> → 5 breaks, $3.17M PnL<div class="flow-file">src/mcp_server.py → src/reconciler.py</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#FAEEDA;color:#633806">6</div>
+    <div class="flow-content">FastMCP wraps result as <code>{"content": [{"type": "text", "text": "{...json...}"}]}</code> and writes to stdout<div class="flow-file">mcp library → Claude Code</div></div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Execution — step 3 of 3</div>
+  <div class="step-title">LLM reads the result and loops — calling create_exception for each break</div>
+  <div class="insight">Claude Code sends the tool result back to the LLM as a <code>tool_result</code> message. The LLM reads it, follows the skill instructions, and generates the next <code>tool_use</code> block. This loop repeats until the skill is complete.</div>
+  <div class="two-col">
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-wire">MCP wire</span> Tool result → LLM</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-teal">{
+  "role": "user",
+  "content": [{
+    "type": "tool_result",
+    "tool_use_id": "toolu_01",
+    "content": "{
+      'summary': {
+        'total_breaks': 5,
+        'high': 3,
+        'total_pnl_impact': 3173700
+      },
+      'results': [
+        {'fo_trade_id':'TRD-002',
+         'break_type':'QTY_BREAK',
+         'severity':'HIGH',
+         'auto_resolvable':false},
+        ...
+      ]
+    }"
+  }]
+}</span></div>
+      </div>
+    </div>
+    <div class="col-card">
+      <div class="col-hdr"><span class="badge b-llm">LLM decides</span> Next tool calls (follows skill)</div>
+      <div class="col-body">
+        <div class="mono"><span class="c-blue">Skill says: "For each HIGH/MEDIUM
+break, call create_exception"
+
+LLM sees 5 breaks.
+TRD-002 QTY_BREAK HIGH → tool_use
+TRD-003 PRICE_BREAK HIGH → tool_use
+TRD-005 MISSING_IN_BO HIGH → tool_use
+
+TRD-004 STATUS_MISMATCH LOW
+  → skip (LOW severity)
+
+After all exceptions created:
+→ tool_use: generate_report
+→ stop_reason: end_turn
+→ Write plain-English summary</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-label">Full picture</div>
+  <div class="step-title">The complete call chain for one /recon cycle</div>
+  <div class="insight">Skills and MCP tools have completely different jobs. The skill is the <em>brain</em> — it tells the LLM what to orchestrate. The MCP tools are the <em>hands</em> — they actually execute. You can change either independently.</div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#EEEDFE;color:#3C3489">S</div>
+    <div class="flow-content"><strong>Skill triggered</strong> — user types <code>/recon 2025-05-19</code> → <code>recon.md</code> expands with date<div class="flow-file">.claude/commands/recon.md</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E6F1FB;color:#0C447C">L</div>
+    <div class="flow-content"><strong>LLM reasons</strong> — reads skill instructions + 5 tool schemas, decides to call <code>reconcile_all</code><div class="flow-file">Claude (orchestrator) — no code, just reasoning</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#FAEEDA;color:#633806">W</div>
+    <div class="flow-content"><strong>MCP wire</strong> — JSON-RPC <code>tools/call {reconcile_all}</code> sent over stdio pipe<div class="flow-file">mcp protocol — Claude Code ↔ src/mcp_server.py</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">T</div>
+    <div class="flow-content"><strong>Tool executes</strong> — DataLayer → RulesEngine → FoboReconciler → returns 7 results<div class="flow-file">src/data_layer.py + src/rules_engine.py + src/reconciler.py</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E6F1FB;color:#0C447C">L</div>
+    <div class="flow-content"><strong>LLM loops</strong> — reads results, calls <code>create_exception</code> × 5 (HIGH/MEDIUM only), skips LOW<div class="flow-file">Claude follows skill's step-by-step instructions</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">T</div>
+    <div class="flow-content"><strong>Tool executes ×5</strong> — each exception gets ID, priority (P1/P2/P3), SLA, assignee from rules<div class="flow-file">src/mcp_server.py create_exception() → RulesEngine.escalation_priority()</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#E1F5EE;color:#085041">T</div>
+    <div class="flow-content"><strong>generate_report executes</strong> — collects all exceptions, produces report ID<div class="flow-file">src/mcp_server.py generate_report()</div></div>
+  </div>
+  <div class="flow-row">
+    <div class="flow-num" style="background:#EEEDFE;color:#3C3489">S</div>
+    <div class="flow-content"><strong>Skill complete</strong> — LLM writes plain-English summary as final text output<div class="flow-file">Skill step 5: "Write a plain-English summary..."</div></div>
+  </div>
+</div>
+
+</div>
+
+<div class="nav">
+  <button onclick="go(-1)" id="btn-prev">Previous</button>
+  <span class="nav-counter" id="counter">1 / 8</span>
+  <button onclick="go(1)" id="btn-next">Next →</button>
+</div>
+
+<script>
+const steps=document.querySelectorAll('.step');
+const dotsEl=document.getElementById('dots');
+const counter=document.getElementById('counter');
+let cur=0;
+steps.forEach((_,i)=>{
+  const d=document.createElement('button');
+  d.className='dot'+(i===0?' on':'');
+  d.setAttribute('aria-label','Step '+(i+1));
+  d.onclick=()=>goto(i);
+  dotsEl.appendChild(d);
+});
+function goto(n){
+  steps[cur].classList.remove('on');
+  dotsEl.children[cur].classList.remove('on');
+  cur=Math.max(0,Math.min(n,steps.length-1));
+  steps[cur].classList.add('on');
+  dotsEl.children[cur].classList.add('on');
+  counter.textContent=(cur+1)+' / '+steps.length;
+  document.getElementById('btn-prev').disabled=cur===0;
+  document.getElementById('btn-next').textContent=cur===steps.length-1?'Done':'Next →';
+}
+function go(d){goto(cur+d);}
+goto(0);
+</script>
