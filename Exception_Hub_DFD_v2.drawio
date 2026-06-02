@@ -1,0 +1,208 @@
+<mxfile host="app.diagrams.net" modified="2026-06-01T00:00:00.000Z" agent="Claude" version="24.0.0">
+  <diagram id="exception-hub-dfd" name="Exception Hub - Target State">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1760" pageHeight="1380" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============ TITLE ============ -->
+        <mxCell id="title" value="Strict Gane–Sarson Data Flow Diagram for Exception Hub - Target State" style="text;html=1;align=left;verticalAlign=middle;fontSize=18;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="90" y="22" width="900" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ============ DOTTED SWIMLANE FRAMES ============ -->
+        <mxCell id="frEntity" value="" style="rounded=0;fillColor=none;strokeColor=#595959;dashed=1;dashPattern=1 2;" vertex="1" parent="1">
+          <mxGeometry x="75" y="78" width="1640" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="frChannel" value="" style="rounded=0;fillColor=none;strokeColor=#595959;dashed=1;dashPattern=1 2;" vertex="1" parent="1">
+          <mxGeometry x="75" y="158" width="1640" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="frSec1" value="" style="rounded=0;fillColor=none;strokeColor=#595959;dashed=1;dashPattern=1 2;" vertex="1" parent="1">
+          <mxGeometry x="75" y="244" width="1640" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="frSec2" value="" style="rounded=0;fillColor=none;strokeColor=#595959;dashed=1;dashPattern=1 2;" vertex="1" parent="1">
+          <mxGeometry x="75" y="694" width="1640" height="400" as="geometry" />
+        </mxCell>
+
+        <!-- ============ VERTICAL SWIMLANE LABELS ============ -->
+        <mxCell id="vEntity" value="Entity" style="text;html=1;horizontal=0;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="42" y="78" width="26" height="72" as="geometry" />
+        </mxCell>
+        <mxCell id="vChannel" value="Channel" style="text;html=1;horizontal=0;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="42" y="158" width="26" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="vSec1" value="Data Ingestion, Enrichment, and Publishing into Finance Store" style="text;html=1;horizontal=0;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="42" y="244" width="26" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="vSec2" value="Data Consumption, Workflow, and Publication in Finance Portal" style="text;html=1;horizontal=0;align=center;verticalAlign=middle;fontSize=11;fontStyle=1;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="42" y="694" width="26" height="400" as="geometry" />
+        </mxCell>
+
+        <!-- ============ TC CONTAINERS (grey) ============ -->
+        <mxCell id="tc08" value="TC 08" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9d9d9;strokeColor=#a6a6a6;verticalAlign=top;align=left;fontStyle=1;fontSize=13;spacingLeft=10;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="110" y="270" width="720" height="396" as="geometry" />
+        </mxCell>
+        <mxCell id="tc25a" value="TC 25" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9d9d9;strokeColor=#a6a6a6;verticalAlign=top;align=left;fontStyle=1;fontSize=13;spacingLeft=10;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="860" y="270" width="855" height="396" as="geometry" />
+        </mxCell>
+        <mxCell id="tc25b" value="TC 25" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9d9d9;strokeColor=#a6a6a6;verticalAlign=top;align=left;fontStyle=1;fontSize=13;spacingLeft=10;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="110" y="720" width="720" height="352" as="geometry" />
+        </mxCell>
+        <mxCell id="tc25c" value="TC 25" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d9d9d9;strokeColor=#a6a6a6;verticalAlign=top;align=left;fontStyle=1;fontSize=13;spacingLeft=10;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="860" y="720" width="855" height="352" as="geometry" />
+        </mxCell>
+
+        <!-- ============ SUB-GROUP CONTAINERS (light grey) ============ -->
+        <mxCell id="sgOrig" value="Originating Applications" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="130" y="312" width="215" height="218" as="geometry" />
+        </mxCell>
+        <mxCell id="sgIngest" value="Finance Store Ingestion" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="370" y="312" width="185" height="218" as="geometry" />
+        </mxCell>
+        <mxCell id="sgShared" value="Shared Processing / Feed" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="580" y="312" width="235" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sgFinStore" value="Finance Store (APM0006096)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="880" y="312" width="240" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sgFinPortal" value="Finance Portal (APM0178842)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="312" width="560" height="218" as="geometry" />
+        </mxCell>
+        <mxCell id="portalActionLbl" value="Portal Action" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="316" width="140" height="16" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sgWfUsers" value="Workflow / Reporting Users" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="130" y="762" width="335" height="298" as="geometry" />
+        </mxCell>
+        <mxCell id="sgExcInputs" value="Exception Inputs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="490" y="762" width="335" height="298" as="geometry" />
+        </mxCell>
+        <mxCell id="sgHubSvc" value="Exception Hub Services" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="880" y="762" width="245" height="298" as="geometry" />
+        </mxCell>
+        <mxCell id="sgFinPortalOut" value="FinPortal Data &amp; Outputs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f2f2f2;strokeColor=#bfbfbf;verticalAlign=top;align=left;fontStyle=1;fontSize=11;spacingLeft=8;spacingTop=5;" vertex="1" parent="1">
+          <mxGeometry x="1145" y="762" width="560" height="298" as="geometry" />
+        </mxCell>
+
+        <!-- ============ TOP-RIGHT ENTITY / CHANNEL ============ -->
+        <mxCell id="eHubUsers" value="Exception Hub Users" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1535" y="92" width="158" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="portalAccessLbl" value="Portal Access" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="1535" y="139" width="158" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="webPortalUI" value="Web / Portal UI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1535" y="172" width="158" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- ============ DATA STORES D1-D3 (yellow names, blue id) ============ -->
+        <mxCell id="d1id" value="D1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="150" y="352" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d1nm" value="EQ Atlas Risk" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="182" y="352" width="150" height="40" as="geometry" /></mxCell>
+        <mxCell id="d2id" value="D2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="150" y="400" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d2nm" value="SYN DELTA1 CSVC" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="182" y="400" width="150" height="40" as="geometry" /></mxCell>
+        <mxCell id="d3id" value="D3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="150" y="448" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d3nm" value="SYN SYNFINFY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="182" y="448" width="150" height="40" as="geometry" /></mxCell>
+
+        <!-- ============ PROCESSES 1.0 / 2.0 / 3.0 (red border) ============ -->
+        <mxCell id="p10" value="&lt;b&gt;1.0&lt;/b&gt;&lt;br&gt;Receive Source Files &amp; Load FS Ingestion" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="385" y="378" width="150" height="78" as="geometry" /></mxCell>
+        <mxCell id="p20" value="&lt;b&gt;2.0&lt;/b&gt;&lt;br&gt;Build Shared View &amp; Finance Store Datasets" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="600" y="352" width="160" height="78" as="geometry" /></mxCell>
+        <mxCell id="p30" value="&lt;b&gt;3.0&lt;/b&gt;&lt;br&gt;Generate Enriched Exception Feed" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="600" y="478" width="160" height="78" as="geometry" /></mxCell>
+
+        <!-- ============ DATA STORES D4-D7 (orange names, blue id) ============ -->
+        <mxCell id="d4id" value="D4" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="352" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d4nm" value="Trial Balance Data" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="932" y="352" width="160" height="40" as="geometry" /></mxCell>
+        <mxCell id="d5id" value="D5" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="400" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d5nm" value="EBA Template C24" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="932" y="400" width="160" height="40" as="geometry" /></mxCell>
+        <mxCell id="d6id" value="D6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="448" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d6nm" value="SDS Book" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="932" y="448" width="160" height="40" as="geometry" /></mxCell>
+        <mxCell id="d7id" value="D7" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="515" width="32" height="40" as="geometry" /></mxCell>
+        <mxCell id="d7nm" value="Enriched Exception" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="932" y="515" width="160" height="40" as="geometry" /></mxCell>
+
+        <!-- ============ PROCESSES 4.0 / 5.0 (red border) ============ -->
+        <mxCell id="p40" value="&lt;b&gt;4.0&lt;/b&gt;&lt;br&gt;Publish Exception Data" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1180" y="378" width="160" height="78" as="geometry" /></mxCell>
+        <mxCell id="p50" value="&lt;b&gt;5.0&lt;/b&gt;&lt;br&gt;Ingest Exception Data" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1450" y="378" width="160" height="78" as="geometry" /></mxCell>
+
+        <!-- ============ WORKFLOW / REPORTING USER ENTITIES ============ -->
+        <mxCell id="mrUser" value="MR User" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="150" y="800" width="135" height="42" as="geometry" /></mxCell>
+        <mxCell id="wgrUser" value="WGR User" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="300" y="800" width="135" height="42" as="geometry" /></mxCell>
+        <mxCell id="regUser" value="Reg User" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="150" y="872" width="135" height="42" as="geometry" /></mxCell>
+        <mxCell id="prodCtrl" value="Product Control" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="300" y="872" width="135" height="42" as="geometry" /></mxCell>
+        <mxCell id="finCtrl" value="Financial Control" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="300" y="930" width="135" height="42" as="geometry" /></mxCell>
+
+        <!-- ============ EXCEPTION INPUT BOXES (blue) ============ -->
+        <mxCell id="manualExc" value="Manual Exception Data Update" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="560" y="810" width="200" height="55" as="geometry" /></mxCell>
+        <mxCell id="enrichEdits" value="Enrich Edits" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="560" y="900" width="200" height="55" as="geometry" /></mxCell>
+
+        <!-- ============ PROCESSES 6.0 / 7.0 (red border) ============ -->
+        <mxCell id="p60" value="&lt;b&gt;6.0&lt;/b&gt;&lt;br&gt;Exception Hub API" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="810" width="200" height="78" as="geometry" /></mxCell>
+        <mxCell id="p70" value="&lt;b&gt;7.0&lt;/b&gt;&lt;br&gt;Exception Hub UI" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="900" y="932" width="200" height="78" as="geometry" /></mxCell>
+
+        <!-- ============ DATA STORES D8-D10 (orange names, blue id) ============ -->
+        <mxCell id="d8id" value="D8" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1175" y="805" width="34" height="46" as="geometry" /></mxCell>
+        <mxCell id="d8nm" value="FinPortal Exception Data Landing" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1209" y="805" width="165" height="46" as="geometry" /></mxCell>
+        <mxCell id="d9id" value="D9" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1175" y="865" width="34" height="42" as="geometry" /></mxCell>
+        <mxCell id="d9nm" value="Reference Mapping" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1209" y="865" width="165" height="42" as="geometry" /></mxCell>
+        <mxCell id="d10id" value="D10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1175" y="920" width="34" height="46" as="geometry" /></mxCell>
+        <mxCell id="d10nm" value="Workflow / Reporting Output" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1209" y="920" width="165" height="46" as="geometry" /></mxCell>
+
+        <!-- ============ RIGHT-SIDE OUTPUT ENTITIES ============ -->
+        <mxCell id="portalUsers" value="Portal Users" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1535" y="805" width="150" height="46" as="geometry" /></mxCell>
+        <mxCell id="axiom" value="AXIOM – FINREP" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1535" y="920" width="150" height="46" as="geometry" /></mxCell>
+
+        <!-- ============ GREEN EDGES — TOP ============ -->
+        <mxCell id="e1A" value="1A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.3;" edge="1" parent="1" source="d1nm" target="p10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1B" value="1B" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d2nm" target="p10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e1C" value="1C" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.7;" edge="1" parent="1" source="d3nm" target="p10"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2A" value="2A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="p10" target="p20"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2B" value="2B" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.2;entryX=0;entryY=0.5;" edge="1" parent="1" source="p20" target="d4nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2C" value="2C" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="p20" target="d5nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2D" value="2D" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.8;entryX=0;entryY=0.5;" edge="1" parent="1" source="p20" target="d6nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2E" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="p20" target="p30"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3A" value="3A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="p30" target="d7nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4A" value="4A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d7nm" target="p40"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4B" value="4B" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="p40" target="p50"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5A" value="5A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="p50" target="d8nm">
+          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1530" y="700" /><mxPoint x="1291" y="700" /></Array></mxGeometry>
+        </mxCell>
+
+        <!-- ============ DOTTED EDGES — ENTITY / CHANNEL ============ -->
+        <mxCell id="ecHub" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#000000;endArrow=open;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="eHubUsers" target="webPortalUI"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="ecPortal" value="Portal Action" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#000000;endArrow=open;fontSize=9;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="webPortalUI" target="p50"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ GREEN EDGES — BOTTOM ============ -->
+        <mxCell id="e6a" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.35;" edge="1" parent="1" source="mrUser" target="manualExc"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.65;" edge="1" parent="1" source="wgrUser" target="manualExc"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6c" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.3;" edge="1" parent="1" source="regUser" target="enrichEdits"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6d" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.55;" edge="1" parent="1" source="prodCtrl" target="enrichEdits"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6e" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.8;" edge="1" parent="1" source="finCtrl" target="enrichEdits"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6D" value="6D" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="manualExc" target="p60"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6E" value="6E" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="enrichEdits" target="p70"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eApiUi" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=0.25;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="1" source="p60" target="p70"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7A" value="7A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.3;entryX=0;entryY=0.5;" edge="1" parent="1" source="p60" target="d8nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7B" value="7B" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.7;entryX=0;entryY=0.5;" edge="1" parent="1" source="p60" target="d9nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8A" value="8A" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="p70" target="d10nm"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5B" value="5B" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d8nm" target="portalUsers"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8C" value="8C" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#38761d;strokeWidth=2;endArrow=block;endFill=1;fontSize=9;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="d10nm" target="axiom"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ============ LEGEND ============ -->
+        <mxCell id="lgBox" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="110" y="1120" width="1240" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="lgEntity" value="Entity / Channel" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="140" y="1165" width="135" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgDsId" value="Dx" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="300" y="1165" width="34" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgDsNm" value="Data Store Name (Type of Data)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;" vertex="1" parent="1"><mxGeometry x="334" y="1165" width="180" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgProc" value="&lt;b&gt;Px&lt;/b&gt;&lt;br&gt;Process" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1"><mxGeometry x="540" y="1165" width="115" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgNoChange" value="&lt;b&gt;Px&lt;/b&gt;&lt;br&gt;No Change" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1"><mxGeometry x="670" y="1165" width="115" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgAmend" value="&lt;b&gt;Px&lt;/b&gt;&lt;br&gt;Amend" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1"><mxGeometry x="800" y="1165" width="115" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgNew" value="&lt;b&gt;Px&lt;/b&gt;&lt;br&gt;New" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;dashed=1;fontSize=10;" vertex="1" parent="1"><mxGeometry x="930" y="1165" width="115" height="40" as="geometry" /></mxCell>
+        <mxCell id="lgArrowGreen" value="" style="endArrow=block;endFill=1;html=1;strokeColor=#38761d;strokeWidth=2;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="140" y="1240" as="sourcePoint" /><mxPoint x="200" y="1240" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="lgArrowGreenT" value="Main Process / Data Flow" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1"><mxGeometry x="208" y="1228" width="200" height="24" as="geometry" /></mxCell>
+        <mxCell id="lgArrowDot" value="" style="endArrow=open;html=1;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="140" y="1278" as="sourcePoint" /><mxPoint x="200" y="1278" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="lgArrowDotT" value="Entity / Channel Flow" style="text;html=1;align=left;verticalAlign=middle;fontSize=10;" vertex="1" parent="1"><mxGeometry x="208" y="1266" width="200" height="24" as="geometry" /></mxCell>
+        <mxCell id="lgNotes" value="• Processes use strict Gane–Sarson numbering (1.0, 2.0, …)&#10;• Data flows use IDs (1A, 1B, 2A, …)" style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=10;" vertex="1" parent="1"><mxGeometry x="540" y="1230" width="600" height="60" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
