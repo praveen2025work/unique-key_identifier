@@ -1,0 +1,18 @@
+For the Agent One team
+
+When a FOBO plugin runs, does the agent generate Python at runtime each invocation, or invoke a stored, reusable tool? If it's generated, is it cached, and what triggers a regenerate?
+How is reconciliation reproducible bit-for-bit across daily runs given LLM non-determinism? What's the audit answer if two runs of the same data differ?
+In the current Bedrock setup, is the foundation model planning the run each time, or is there a fixed workflow with the LLM only at defined decision points?
+Does the LLM learn the daily P&L process over time? Where does that process knowledge live — fine-tune, knowledge base, system prompt, or skill — and is it retrieved or re-derived each run?
+For FOBO, do we build and register the reconciliation tool (e.g. a Python MCP tool / action group) on our side, or does the platform generate it from the BRD? Where's the boundary?
+How is the logic versioned against the plugin/BRD version? What distinguishes "logic changed" from "only data changed" in the audit trail?
+What's the per-run latency and token cost of orchestration plus execution, and does it fit a sub-1-minute target? Does that differ between generating logic each run and invoking a stored tool?
+
+For Anthropic
+
+For recurring deterministic finance work against a stable BRD, do you recommend generating code each run, or building a reusable tool the model invokes? Why?
+Does Claude retain any knowledge of the process across sessions without an explicit memory or context mechanism? What's the best way to supply the process context efficiently each run?
+Where should logic live — a Skill vs an MCP tool — for deterministic recon math versus interpreting exceptions and writing the P&L narrative?
+If Claude does generate and run code, what are the determinism, sandboxing, and caching characteristics? Can generated code be pinned and reused rather than regenerated each time?
+What settings — temperature, model-version pinning, prompt caching on a large stable BRD context — best keep daily runs reproducible for audit and low-cost?
+
