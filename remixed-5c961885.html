@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent One — PnL Workflow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0B1020;
+    --bg-2:      #0E1530;
+    --surface:   #11193A;
+    --card:      #141D44;
+    --card-2:    #18224F;
+    --border:    rgba(255,255,255,0.07);
+    --border-2:  rgba(255,255,255,0.12);
+    --cyan:      #2DA8FF;
+    --cyan-2:    #6EE7FF;
+    --violet:    #8B7CFF;
+    --violet-2:  #A78BFA;
+    --text-pri:  #EAF0FF;
+    --text-sec:  #9FB0D8;
+    --text-dim:  #5F719E;
+    --success:   #34D399;
+    --success-d: #10B981;
+    --warning:   #FBBF24;
+    --error:     #FB7185;
+    --glass:     rgba(255,255,255,0.03);
+    --grad-pri:  linear-gradient(135deg, #2DA8FF, #8B7CFF);
+    --grad-glow: linear-gradient(135deg, rgba(45,168,255,.18), rgba(139,124,255,.18));
+    --shadow:    0 8px 40px rgba(0,0,0,0.4);
+    --shadow-sm: 0 2px 12px rgba(0,0,0,0.25);
+  }
+
+  /* LIGHT THEME — Barclays Blue */
+  body.light {
+    --bg:        #F2F7FC;
+    --bg-2:      #EAF2FA;
+    --surface:   #FFFFFF;
+    --card:      #FFFFFF;
+    --card-2:    #F0F6FC;
+    --border:    rgba(0,57,93,0.10);
+    --border-2:  rgba(0,57,93,0.16);
+    --cyan:      #0085CA;
+    --cyan-2:    #0070AD;
+    --violet:    #1A4F9C;
+    --violet-2:  #1C63B8;
+    --text-pri:  #00264A;
+    --text-sec:  #3E5C82;
+    --text-dim:  #7E96B8;
+    --success:   #0A9A6A;
+    --success-d: #088256;
+    --warning:   #C77800;
+    --error:     #D6455C;
+    --glass:     rgba(0,57,93,0.025);
+    --grad-pri:  linear-gradient(135deg, #00AEEF, #0061A8);
+    --grad-glow: linear-gradient(135deg, rgba(0,174,239,.12), rgba(0,97,168,.10));
+    --shadow:    0 10px 34px rgba(0,57,93,0.10);
+    --shadow-sm: 0 2px 12px rgba(0,57,93,0.07);
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text-pri);
+    font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.5; overflow: hidden;
+    transition: background .3s, color .3s; }
+  body { background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(0,174,239,.10), transparent 60%),
+    radial-gradient(1000px 500px at -10% 110%, rgba(0,97,168,.08), transparent 55%),
+    var(--bg); }
+
+  ::selection { background: rgba(45,168,255,.3); }
+  * { scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
+
+  /* ══ TOP BAR ══ */
+  .topbar {
+    height: 58px; display: flex; align-items: center; padding: 0 18px; gap: 14px;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px); box-shadow: var(--shadow-sm);
+  }
+  body:not(.light) .topbar { background: rgba(17,25,58,0.72); }
+
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand-logo { width: 34px; height: 34px; border-radius: 10px; background: var(--grad-pri);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff; letter-spacing: -.02em;
+    box-shadow: 0 4px 16px rgba(45,168,255,.4); position: relative; overflow: hidden; }
+  .brand-logo::after { content:''; position:absolute; inset:0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%);
+    animation: shine 4s ease-in-out infinite; }
+  @keyframes shine { 0%,100%{transform:translateX(-120%)} 50%{transform:translateX(120%)} }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-name { font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
+  .brand-name span { background: var(--grad-pri); -webkit-background-clip: text;
+    background-clip: text; -webkit-text-fill-color: transparent; }
+  .brand-sub { font-size: 10px; color: var(--text-dim); font-weight: 500; }
+
+  /* View switcher (segmented) */
+  .view-switch { display: flex; gap: 3px; padding: 3px; margin-left: 6px;
+    background: var(--card-2); border: 1px solid var(--border); border-radius: 11px; }
+  .view-btn { display: flex; align-items: center; gap: 6px; padding: 6px 13px;
+    border: none; background: transparent; color: var(--text-dim); font-family: 'Inter', sans-serif;
+    font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all .2s; }
+  .view-btn:hover { color: var(--text-sec); }
+  .view-btn.active { color: #fff; background: var(--grad-pri); box-shadow: 0 3px 14px rgba(45,168,255,.35); }
+  body.light .view-btn.active { color: #fff; }
+  .view-btn svg { width: 14px; height: 14px; }
+
+  .topbar-spacer { flex: 1; }
+
+  .tel-group { display: flex; align-items: center; gap: 7px; }
+  .tel-pill { display: flex; align-items: center; gap: 6px; padding: 5px 11px;
+    background: var(--glass); border: 1px solid var(--border); border-radius: 9px;
+    font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .tel-pill .lbl { color: var(--text-dim); font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 500; }
+  .tel-pill .val { color: var(--cyan-2); font-weight: 600; }
+  .tel-pill.cost .val { color: var(--warning); }
+  .tel-pill.model .val { color: var(--violet-2); }
+
+  .run-badge { display: flex; align-items: center; gap: 6px;
+    background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.3);
+    border-radius: 9px; padding: 5px 12px; font-size: 11px; color: var(--success); font-weight: 600; }
+  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success);
+    box-shadow: 0 0 0 0 rgba(52,211,153,.5); animation: pulse 1.8s ease-in-out infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)} 70%{box-shadow:0 0 0 7px rgba(52,211,153,0)} 100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} }
+
+  .icon-btn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--glass); color: var(--text-sec); cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: all .18s; }
+  .icon-btn:hover { color: var(--cyan); border-color: var(--border-2); transform: translateY(-1px); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ══ VIEWS ══ */
+  .view { display: none; }
+  .view.active { display: block; animation: viewIn .35s cubic-bezier(.2,.7,.3,1); }
+  @keyframes viewIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:translateY(0)} }
+
+  /* ══════════ WORKSPACE VIEW ══════════ */
+  .layout { display: grid; grid-template-columns: 246px 1fr;
+    height: calc(100vh - 58px); margin-top: 58px; }
+
+  .rail { background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto; }
+  body:not(.light) .rail { background: rgba(17,25,58,0.4); }
+  .rail-header { padding: 16px 18px 12px; }
+  .rail-title { font-size: 10px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 3px; }
+  .rail-subtitle { font-size: 13px; color: var(--text-pri); font-weight: 600; }
+
+  .progress-wrap { padding: 4px 18px 12px; }
+  .progress-label { display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--text-dim); margin-bottom: 7px; font-weight: 500; }
+  .progress-track { height: 5px; background: var(--card-2); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 42%; border-radius: 4px;
+    background: var(--grad-pri); box-shadow: 0 0 12px rgba(45,168,255,.5);
+    position: relative; overflow: hidden; }
+  .progress-fill::after { content:''; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+    animation: progShine 2s linear infinite; }
+  @keyframes progShine { from{transform:translateX(-100%)} to{transform:translateX(200%)} }
+
+  .steps-list { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+  .step-item { display: flex; align-items: center; gap: 11px; padding: 10px;
+    border-radius: 11px; cursor: pointer; border: 1px solid transparent; transition: all .18s; position: relative; }
+  .step-item:hover:not(.active) { background: var(--glass); }
+  .step-item.complete { opacity: .65; }
+  .step-item.active { background: var(--grad-glow); border-color: rgba(45,168,255,.3);
+    box-shadow: inset 0 0 0 1px rgba(45,168,255,.15); }
+  .step-item.pending { opacity: .42; }
+  .step-connector { width: 2px; height: 8px; background: var(--border-2); margin-left: 26px; border-radius: 2px; }
+  .step-icon { width: 30px; height: 30px; border-radius: 9px; display: flex;
+    align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+    border: 1px solid var(--border-2); background: var(--card-2); }
+  .step-item.complete .step-icon { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.35); color: var(--success); }
+  .step-item.active .step-icon  { background: var(--grad-pri); border-color: transparent; color: #fff;
+    box-shadow: 0 4px 14px rgba(45,168,255,.45); }
+  .step-info { flex: 1; min-width: 0; }
+  .step-label { font-size: 12.5px; font-weight: 600; color: var(--text-pri);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step-item.active .step-label { color: var(--cyan-2); }
+  .step-item.complete .step-label { color: var(--success); }
+  .step-item.pending .step-label { color: var(--text-dim); }
+  .step-sub { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+  .step-status { font-size: 9px; font-weight: 700; padding: 3px 7px; text-transform: uppercase;
+    letter-spacing: .05em; border-radius: 7px; white-space: nowrap; flex-shrink: 0; }
+  .status-complete { background: rgba(52,211,153,.12); color: var(--success); }
+  .status-running  { background: rgba(45,168,255,.14); color: var(--cyan); }
+  .status-pending  { background: var(--glass); color: var(--text-dim); }
+
+  .rail-footer { border-top: 1px solid var(--border); padding: 12px 16px; }
+  .session-info { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; line-height: 1.9; }
+  .session-info b { color: var(--text-sec); font-weight: 500; }
+
+  /* MAIN */
+  .main { display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+
+  .step-header { padding: 14px 22px; background: var(--surface);
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+  body:not(.light) .step-header { background: rgba(17,25,58,0.4); }
+  .step-num { font-size: 10px; color: var(--cyan); font-family: 'JetBrains Mono', monospace;
+    font-weight: 600; padding: 4px 9px; background: rgba(45,168,255,.1); border-radius: 7px;
+    border: 1px solid rgba(45,168,255,.2); }
+  .step-title-main { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  .step-desc { font-size: 11px; color: var(--text-sec); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .info-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+    background: var(--glass); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 10px; color: var(--cyan); font-family: 'JetBrains Mono', monospace; }
+  .step-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer; border: none;
+    transition: all .18s; font-family: 'Inter', sans-serif; }
+  .btn-outline { background: var(--glass); border: 1px solid var(--border); color: var(--text-sec); }
+  .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-1px); }
+
+  .content-split { display: grid; grid-template-columns: 1fr 400px; overflow: hidden; }
+
+  .output-panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .panel-tab-bar { display: flex; align-items: center; background: var(--surface);
+    border-bottom: 1px solid var(--border); padding: 0 16px; gap: 4px; flex-shrink: 0; }
+  body:not(.light) .panel-tab-bar { background: rgba(17,25,58,0.3); }
+  .panel-tab { padding: 11px 13px; font-size: 12px; font-weight: 600; color: var(--text-dim);
+    cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .15s; }
+  .panel-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .panel-tab:hover:not(.active) { color: var(--text-sec); }
+  .panel-tab-spacer { flex: 1; }
+  .exec-badge { display: flex; align-items: center; gap: 5px; font-size: 10px;
+    font-family: 'JetBrains Mono', monospace; color: var(--text-sec);
+    padding: 4px 9px; background: var(--glass); border-radius: 7px; border: 1px solid var(--border); }
+  .exec-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .output-scroll { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  .trace-block, .result-card, .code-block { background: var(--card); border: 1px solid var(--border);
+    border-radius: 13px; overflow: hidden; box-shadow: var(--shadow-sm); }
+  .trace-header { padding: 10px 14px; background: var(--card-2); border-bottom: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; color: var(--text-sec); display: flex; align-items: center; gap: 7px; }
+  .trace-item { display: flex; align-items: center; gap: 9px; padding: 8px 14px; font-size: 11px;
+    border-bottom: 1px solid var(--border); }
+  .trace-item:last-child { border-bottom: none; }
+  .trace-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); width: 54px; flex-shrink: 0; }
+  .trace-icon { font-size: 13px; width: 20px; text-align: center; flex-shrink: 0; }
+  .trace-text { color: var(--text-sec); flex: 1; }
+  .trace-text strong { color: var(--text-pri); font-weight: 600; }
+  .trace-dur { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--success); margin-left: auto;
+    background: rgba(52,211,153,.1); padding: 2px 7px; border-radius: 6px; }
+
+  .result-card-header { padding: 11px 14px; background: var(--grad-glow);
+    border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: var(--cyan-2); }
+  .result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .result-table th { padding: 9px 14px; text-align: left; font-size: 9.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .08em; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); }
+  .result-table td { padding: 9px 14px; color: var(--text-pri);
+    border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; }
+  .result-table tr:last-child td { border-bottom: none; }
+  .result-table tr:hover td { background: var(--glass); }
+  .val-pos { color: var(--success); } .val-neg { color: var(--error); } .val-warn { color: var(--warning); }
+  .status-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px;
+    border-radius: 7px; font-size: 10px; font-weight: 700; font-family: 'Inter',sans-serif; }
+  .chip-ok   { background: rgba(52,211,153,.12); color: var(--success); }
+  .chip-warn { background: rgba(251,191,36,.12);  color: var(--warning); }
+  .chip-err  { background: rgba(251,113,133,.12); color: var(--error); }
+
+  .code-header { display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+    background: var(--card-2); border-bottom: 1px solid var(--border); }
+  .code-lang { font-size: 10px; font-weight: 700; color: var(--cyan);
+    font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+  .code-file { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+  .code-body { padding: 14px 16px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; line-height: 1.75; color: var(--text-sec); white-space: pre-wrap; }
+  .code-body .kw  { color: var(--violet-2); }
+  .code-body .fn  { color: var(--cyan); }
+  .code-body .str { color: var(--success); }
+  .code-body .cm  { color: var(--text-dim); font-style: italic; }
+  .code-body .num { color: var(--warning); }
+
+  /* CHAT PANEL */
+  .chat-panel { display: flex; flex-direction: column; background: var(--bg-2); overflow: hidden; }
+  .chat-header { padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  body:not(.light) .chat-header { background: rgba(17,25,58,0.4); }
+  .model-badge { display: flex; align-items: center; gap: 6px;
+    background: rgba(139,124,255,.12); border: 1px solid rgba(139,124,255,.28);
+    border-radius: 9px; padding: 5px 11px; font-size: 11px; font-weight: 700; color: var(--violet-2);
+    font-family: 'JetBrains Mono', monospace; }
+  .model-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--violet); animation: pulse 1.8s ease-in-out infinite; }
+  .chat-title { font-size: 12.5px; font-weight: 600; }
+  .chat-context-chip { margin-left: auto; display: flex; align-items: center; gap: 5px;
+    font-size: 10px; color: var(--text-dim); background: var(--glass);
+    border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px;
+    font-family: 'JetBrains Mono', monospace; }
+
+  .chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 11px; }
+  .msg-agent { display: flex; flex-direction: column; gap: 9px; animation: msgIn .3s ease; }
+  @keyframes msgIn { from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:translateY(0)} }
+  .agent-bubble { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    border-top-left-radius: 4px; padding: 13px; box-shadow: var(--shadow-sm); }
+  .agent-tag { font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--cyan); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px; }
+  .agent-bubble p { font-size: 12.5px; color: var(--text-sec); line-height: 1.65; }
+  .agent-bubble p + p { margin-top: 7px; }
+  .agent-bubble strong { color: var(--text-pri); font-weight: 600; }
+
+  .finding-inline { background: var(--card); border: 1px solid var(--border); border-radius: 11px;
+    overflow: hidden; box-shadow: var(--shadow-sm); }
+  .finding-inner { display: flex; align-items: stretch; }
+  .finding-bar { width: 4px; flex-shrink: 0; }
+  .finding-bar.warn { background: var(--warning); } .finding-bar.ok { background: var(--success); }
+  .finding-bar.err  { background: var(--error); }  .finding-bar.info { background: var(--cyan); }
+  .finding-content { padding: 10px 12px; flex: 1; }
+  .finding-label { font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .07em; margin-bottom: 4px; }
+  .label-warn { color: var(--warning); } .label-ok { color: var(--success); }
+  .label-err  { color: var(--error); }   .label-info { color: var(--cyan); }
+  .finding-text { font-size: 11.5px; color: var(--text-sec); line-height: 1.5; }
+  .finding-value { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+  .suggestions-block { background: var(--card); border: 1px solid var(--border); border-radius: 11px;
+    overflow: hidden; box-shadow: var(--shadow-sm); }
+  .suggestions-header { padding: 10px 13px; background: var(--card-2);
+    border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-sec); }
+  .suggestion-list { padding: 10px 13px; display: flex; flex-direction: column; gap: 7px; }
+  .suggestion-item { display: flex; align-items: flex-start; gap: 9px; font-size: 11.5px; color: var(--text-sec); line-height: 1.5; }
+  .sugg-num { width: 19px; height: 19px; border-radius: 7px; background: var(--grad-pri);
+    color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; margin-top: 1px; box-shadow: 0 2px 8px rgba(45,168,255,.35); }
+
+  .token-meter { background: var(--card); border: 1px solid var(--border); border-radius: 11px;
+    padding: 12px 14px; box-shadow: var(--shadow-sm); }
+  .token-meter-title { font-size: 11px; font-weight: 700; color: var(--text-sec); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .token-rows { display: flex; flex-direction: column; gap: 8px; }
+  .token-row { display: flex; align-items: center; gap: 9px; }
+  .token-row-label { font-size: 10px; color: var(--text-dim); width: 64px; flex-shrink: 0; }
+  .token-track { flex: 1; height: 5px; background: var(--card-2); border-radius: 3px; overflow: hidden; }
+  .token-fill { height: 100%; border-radius: 3px; }
+  .fill-input  { background: var(--cyan); } .fill-output { background: var(--violet); } .fill-cache { background: var(--success); }
+  .token-val { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-sec); width: 46px; text-align: right; flex-shrink: 0; }
+
+  .msg-user { display: flex; justify-content: flex-end; animation: msgIn .3s ease; }
+  .user-bubble { background: var(--grad-pri); color: #fff; border-radius: 14px; border-bottom-right-radius: 4px;
+    padding: 10px 14px; font-size: 12.5px; line-height: 1.55; max-width: 85%; box-shadow: 0 4px 16px rgba(45,168,255,.3); }
+
+  .typing-indicator { display: none; align-items: center; gap: 8px; }
+  .typing-indicator.visible { display: flex; }
+  .typing-dots { display: flex; gap: 4px; padding: 11px 15px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 14px; border-top-left-radius: 4px; }
+  .typing-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
+  .typing-dot:nth-child(1){animation:tdot 1.2s 0s infinite} .typing-dot:nth-child(2){animation:tdot 1.2s .2s infinite} .typing-dot:nth-child(3){animation:tdot 1.2s .4s infinite}
+  @keyframes tdot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+  .typing-label { font-size: 11px; color: var(--text-dim); }
+
+  .quick-chips { padding: 10px 14px 0; display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+  .quick-chip { padding: 6px 12px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; font-size: 11px; color: var(--text-sec); cursor: pointer;
+    transition: all .15s; white-space: nowrap; }
+  .quick-chip:hover { border-color: var(--cyan); color: var(--cyan); transform: translateY(-1px); }
+
+  .chat-input-area { padding: 12px 14px; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+  body:not(.light) .chat-input-area { background: rgba(17,25,58,0.4); }
+  .chat-input-wrap { display: flex; align-items: flex-end; gap: 9px;
+    background: var(--bg-2); border: 1.5px solid var(--border); border-radius: 13px;
+    padding: 9px 11px; transition: border-color .18s, box-shadow .18s; }
+  .chat-input-wrap:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(45,168,255,.12); }
+  .chat-textarea { flex: 1; border: none; background: transparent; resize: none; outline: none;
+    font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-pri);
+    line-height: 1.55; max-height: 100px; min-height: 20px; }
+  .chat-textarea::placeholder { color: var(--text-dim); }
+  .send-btn { width: 34px; height: 34px; border-radius: 9px; background: var(--grad-pri);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #fff; flex-shrink: 0; transition: all .18s; box-shadow: 0 4px 14px rgba(45,168,255,.4); }
+  .send-btn:hover { transform: translateY(-1px) scale(1.05); }
+  .send-btn:disabled { background: var(--border-2); box-shadow: none; cursor: not-allowed; transform: none; }
+  .send-btn svg { width: 16px; height: 16px; }
+  .input-hint { font-size: 10px; color: var(--text-dim); margin-top: 7px; padding: 0 2px; }
+
+  .bottom-bar { padding: 11px 22px; background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; }
+  body:not(.light) .bottom-bar { background: rgba(17,25,58,0.4); }
+  .signoff-prompt { font-size: 12px; color: var(--text-sec); }
+  .signoff-prompt strong { color: var(--text-pri); font-weight: 600; }
+  .signoff-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .divider { width: 1px; height: 22px; background: var(--border-2); }
+  .btn-complete { background: linear-gradient(135deg, var(--success), var(--success-d)); color: #042; font-weight: 700;
+    border: none; display: flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 9px;
+    font-size: 12px; cursor: pointer; transition: all .18s; box-shadow: 0 4px 16px rgba(52,211,153,.4); }
+  .btn-complete:hover { transform: translateY(-1px); }
+
+  /* ══════════ PIPELINE VIEW ══════════ */
+  .pipeline-wrap { height: calc(100vh - 58px); margin-top: 58px; overflow: auto; padding: 32px 40px; }
+  .pipeline-head { max-width: 1100px; margin: 0 auto 28px; display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .ph-title { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+  .ph-sub { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
+  .ph-meta { margin-left: auto; display: flex; gap: 10px; }
+  .ph-stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 16px; text-align: center; box-shadow: var(--shadow-sm); }
+  .ph-stat .n { font-size: 20px; font-weight: 800; }
+  .ph-stat .l { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  .flow { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 0; }
+  .flow-row { display: flex; align-items: center; gap: 0; }
+  .flow-node { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px; box-shadow: var(--shadow-sm); position: relative; transition: all .2s; cursor: pointer; overflow: hidden; }
+  .flow-node:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--border-2); }
+  .flow-node.done { border-color: rgba(52,211,153,.3); }
+  .flow-node.active { border-color: rgba(45,168,255,.4); background: var(--grad-glow); }
+  .flow-node.active::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: var(--grad-pri); }
+  .flow-node.queued { opacity: .55; }
+  .fn-top { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+  .fn-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; flex-shrink: 0; background: var(--card-2); border: 1px solid var(--border); }
+  .flow-node.done .fn-icon { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.3); }
+  .flow-node.active .fn-icon { background: var(--grad-pri); border-color: transparent; box-shadow: 0 4px 14px rgba(45,168,255,.45); }
+  .fn-name { font-size: 14px; font-weight: 700; }
+  .fn-engine { font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+  .fn-badge { margin-left: auto; font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; padding: 4px 8px; border-radius: 7px; }
+  .fn-metrics { display: flex; gap: 8px; flex-wrap: wrap; }
+  .fn-metric { flex: 1; min-width: 0; background: var(--glass); border: 1px solid var(--border);
+    border-radius: 9px; padding: 8px 10px; }
+  .fn-metric .v { font-size: 14px; font-weight: 700; font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .fn-metric .k { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+  .flow-arrow { width: 56px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .flow-arrow svg { width: 28px; height: 28px; color: var(--border-2); }
+  .flow-arrow.lit svg { color: var(--cyan); }
+  .flow-vert { display: flex; justify-content: center; padding: 4px 0; }
+  .flow-vert svg { width: 22px; height: 22px; color: var(--border-2); }
+  .flow-vert.lit svg { color: var(--cyan); }
+
+  /* ══════════ OVERVIEW VIEW ══════════ */
+  .overview-wrap { height: calc(100vh - 58px); margin-top: 58px; overflow: auto; padding: 28px 36px; }
+  .ov-inner { max-width: 1240px; margin: 0 auto; }
+  .ov-head { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
+  .ov-title { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+  .ov-sub { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; transition: all .2s; }
+  .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .kpi-card::after { content:''; position:absolute; top:-30px; right:-30px; width:90px; height:90px;
+    border-radius:50%; background: var(--grad-glow); filter: blur(8px); }
+  .kpi-top { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; position: relative; }
+  .kpi-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 16px; background: var(--grad-glow); border: 1px solid var(--border); }
+  .kpi-label { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .kpi-value { font-size: 28px; font-weight: 800; letter-spacing: -.02em; font-family: 'JetBrains Mono', monospace; position: relative; }
+  .kpi-delta { font-size: 11px; margin-top: 5px; display: flex; align-items: center; gap: 4px; position: relative; }
+  .kpi-delta.up { color: var(--success); } .kpi-delta.down { color: var(--error); } .kpi-delta.flat { color: var(--text-dim); }
+
+  .ov-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+  .panel-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; box-shadow: var(--shadow-sm); }
+  .panel-card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .panel-card-title { font-size: 13px; font-weight: 700; }
+  .panel-card-tag { margin-left: auto; font-size: 10px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .panel-card-body { padding: 16px 18px; }
+
+  /* mini bar chart */
+  .barchart { display: flex; align-items: flex-end; gap: 14px; height: 160px; padding-top: 10px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+  .bar-stack { width: 100%; max-width: 46px; display: flex; flex-direction: column-reverse; border-radius: 8px 8px 0 0; overflow: hidden; }
+  .bar-seg { width: 100%; transition: height .6s cubic-bezier(.2,.7,.3,1); }
+  .bar-label { font-size: 10px; color: var(--text-dim); font-weight: 600; }
+  .bar-val { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-sec); }
+  .chart-legend { display: flex; gap: 16px; margin-top: 14px; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-sec); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .greek-list { display: flex; flex-direction: column; gap: 10px; }
+  .greek-row { display: flex; align-items: center; gap: 12px; }
+  .greek-name { font-size: 12px; font-weight: 600; width: 54px; flex-shrink: 0; }
+  .greek-bar-track { flex: 1; height: 8px; background: var(--card-2); border-radius: 5px; overflow: hidden; position: relative; }
+  .greek-bar-fill { height: 100%; border-radius: 5px; transition: width .7s cubic-bezier(.2,.7,.3,1); }
+  .greek-var { font-size: 11px; font-family: 'JetBrains Mono', monospace; width: 76px; text-align: right; flex-shrink: 0; }
+
+  .activity-feed { display: flex; flex-direction: column; }
+  .activity-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; position: relative; }
+  .activity-dot::after { content:''; position: absolute; top: 14px; left: 4px; width: 2px; height: 26px; background: var(--border); }
+  .activity-item:last-child .activity-dot::after { display: none; }
+  .activity-body { flex: 1; }
+  .activity-title { font-size: 12px; font-weight: 600; color: var(--text-pri); }
+  .activity-meta { font-size: 10px; color: var(--text-dim); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Tab panes ── */
+  .pane:not(.active) { display: none; }
+  .pane.active { display: flex; }
+
+  /* Source pane: file tree + code viewer */
+  .source-pane { flex-direction: row; overflow: hidden; }
+  .file-tree { width: 218px; flex-shrink: 0; border-right: 1px solid var(--border);
+    background: var(--surface); overflow-y: auto; padding: 8px; }
+  body:not(.light) .file-tree { background: rgba(17,25,58,0.3); }
+  .ft-head { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-dim); padding: 8px 9px 4px; }
+  .ft-section { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-dim); padding: 10px 9px 4px; display: flex; align-items: center; gap: 6px; }
+  .ft-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px;
+    font-size: 11.5px; color: var(--text-sec); cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    transition: all .12s; border: 1px solid transparent; }
+  .ft-item:hover { background: var(--glass); color: var(--text-pri); }
+  .ft-item.active { background: var(--grad-glow); color: var(--cyan); border-color: rgba(0,133,202,.22); }
+  .ft-ico { font-size: 13px; flex-shrink: 0; }
+  .code-viewer { flex: 1; overflow-y: auto; padding: 14px; }
+  .code-pane { display: none; } .code-pane.active { display: block; }
+  .code-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .code-meta-chip { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text-dim);
+    background: var(--glass); border: 1px solid var(--border); border-radius: 7px; padding: 4px 9px; }
+
+  /* Data pane */
+  .data-pane-wrap { flex-direction: column; overflow-y: auto; padding: 16px; gap: 12px; }
+  .data-note { font-size: 11px; color: var(--text-dim); padding: 2px 2px 0; }
+
+  /* Files pane */
+  .files-pane { flex-direction: column; overflow-y: auto; padding: 16px; gap: 9px; }
+  .files-group-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--text-dim); margin: 6px 2px 1px; display: flex; align-items: center; gap: 7px; }
+  .files-group-title .ct { margin-left: auto; font-weight: 500; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .file-card { display: flex; align-items: center; gap: 13px; padding: 12px 14px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 13px; box-shadow: var(--shadow-sm); transition: all .15s; }
+  .file-card:hover { border-color: var(--border-2); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .file-ico { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center;
+    justify-content: center; font-size: 18px; background: var(--grad-glow); border: 1px solid var(--border); flex-shrink: 0; }
+  .file-meta { flex: 1; min-width: 0; }
+  .file-name { font-size: 12.5px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--text-pri);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-sub { font-size: 10px; color: var(--text-dim); margin-top: 3px; display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+  .file-type { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 3px 7px; border-radius: 6px; }
+  .ft-py    { background: rgba(45,168,255,.12); color: var(--cyan); }
+  .ft-sql   { background: rgba(26,79,156,.12); color: var(--violet); }
+  .ft-data  { background: rgba(10,154,106,.12); color: var(--success); }
+  .ft-cfg   { background: rgba(199,120,0,.12); color: var(--warning); }
+  .ft-log   { background: rgba(126,150,184,.14); color: var(--text-sec); }
+  .file-stat { display: inline-flex; align-items: center; gap: 4px; }
+  .file-dl { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--glass); color: var(--text-sec); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; transition: all .15s; }
+  .file-dl:hover { color: var(--cyan); border-color: var(--cyan); transform: translateY(-1px); }
+  .file-dl svg { width: 15px; height: 15px; }
+
+  @media (max-width: 1100px) {
+    .ov-cols { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .flow-row { flex-direction: column; } .flow-arrow { transform: rotate(90deg); width: auto; padding: 4px 0; }
+  }
+</style>
+</head>
+<body class="light">
+
+<!-- ══ TOP BAR ══ -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo">A1</div>
+    <div class="brand-text">
+      <div class="brand-name"><span>Agent</span> One</div>
+      <div class="brand-sub">PnL Production · Run #2847</div>
+    </div>
+  </div>
+
+  <div class="view-switch">
+    <button class="view-btn active" data-view="workspace" onclick="switchView('workspace', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="13" y="3" width="8" height="9" rx="1.5"/><rect x="13" y="15" width="8" height="6" rx="1.5"/></svg>
+      Workspace
+    </button>
+    <button class="view-btn" data-view="pipeline" onclick="switchView('pipeline', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="19" cy="12" r="2.5"/><path d="M7 11l3-3M7 13l3 3M14.5 6.5L17 11M14.5 17.5L17 13"/></svg>
+      Pipeline
+    </button>
+    <button class="view-btn" data-view="overview" onclick="switchView('overview', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l4-4 4 3 6-7"/><path d="M3 21h18"/><path d="M3 21V8M21 21V5"/></svg>
+      Overview
+    </button>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="tel-group">
+    <div class="tel-pill model"><span class="lbl">Model</span><span class="val">opus-4-6</span></div>
+    <div class="tel-pill"><span class="lbl">In</span><span class="val" id="tok-in">42,180</span></div>
+    <div class="tel-pill"><span class="lbl">Out</span><span class="val" id="tok-out">8,340</span></div>
+    <div class="tel-pill cost"><span class="lbl">Cost</span><span class="val" id="cost">$0.38</span></div>
+  </div>
+  <div class="run-badge"><div class="pulse-dot"></div>Running</div>
+  <button class="icon-btn" onclick="toggleTheme()" title="Toggle theme">
+    <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+  </button>
+</div>
+
+<!-- ══════════════ WORKSPACE VIEW ══════════════ -->
+<div class="view active" id="view-workspace">
+  <div class="layout">
+    <div class="rail">
+      <div class="rail-header">
+        <div class="rail-title">Workflow</div>
+        <div class="rail-subtitle">PnL Production · T+0</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Progress</span><span>2 of 6 complete</span></div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+      <div class="steps-list">
+        <div class="step-item complete"><div class="step-icon">✓</div><div class="step-info"><div class="step-label">PnL Prep</div><div class="step-sub">Source validation · Trade load</div></div><div class="step-status status-complete">Done</div></div>
+        <div class="step-connector"></div>
+        <div class="step-item complete"><div class="step-icon">✓</div><div class="step-info"><div class="step-label">FOBO Rec</div><div class="step-sub">Front / back matching</div></div><div class="step-status status-complete">Done</div></div>
+        <div class="step-connector"></div>
+        <div class="step-item active"><div class="step-icon">📊</div><div class="step-info"><div class="step-label">PL Explains</div><div class="step-sub">Risk attribution · Greeks</div></div><div class="step-status status-running">Live</div></div>
+        <div class="step-connector"></div>
+        <div class="step-item pending"><div class="step-icon">⚡</div><div class="step-info"><div class="step-label">Flash vs Formal</div><div class="step-sub">Variance analysis</div></div><div class="step-status status-pending">Queued</div></div>
+        <div class="step-connector"></div>
+        <div class="step-item pending"><div class="step-icon">🔧</div><div class="step-info"><div class="step-label">Adjustments</div><div class="step-sub">Manual overrides · EOD</div></div><div class="step-status status-pending">Queued</div></div>
+        <div class="step-connector"></div>
+        <div class="step-item pending"><div class="step-icon">✍️</div><div class="step-info"><div class="step-label">Sign-Off</div><div class="step-sub">Controller approval</div></div><div class="step-status status-pending">Queued</div></div>
+      </div>
+      <div class="rail-footer">
+        <div class="session-info">Session: <b>7f3a-d91e</b><br>Started: <b>08:03:21 BST</b><br>Book: <b>EMEA-IRD-Rates</b></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="step-header">
+        <span class="step-num">STEP 03 / 06</span>
+        <div>
+          <div class="step-title-main">PL Explains — Risk Attribution</div>
+          <div class="step-desc">Engine: <span class="info-chip">pl_explains_engine.py</span> · Greeks decomposition · Δ Γ ν Θ ρ</div>
+        </div>
+        <div class="step-actions">
+          <button class="btn btn-outline">⟳ Re-run</button>
+          <button class="btn btn-outline">📋 Log</button>
+        </div>
+      </div>
+
+      <div class="content-split">
+        <div class="output-panel">
+          <div class="panel-tab-bar">
+            <div class="panel-tab active" onclick="switchTab(this,'exec')">⚙ Execution</div>
+            <div class="panel-tab" onclick="switchTab(this,'source')">📄 Source</div>
+            <div class="panel-tab" onclick="switchTab(this,'data')">📈 Data</div>
+            <div class="panel-tab" onclick="switchTab(this,'files')">📁 Files</div>
+            <div class="panel-tab-spacer"></div>
+            <div class="exec-badge"><div class="exec-dot"></div>3.2s</div>
+          </div>
+          <div class="output-scroll pane active" id="pane-exec">
+            <div class="trace-block">
+              <div class="trace-header">🔧 Agent Tool-Call Trace</div>
+              <div class="trace-item"><span class="trace-time">08:04:01</span><span class="trace-icon">🗄</span><span class="trace-text"><strong>databricks_query</strong> · pl_explains_engine.sql</span><span class="trace-dur">0.8s</span></div>
+              <div class="trace-item"><span class="trace-time">08:04:02</span><span class="trace-icon">🐍</span><span class="trace-text"><strong>python_exec</strong> · greeks_decomp.py — 412 trades</span><span class="trace-dur">1.4s</span></div>
+              <div class="trace-item"><span class="trace-time">08:04:03</span><span class="trace-icon">🔍</span><span class="trace-text"><strong>validate_schema</strong> · explains_output.parquet</span><span class="trace-dur">0.2s</span></div>
+              <div class="trace-item"><span class="trace-time">08:04:04</span><span class="trace-icon">📤</span><span class="trace-text"><strong>write_delta</strong> · finance.pnl.explains</span><span class="trace-dur">0.8s</span></div>
+            </div>
+
+            <div class="result-card">
+              <div class="result-card-header">📊 PL Explains — Greeks Summary (EMEA-IRD-Rates)</div>
+              <table class="result-table">
+                <thead><tr><th>Greek</th><th>Actual</th><th>Predicted</th><th>Variance</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td>Delta</td><td class="val-pos">+$1,248,300</td><td class="val-pos">+$1,220,000</td><td class="val-warn">+$28,300</td><td><span class="status-chip chip-warn">⚠ Threshold</span></td></tr>
+                  <tr><td>Gamma</td><td class="val-neg">-$42,100</td><td class="val-neg">-$40,800</td><td class="val-neg">-$1,300</td><td><span class="status-chip chip-ok">✓ Within</span></td></tr>
+                  <tr><td>Vega</td><td class="val-pos">+$318,700</td><td class="val-pos">+$295,000</td><td class="val-warn">+$23,700</td><td><span class="status-chip chip-warn">⚠ Threshold</span></td></tr>
+                  <tr><td>Theta</td><td class="val-neg">-$87,400</td><td class="val-neg">-$88,100</td><td class="val-pos">+$700</td><td><span class="status-chip chip-ok">✓ Within</span></td></tr>
+                  <tr><td>Rho</td><td class="val-pos">+$14,200</td><td class="val-pos">+$13,800</td><td class="val-pos">+$400</td><td><span class="status-chip chip-ok">✓ Within</span></td></tr>
+                  <tr><td><strong>Unexplained</strong></td><td colspan="2"></td><td class="val-neg"><strong>-$18,900</strong></td><td><span class="status-chip chip-err">✗ Review</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="code-block">
+              <div class="code-header"><span class="code-lang">Python</span><span class="code-file">greeks_decomp.py · 44–62</span></div>
+              <div class="code-body"><span class="cm"># Greeks decomposition — deterministic engine</span>
+<span class="kw">def</span> <span class="fn">compute_pl_explains</span>(trades_df, market_data):
+    explained = {}
+    <span class="kw">for</span> greek <span class="kw">in</span> [<span class="str">'delta'</span>, <span class="str">'gamma'</span>, <span class="str">'vega'</span>, <span class="str">'theta'</span>, <span class="str">'rho'</span>]:
+        sensitivity = trades_df[f<span class="str">'{greek}_sensitivity'</span>]
+        market_move = market_data[f<span class="str">'{greek}_move'</span>]
+        explained[greek] = (sensitivity * market_move).<span class="fn">sum</span>()
+
+    total = <span class="fn">sum</span>(explained.values())
+    unexplained = actual_pnl - total
+    <span class="kw">return</span> {
+        <span class="str">'explains'</span>: explained,
+        <span class="str">'unexplained'</span>: unexplained,
+        <span class="str">'coverage_pct'</span>: total / actual_pnl * <span class="num">100</span>
+    }</div>
+            </div>
+          </div>
+
+          <!-- ── SOURCE PANE ── -->
+          <div class="pane source-pane" id="pane-source">
+            <div class="file-tree">
+              <div class="ft-head">pnl-explains · main</div>
+              <div class="ft-section">🐍 Engine</div>
+              <div class="ft-item active" onclick="selectFile(this,'greeks')"><span class="ft-ico">🐍</span>greeks_decomp.py</div>
+              <div class="ft-item" onclick="selectFile(this,'loader')"><span class="ft-ico">🐍</span>market_data_loader.py</div>
+              <div class="ft-section">🗄 Query</div>
+              <div class="ft-item" onclick="selectFile(this,'sql')"><span class="ft-ico">🗄</span>pl_explains_engine.sql</div>
+              <div class="ft-section">⚙ Config</div>
+              <div class="ft-item" onclick="selectFile(this,'cfg')"><span class="ft-ico">⚙</span>explains_config.yaml</div>
+            </div>
+            <div class="code-viewer">
+              <!-- greeks_decomp.py -->
+              <div class="code-pane active" id="code-greeks">
+                <div class="code-meta">
+                  <span class="code-meta-chip">Python 3.11</span><span class="code-meta-chip">128 lines</span>
+                  <span class="code-meta-chip">commit 4f2a91c</span><span class="code-meta-chip">modified 08:01 BST</span>
+                </div>
+                <div class="code-block"><div class="code-header"><span class="code-lang">Python</span><span class="code-file">greeks_decomp.py</span></div>
+                <div class="code-body"><span class="cm"># Greeks decomposition — deterministic engine</span>
+<span class="cm"># No LLM calls in the compute path (audit constraint)</span>
+<span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+GREEKS = [<span class="str">'delta'</span>, <span class="str">'gamma'</span>, <span class="str">'vega'</span>, <span class="str">'theta'</span>, <span class="str">'rho'</span>]
+TOLERANCE = <span class="num">25_000</span>   <span class="cm"># per-greek variance threshold (GBP)</span>
+
+<span class="kw">def</span> <span class="fn">compute_pl_explains</span>(trades_df, market_data, actual_pnl):
+    explained = {}
+    <span class="kw">for</span> greek <span class="kw">in</span> GREEKS:
+        s = trades_df[f<span class="str">'{greek}_sensitivity'</span>]
+        m = market_data[f<span class="str">'{greek}_move'</span>]
+        explained[greek] = (s * m).<span class="fn">sum</span>()
+
+    total = <span class="fn">sum</span>(explained.values())
+    unexplained = actual_pnl - total
+    <span class="kw">return</span> {
+        <span class="str">'explains'</span>: explained,
+        <span class="str">'unexplained'</span>: unexplained,
+        <span class="str">'coverage_pct'</span>: total / actual_pnl * <span class="num">100</span>,
+        <span class="str">'breaches'</span>: [g <span class="kw">for</span> g, v <span class="kw">in</span> explained.items()
+                     <span class="kw">if</span> <span class="fn">abs</span>(v) &gt; TOLERANCE]
+    }</div></div>
+              </div>
+              <!-- market_data_loader.py -->
+              <div class="code-pane" id="code-loader">
+                <div class="code-meta">
+                  <span class="code-meta-chip">Python 3.11</span><span class="code-meta-chip">74 lines</span>
+                  <span class="code-meta-chip">commit 4f2a91c</span><span class="code-meta-chip">modified 07:58 BST</span>
+                </div>
+                <div class="code-block"><div class="code-header"><span class="code-lang">Python</span><span class="code-file">market_data_loader.py</span></div>
+                <div class="code-body"><span class="cm"># Loads EOD market moves from Databricks Delta</span>
+<span class="kw">from</span> databricks <span class="kw">import</span> sql
+
+<span class="kw">def</span> <span class="fn">load_market_moves</span>(book, as_of):
+    q = f<span class="str">"""
+        SELECT greek, bucket, move_bp, ccy
+        FROM finance.market.eod_moves
+        WHERE book = '{book}' AND as_of = '{as_of}'
+    """</span>
+    <span class="kw">with</span> sql.<span class="fn">connect</span>(**CONN) <span class="kw">as</span> c:
+        df = pd.<span class="fn">read_sql</span>(q, c)
+    <span class="cm"># pivot to wide: one *_move column per greek</span>
+    <span class="kw">return</span> df.<span class="fn">pivot_table</span>(index=<span class="str">'bucket'</span>,
+                          columns=<span class="str">'greek'</span>,
+                          values=<span class="str">'move_bp'</span>)</div></div>
+              </div>
+              <!-- pl_explains_engine.sql -->
+              <div class="code-pane" id="code-sql">
+                <div class="code-meta">
+                  <span class="code-meta-chip">Databricks SQL</span><span class="code-meta-chip">41 lines</span>
+                  <span class="code-meta-chip">commit 4f2a91c</span><span class="code-meta-chip">modified 07:46 BST</span>
+                </div>
+                <div class="code-block"><div class="code-header"><span class="code-lang">SQL</span><span class="code-file">pl_explains_engine.sql</span></div>
+                <div class="code-body"><span class="cm">-- Trade-level sensitivities for PL Explains</span>
+<span class="kw">SELECT</span>
+    t.trade_id,
+    t.delta_sensitivity,
+    t.gamma_sensitivity,
+    t.vega_sensitivity,
+    t.theta_sensitivity,
+    t.rho_sensitivity,
+    t.actual_pnl
+<span class="kw">FROM</span> finance.pnl.trades t
+<span class="kw">JOIN</span> finance.pnl.fobo_matched f
+  <span class="kw">ON</span> t.trade_id = f.trade_id
+<span class="kw">WHERE</span> t.book = <span class="str">'EMEA-IRD-Rates'</span>
+  <span class="kw">AND</span> t.as_of = <span class="str">'2026-06-16'</span>
+  <span class="kw">AND</span> f.match_status = <span class="str">'MATCHED'</span>;</div></div>
+              </div>
+              <!-- explains_config.yaml -->
+              <div class="code-pane" id="code-cfg">
+                <div class="code-meta">
+                  <span class="code-meta-chip">YAML</span><span class="code-meta-chip">22 lines</span>
+                  <span class="code-meta-chip">commit 4f2a91c</span><span class="code-meta-chip">modified 07:30 BST</span>
+                </div>
+                <div class="code-block"><div class="code-header"><span class="code-lang">YAML</span><span class="code-file">explains_config.yaml</span></div>
+                <div class="code-body"><span class="kw">book</span>: EMEA-IRD-Rates
+<span class="kw">as_of</span>: <span class="num">2026-06-16</span>
+<span class="kw">tolerances</span>:
+  <span class="kw">per_greek_gbp</span>: <span class="num">25000</span>
+  <span class="kw">coverage_pct_min</span>: <span class="num">99.0</span>
+  <span class="kw">unexplained_gbp</span>: <span class="num">20000</span>
+<span class="kw">greeks</span>:
+  - delta
+  - gamma
+  - vega
+  - theta
+  - rho
+<span class="kw">output</span>:
+  <span class="kw">table</span>: finance.pnl.explains
+  <span class="kw">format</span>: delta
+<span class="kw">audit</span>:
+  <span class="kw">llm_in_compute_path</span>: <span class="str">false</span>   <span class="cm"># hard constraint</span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── DATA PANE ── -->
+          <div class="pane data-pane-wrap" id="pane-data">
+            <div class="result-card">
+              <div class="result-card-header">📥 Input — Trade Sensitivities (sample 5 of 412)</div>
+              <table class="result-table">
+                <thead><tr><th>Trade ID</th><th>Delta</th><th>Vega</th><th>Theta</th><th>Actual P&amp;L</th></tr></thead>
+                <tbody>
+                  <tr><td>IRS-88142</td><td class="val-pos">+4,820</td><td class="val-pos">+1,140</td><td class="val-neg">-310</td><td class="val-pos">+$184,200</td></tr>
+                  <tr><td>SWPT-88147</td><td class="val-pos">+2,310</td><td class="val-pos">+3,980</td><td class="val-neg">-880</td><td class="val-pos">+$96,400</td></tr>
+                  <tr><td>IRS-88150</td><td class="val-neg">-1,540</td><td class="val-pos">+220</td><td class="val-neg">-140</td><td class="val-neg">-$42,100</td></tr>
+                  <tr><td>FRA-88151</td><td class="val-pos">+980</td><td class="val-pos">+60</td><td class="val-neg">-90</td><td class="val-pos">+$31,800</td></tr>
+                  <tr><td>SWPT-88158</td><td class="val-pos">+3,640</td><td class="val-pos">+2,710</td><td class="val-neg">-620</td><td class="val-pos">+$128,900</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="data-note">Showing 5 rows · full set = 412 trades · source: finance.pnl.trades</div>
+
+            <div class="result-card">
+              <div class="result-card-header">🌍 Input — Market Moves (EOD, by bucket)</div>
+              <table class="result-table">
+                <thead><tr><th>Bucket</th><th>Greek</th><th>Move</th><th>Ccy</th><th>Source</th></tr></thead>
+                <tbody>
+                  <tr><td>5Y</td><td>delta</td><td class="val-warn">+3.0 bp</td><td>EUR</td><td>ECB 14:30</td></tr>
+                  <tr><td>2Y×5Y</td><td>vega</td><td class="val-warn">+8.0 bp</td><td>EUR</td><td>vol surface</td></tr>
+                  <tr><td>10Y</td><td>delta</td><td class="val-pos">+0.4 bp</td><td>EUR</td><td>close</td></tr>
+                  <tr><td>2Y</td><td>theta</td><td class="val-neg">-1d carry</td><td>EUR</td><td>roll</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="result-card">
+              <div class="result-card-header">📤 Output — explains_2026_06_16.parquet (aggregated)</div>
+              <table class="result-table">
+                <thead><tr><th>Greek</th><th>Explained P&amp;L</th><th>Variance</th><th>Breach</th></tr></thead>
+                <tbody>
+                  <tr><td>delta</td><td class="val-pos">+$1,220,000</td><td class="val-warn">+$28,300</td><td><span class="status-chip chip-warn">yes</span></td></tr>
+                  <tr><td>gamma</td><td class="val-neg">-$40,800</td><td class="val-neg">-$1,300</td><td><span class="status-chip chip-ok">no</span></td></tr>
+                  <tr><td>vega</td><td class="val-pos">+$295,000</td><td class="val-warn">+$23,700</td><td><span class="status-chip chip-ok">no</span></td></tr>
+                  <tr><td>theta</td><td class="val-neg">-$88,100</td><td class="val-pos">+$700</td><td><span class="status-chip chip-ok">no</span></td></tr>
+                  <tr><td>rho</td><td class="val-pos">+$13,800</td><td class="val-pos">+$400</td><td><span class="status-chip chip-ok">no</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="data-note">Written to finance.pnl.explains · 5 rows · 1 partition (as_of=2026-06-16)</div>
+          </div>
+
+          <!-- ── FILES PANE ── -->
+          <div class="pane files-pane" id="pane-files">
+            <div class="files-group-title">📥 Inputs <span class="ct">3 files</span></div>
+            <div class="file-card">
+              <div class="file-ico">🗃️</div>
+              <div class="file-meta"><div class="file-name">trades_emea_ird.parquet</div>
+                <div class="file-sub"><span class="file-type ft-data">parquet</span><span class="file-stat">412 rows</span><span class="file-stat">2.4 MB</span><span class="file-stat">07:46 BST</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+            <div class="file-card">
+              <div class="file-ico">🌍</div>
+              <div class="file-meta"><div class="file-name">market_data_2026_06_16.parquet</div>
+                <div class="file-sub"><span class="file-type ft-data">parquet</span><span class="file-stat">86 rows</span><span class="file-stat">412 KB</span><span class="file-stat">07:50 BST</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+            <div class="file-card">
+              <div class="file-ico">⚙️</div>
+              <div class="file-meta"><div class="file-name">explains_config.yaml</div>
+                <div class="file-sub"><span class="file-type ft-cfg">yaml</span><span class="file-stat">22 lines</span><span class="file-stat">1.1 KB</span><span class="file-stat">07:30 BST</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+
+            <div class="files-group-title">📤 Outputs <span class="ct">3 files</span></div>
+            <div class="file-card">
+              <div class="file-ico">📊</div>
+              <div class="file-meta"><div class="file-name">explains_2026_06_16.parquet</div>
+                <div class="file-sub"><span class="file-type ft-data">parquet</span><span class="file-stat">5 rows</span><span class="file-stat">38 KB</span><span class="file-stat">08:04 BST</span><span class="status-chip chip-ok">written</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+            <div class="file-card">
+              <div class="file-ico">📄</div>
+              <div class="file-meta"><div class="file-name">greeks_summary.csv</div>
+                <div class="file-sub"><span class="file-type ft-data">csv</span><span class="file-stat">6 rows</span><span class="file-stat">2 KB</span><span class="file-stat">08:04 BST</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+            <div class="file-card">
+              <div class="file-ico">🧾</div>
+              <div class="file-meta"><div class="file-name">run_2847_explains.log.json</div>
+                <div class="file-sub"><span class="file-type ft-log">json</span><span class="file-stat">4 tool calls</span><span class="file-stat">14 KB</span><span class="file-stat">08:04 BST</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+
+            <div class="files-group-title">📦 Code Artifacts <span class="ct">4 files</span></div>
+            <div class="file-card">
+              <div class="file-ico">🐍</div>
+              <div class="file-meta"><div class="file-name">greeks_decomp.py</div>
+                <div class="file-sub"><span class="file-type ft-py">python</span><span class="file-stat">128 lines</span><span class="file-stat">4.6 KB</span><span class="file-stat">commit 4f2a91c</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+            <div class="file-card">
+              <div class="file-ico">🗄️</div>
+              <div class="file-meta"><div class="file-name">pl_explains_engine.sql</div>
+                <div class="file-sub"><span class="file-type ft-sql">sql</span><span class="file-stat">41 lines</span><span class="file-stat">1.4 KB</span><span class="file-stat">commit 4f2a91c</span></div></div>
+              <button class="file-dl" onclick="flashDownload(this)" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 11l5 5 5-5M5 21h14"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div class="model-badge"><div class="model-dot"></div>opus-4-6</div>
+            <div class="chat-title">Agent Analysis &amp; Chat</div>
+            <div class="chat-context-chip">📎 Step loaded</div>
+          </div>
+
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg-agent">
+              <div class="agent-bubble">
+                <div class="agent-tag">📝 Step Analysis</div>
+                <p>PL Explains completed across <strong>412 trades</strong> (EMEA-IRD-Rates). Greeks decomposition covers <strong>98.4%</strong> of actual P&amp;L — two greeks flag above tolerance.</p>
+                <p>The unexplained residual of <strong>-$18,900</strong> is within T+0 range but should be annotated before sign-off given delta and vega individually breaching the $25k threshold.</p>
+              </div>
+
+              <div class="finding-inline"><div class="finding-inner"><div class="finding-bar warn"></div><div class="finding-content">
+                <div class="finding-label label-warn">⚠ Delta Variance</div>
+                <div class="finding-text">3bp EUR rate move in 5Y bucket post-ECB commentary at 14:30 CET is the probable driver.</div>
+                <div class="finding-value">Actual +$1,248,300 · Pred +$1,220,000 · Δ +$28,300</div>
+              </div></div></div>
+
+              <div class="finding-inline"><div class="finding-inner"><div class="finding-bar warn"></div><div class="finding-content">
+                <div class="finding-label label-warn">⚠ Vega Variance</div>
+                <div class="finding-text">EUR 2Y×5Y swaption vol surface re-priced +8 bps intraday.</div>
+                <div class="finding-value">Actual +$318,700 · Pred +$295,000 · Δ +$23,700</div>
+              </div></div></div>
+
+              <div class="finding-inline"><div class="finding-inner"><div class="finding-bar err"></div><div class="finding-content">
+                <div class="finding-label label-err">✗ Unexplained Residual</div>
+                <div class="finding-text">-$18,900 likely from cross-gamma; not captured in first-order approximation.</div>
+                <div class="finding-value">Coverage 98.4% · Tolerance 99.0%</div>
+              </div></div></div>
+
+              <div class="suggestions-block">
+                <div class="suggestions-header">💡 Suggested Actions</div>
+                <div class="suggestion-list">
+                  <div class="suggestion-item"><div class="sugg-num">1</div><span>Annotate Delta variance — reference ECB rate move at 14:30 CET.</span></div>
+                  <div class="suggestion-item"><div class="sugg-num">2</div><span>Flag -$18,900 residual in FC notes as probable cross-gamma.</span></div>
+                  <div class="suggestion-item"><div class="sugg-num">3</div><span>Vega overshoot acceptable — document vol surface shift in sign-off.</span></div>
+                </div>
+              </div>
+
+              <div class="token-meter">
+                <div class="token-meter-title">🔢 Token Usage — This Step</div>
+                <div class="token-rows">
+                  <div class="token-row"><div class="token-row-label">Input</div><div class="token-track"><div class="token-fill fill-input" style="width:68%"></div></div><div class="token-val">14,280</div></div>
+                  <div class="token-row"><div class="token-row-label">Output</div><div class="token-track"><div class="token-fill fill-output" style="width:34%"></div></div><div class="token-val">2,840</div></div>
+                  <div class="token-row"><div class="token-row-label">Cache hit</div><div class="token-track"><div class="token-fill fill-cache" style="width:52%"></div></div><div class="token-val">7,100</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+              <div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+              <span class="typing-label">Agent is thinking…</span>
+            </div>
+          </div>
+
+          <div class="quick-chips" id="quickChips">
+            <div class="quick-chip" onclick="sendQuick(this)">Why is Vega above threshold?</div>
+            <div class="quick-chip" onclick="sendQuick(this)">Explain the unexplained residual</div>
+            <div class="quick-chip" onclick="sendQuick(this)">Draft sign-off commentary</div>
+            <div class="quick-chip" onclick="sendQuick(this)">Compare to T-1</div>
+          </div>
+
+          <div class="chat-input-area">
+            <div class="chat-input-wrap">
+              <textarea class="chat-textarea" id="chatInput" rows="1"
+                placeholder="Ask about this step, request analysis, or give instructions…"
+                onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+              <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+            </div>
+            <div class="input-hint">Context: PL Explains · 412 trades · EMEA-IRD-Rates · ⌘↵ to send</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="signoff-prompt">Step <strong>3 of 6</strong> · Review analysis, then mark complete to proceed to <strong>Flash vs Formal</strong>.</div>
+        <div class="signoff-actions">
+          <button class="btn btn-outline">💬 Add Note</button>
+          <div class="divider"></div>
+          <button class="btn btn-outline">⏩ Skip</button>
+          <button class="btn-complete">✓ Mark Complete &amp; Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ PIPELINE VIEW ══════════════ -->
+<div class="view" id="view-pipeline">
+  <div class="pipeline-wrap">
+    <div class="pipeline-head">
+      <div>
+        <div class="ph-title">Pipeline Flow</div>
+        <div class="ph-sub">EMEA-IRD-Rates · T+0 · Run #2847 — agent-orchestrated stage graph</div>
+      </div>
+      <div class="ph-meta">
+        <div class="ph-stat"><div class="n" style="color:var(--success)">2</div><div class="l">Complete</div></div>
+        <div class="ph-stat"><div class="n" style="color:var(--cyan)">1</div><div class="l">Running</div></div>
+        <div class="ph-stat"><div class="n" style="color:var(--text-dim)">3</div><div class="l">Queued</div></div>
+        <div class="ph-stat"><div class="n">412</div><div class="l">Trades</div></div>
+      </div>
+    </div>
+
+    <div class="flow">
+      <div class="flow-row">
+        <div class="flow-node done" onclick="goWorkspace()">
+          <div class="fn-top"><div class="fn-icon">📥</div><div><div class="fn-name">PnL Prep</div><div class="fn-engine">pnl_prep.py</div></div><div class="fn-badge" style="background:rgba(52,211,153,.12);color:var(--success)">Done</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v">412</div><div class="k">Trades loaded</div></div><div class="fn-metric"><div class="v">0</div><div class="k">Source errors</div></div></div>
+        </div>
+        <div class="flow-arrow lit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="flow-node done" onclick="goWorkspace()">
+          <div class="fn-top"><div class="fn-icon">🔗</div><div><div class="fn-name">FOBO Rec</div><div class="fn-engine">fobo_match.py</div></div><div class="fn-badge" style="background:rgba(52,211,153,.12);color:var(--success)">Done</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v">408</div><div class="k">Matched</div></div><div class="fn-metric"><div class="v val-warn">4</div><div class="k">Breaks</div></div></div>
+        </div>
+        <div class="flow-arrow lit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="flow-node active" onclick="goWorkspace()">
+          <div class="fn-top"><div class="fn-icon">📊</div><div><div class="fn-name">PL Explains</div><div class="fn-engine">greeks_decomp.py</div></div><div class="fn-badge" style="background:rgba(45,168,255,.14);color:var(--cyan)">Live</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v val-pos">98.4%</div><div class="k">Coverage</div></div><div class="fn-metric"><div class="v val-err">-$18.9k</div><div class="k">Unexplained</div></div></div>
+        </div>
+      </div>
+
+      <div class="flow-vert lit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+
+      <div class="flow-row">
+        <div class="flow-node queued">
+          <div class="fn-top"><div class="fn-icon">⚡</div><div><div class="fn-name">Flash vs Formal</div><div class="fn-engine">variance_check.py</div></div><div class="fn-badge" style="background:var(--glass);color:var(--text-dim)">Queued</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v">—</div><div class="k">Variance</div></div><div class="fn-metric"><div class="v">—</div><div class="k">Tolerance</div></div></div>
+        </div>
+        <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="flow-node queued">
+          <div class="fn-top"><div class="fn-icon">🔧</div><div><div class="fn-name">Adjustments</div><div class="fn-engine">eod_adjust.py</div></div><div class="fn-badge" style="background:var(--glass);color:var(--text-dim)">Queued</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v">—</div><div class="k">Manual</div></div><div class="fn-metric"><div class="v">—</div><div class="k">Auto</div></div></div>
+        </div>
+        <div class="flow-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+        <div class="flow-node queued">
+          <div class="fn-top"><div class="fn-icon">✍️</div><div><div class="fn-name">Sign-Off</div><div class="fn-engine">controller_approve</div></div><div class="fn-badge" style="background:var(--glass);color:var(--text-dim)">Queued</div></div>
+          <div class="fn-metrics"><div class="fn-metric"><div class="v">—</div><div class="k">Approver</div></div><div class="fn-metric"><div class="v">—</div><div class="k">Status</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ OVERVIEW VIEW ══════════════ -->
+<div class="view" id="view-overview">
+  <div class="overview-wrap">
+    <div class="ov-inner">
+      <div class="ov-head">
+        <div>
+          <div class="ov-title">Run Overview</div>
+          <div class="ov-sub">EMEA-IRD-Rates · 2026-06-16 (T+0) · 412 trades · Run #2847</div>
+        </div>
+        <button class="btn btn-outline" style="margin-left:auto" onclick="goWorkspace()">↩ Back to Workspace</button>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-top"><div class="kpi-icon">💷</div><div class="kpi-label">Total P&amp;L</div></div><div class="kpi-value val-pos">+$1.45M</div><div class="kpi-delta up">▲ +$212k vs T-1</div></div>
+        <div class="kpi-card"><div class="kpi-top"><div class="kpi-icon">🎯</div><div class="kpi-label">Coverage</div></div><div class="kpi-value">98.4%</div><div class="kpi-delta down">▼ 0.6% below tolerance</div></div>
+        <div class="kpi-card"><div class="kpi-top"><div class="kpi-icon">⚠️</div><div class="kpi-label">Flags</div></div><div class="kpi-value val-warn">3</div><div class="kpi-delta flat">2 threshold · 1 review</div></div>
+        <div class="kpi-card"><div class="kpi-top"><div class="kpi-icon">⏱️</div><div class="kpi-label">Run Time</div></div><div class="kpi-value">1m 42s</div><div class="kpi-delta up">▲ 18s faster vs avg</div></div>
+      </div>
+
+      <div class="ov-cols">
+        <div class="panel-card">
+          <div class="panel-card-head"><div class="kpi-icon" style="width:28px;height:28px;font-size:14px">📊</div><div class="panel-card-title">P&amp;L Attribution by Greek</div><div class="panel-card-tag">actual vs predicted</div></div>
+          <div class="panel-card-body">
+            <div class="barchart" id="barchart">
+              <div class="bar-col"><div class="bar-val">$1.25M</div><div class="bar-stack"><div class="bar-seg" style="background:var(--cyan);height:140px"></div></div><div class="bar-label">Delta</div></div>
+              <div class="bar-col"><div class="bar-val">-$42k</div><div class="bar-stack"><div class="bar-seg" style="background:var(--error);height:14px"></div></div><div class="bar-label">Gamma</div></div>
+              <div class="bar-col"><div class="bar-val">$319k</div><div class="bar-stack"><div class="bar-seg" style="background:var(--violet);height:56px"></div></div><div class="bar-label">Vega</div></div>
+              <div class="bar-col"><div class="bar-val">-$87k</div><div class="bar-stack"><div class="bar-seg" style="background:var(--error);height:24px"></div></div><div class="bar-label">Theta</div></div>
+              <div class="bar-col"><div class="bar-val">$14k</div><div class="bar-stack"><div class="bar-seg" style="background:var(--success);height:10px"></div></div><div class="bar-label">Rho</div></div>
+            </div>
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Directional</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--violet)"></div>Volatility</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--error)"></div>Decay / convexity</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card-head"><div class="kpi-icon" style="width:28px;height:28px;font-size:14px">📐</div><div class="panel-card-title">Variance vs Threshold</div><div class="panel-card-tag">$25k limit</div></div>
+          <div class="panel-card-body">
+            <div class="greek-list">
+              <div class="greek-row"><div class="greek-name">Delta</div><div class="greek-bar-track"><div class="greek-bar-fill" style="background:var(--warning);width:92%"></div></div><div class="greek-var val-warn">+$28.3k</div></div>
+              <div class="greek-row"><div class="greek-name">Vega</div><div class="greek-bar-track"><div class="greek-bar-fill" style="background:var(--warning);width:78%"></div></div><div class="greek-var val-warn">+$23.7k</div></div>
+              <div class="greek-row"><div class="greek-name">Theta</div><div class="greek-bar-track"><div class="greek-bar-fill" style="background:var(--success);width:6%"></div></div><div class="greek-var val-pos">+$0.7k</div></div>
+              <div class="greek-row"><div class="greek-name">Rho</div><div class="greek-bar-track"><div class="greek-bar-fill" style="background:var(--success);width:3%"></div></div><div class="greek-var val-pos">+$0.4k</div></div>
+              <div class="greek-row"><div class="greek-name">Gamma</div><div class="greek-bar-track"><div class="greek-bar-fill" style="background:var(--success);width:9%"></div></div><div class="greek-var val-neg">-$1.3k</div></div>
+            </div>
+            <div style="margin-top:16px;padding:11px 13px;background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.2);border-radius:10px;font-size:11.5px;color:var(--text-sec)">
+              <strong style="color:var(--error)">Residual -$18.9k</strong> — unexplained, probable cross-gamma. Annotate before sign-off.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ov-cols" style="margin-top:16px;grid-template-columns:1fr">
+        <div class="panel-card">
+          <div class="panel-card-head"><div class="kpi-icon" style="width:28px;height:28px;font-size:14px">📋</div><div class="panel-card-title">Run Activity</div><div class="panel-card-tag">live trace</div></div>
+          <div class="panel-card-body">
+            <div class="activity-feed">
+              <div class="activity-item"><div class="activity-dot" style="background:var(--cyan)"></div><div class="activity-body"><div class="activity-title">PL Explains running — Greeks decomposition on 412 trades</div><div class="activity-meta">08:04:01 · agent · 4 tool calls · 3.2s</div></div></div>
+              <div class="activity-item"><div class="activity-dot" style="background:var(--success)"></div><div class="activity-body"><div class="activity-title">FOBO Rec complete — 408 matched, 4 breaks flagged</div><div class="activity-meta">08:03:48 · agent · auto-resolved 0</div></div></div>
+              <div class="activity-item"><div class="activity-dot" style="background:var(--success)"></div><div class="activity-body"><div class="activity-title">PnL Prep complete — 412 trades loaded, 0 source errors</div><div class="activity-meta">08:03:21 · agent · source validation passed</div></div></div>
+              <div class="activity-item"><div class="activity-dot" style="background:var(--violet)"></div><div class="activity-body"><div class="activity-title">Run #2847 initialised — EMEA-IRD-Rates book</div><div class="activity-meta">08:03:18 · scheduler · T+0 production cycle</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── View switching ── */
+  function switchView(name, btn) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (name === 'overview') animateBars();
+  }
+  function goWorkspace() {
+    switchView('workspace', document.querySelector('.view-btn[data-view="workspace"]'));
+  }
+  function animateBars() {
+    // re-trigger bar grow animation
+    document.querySelectorAll('.bar-seg, .greek-bar-fill').forEach(el => {
+      const w = el.style.height || el.style.width;
+      if (el.classList.contains('bar-seg')) { el.style.height='0'; requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.height=w)); }
+      else { const ww=el.style.width; el.style.width='0'; requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.width=ww)); }
+    });
+  }
+
+  /* ── Theme ── */
+  function toggleTheme() {
+    document.body.classList.toggle('light');
+    const icon = document.getElementById('themeIcon');
+    if (document.body.classList.contains('light')) {
+      icon.innerHTML = '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>';
+    } else {
+      icon.innerHTML = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+    }
+  }
+
+  /* ── Output tab switching ── */
+  function switchTab(tabEl, pane) {
+    tabEl.parentElement.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+    tabEl.classList.add('active');
+    document.querySelectorAll('.output-panel .pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + pane).classList.add('active');
+  }
+  function selectFile(item, key) {
+    item.parentElement.querySelectorAll('.ft-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.code-pane').forEach(c => c.classList.remove('active'));
+    document.getElementById('code-' + key).classList.add('active');
+  }
+  function flashDownload(btn) {
+    const old = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5 9-10"/></svg>';
+    btn.style.color = 'var(--success)'; btn.style.borderColor = 'var(--success)';
+    setTimeout(() => { btn.innerHTML = old; btn.style.color = ''; btn.style.borderColor = ''; }, 1300);
+  }
+
+  /* ── Chat (Anthropic API) ── */
+  const conversationHistory = [];
+  const SYSTEM_PROMPT = `You are Agent One, an AI assistant embedded in Barclays Markets Finance PnL Production workflow.
+
+Current step: PL Explains — Risk Attribution (Step 3 of 6)
+Book: EMEA-IRD-Rates · Date: 2026-06-16 (T+0) · Trades: 412
+
+Greeks decomposition results:
+- Delta: Actual +$1,248,300 vs Predicted +$1,220,000 → Variance +$28,300 (ABOVE $25k threshold)
+- Gamma: Actual -$42,100 vs Predicted -$40,800 → Variance -$1,300 (within tolerance)
+- Vega: Actual +$318,700 vs Predicted +$295,000 → Variance +$23,700 (near threshold)
+- Theta: Actual -$87,400 vs Predicted -$88,100 → Variance +$700 (within tolerance)
+- Rho: Actual +$14,200 vs Predicted +$13,800 → Variance +$400 (within tolerance)
+- Unexplained residual: -$18,900 (coverage 98.4% vs 99.0% tolerance)
+
+Market context: ECB commentary at 14:30 CET caused 3bp EUR rate move in 5Y bucket. EUR 2Y×5Y swaption vol surface re-priced +8 bps intraday.
+
+Your role: Help the Finance professional understand results, draft commentary, explain variances, compare to prior days, or prepare sign-off notes. Be concise and precise, using finance terminology appropriate for a Markets Finance Controller. Keep responses focused and actionable. Do not use markdown headers or bullet lists — use plain prose or short numbered lists only when listing action items.`;
+
+  let isLoading = false;
+  let tokenIn = 42180, tokenOut = 8340, totalCost = 0.38;
+
+  function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+  function handleKey(e){ if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); sendMessage(); } }
+  function sendQuick(chip){ document.getElementById('chatInput').value=chip.textContent; sendMessage(); }
+  function escapeHtml(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function scrollToBottom(){ const m=document.getElementById('chatMessages'); m.scrollTop=m.scrollHeight; }
+  function setTyping(v){ document.getElementById('typingIndicator').classList.toggle('visible',v); if(v) scrollToBottom(); }
+
+  function appendUserMessage(text){
+    const m=document.getElementById('chatMessages'); const d=document.createElement('div');
+    d.className='msg-user'; d.innerHTML=`<div class="user-bubble">${escapeHtml(text)}</div>`;
+    m.insertBefore(d, document.getElementById('typingIndicator')); scrollToBottom();
+  }
+  function appendAgentMessage(text){
+    const m=document.getElementById('chatMessages'); const d=document.createElement('div');
+    d.className='msg-agent';
+    d.innerHTML=`<div class="agent-bubble"><div class="agent-tag">🤖 Agent One</div><p>${escapeHtml(text).replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>')}</p></div>`;
+    m.insertBefore(d, document.getElementById('typingIndicator')); scrollToBottom();
+  }
+  function updateTelemetry(i,o){
+    tokenIn+=i; tokenOut+=o; totalCost+=(i*0.000015)+(o*0.000075);
+    document.getElementById('tok-in').textContent=tokenIn.toLocaleString();
+    document.getElementById('tok-out').textContent=tokenOut.toLocaleString();
+    document.getElementById('cost').textContent='$'+totalCost.toFixed(2);
+  }
+
+  async function sendMessage(){
+    if(isLoading) return;
+    const input=document.getElementById('chatInput'); const text=input.value.trim();
+    if(!text) return;
+    input.value=''; input.style.height='auto'; isLoading=true;
+    document.getElementById('sendBtn').disabled=true;
+    appendUserMessage(text); conversationHistory.push({role:'user',content:text}); setTyping(true);
+    try{
+      const r=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, system:SYSTEM_PROMPT, messages:conversationHistory })
+      });
+      const data=await r.json();
+      if(data.content && data.content[0]){
+        const reply=data.content.filter(b=>b.type==='text').map(b=>b.text).join('\n') || data.content[0].text;
+        conversationHistory.push({role:'assistant',content:reply});
+        setTyping(false); appendAgentMessage(reply);
+        if(data.usage) updateTelemetry(data.usage.input_tokens||0, data.usage.output_tokens||0);
+      } else throw new Error('No content');
+    }catch(err){
+      setTyping(false);
+      const m=document.getElementById('chatMessages'); const d=document.createElement('div');
+      d.className='msg-agent';
+      d.innerHTML=`<div class="agent-bubble"><div class="agent-tag" style="color:var(--error)">⚠ Connection Error</div><p style="color:var(--text-dim)">Unable to reach the agent. Please check your connection and try again.</p></div>`;
+      m.insertBefore(d, document.getElementById('typingIndicator')); scrollToBottom();
+    }
+    isLoading=false; document.getElementById('sendBtn').disabled=false; input.focus();
+  }
+</script>
+</body>
+</html>
