@@ -1,0 +1,596 @@
+{
+  "info": {
+    "title": "Agent One Finance Mock API",
+    "version": "1.0.0",
+    "baseUrl": "http://localhost:8765",
+    "description": "Mock API server for AgentOne Finance testing. Response payloads are extracted from DevTools screenshots. In-memory state resets on restart unless persisted via admin endpoints. Demo session ID: c9db1973-54cd-4818-9ecd-6ad62e05e650. Default plugin ID: 1f79fe96-153f-4862-829e-fb14cec288e5 (daily-pnl-v2). Default port is 8080 when PORT is unset; use 8765 when 8080 is occupied."
+  },
+  "endpoints": [
+    {
+      "id": "get-health",
+      "method": "GET",
+      "path": "/health",
+      "summary": "Liveness probe",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "status": "ok",
+          "service": "agentonefinance-mock-api"
+        }
+      }
+    },
+    {
+      "id": "get-models",
+      "method": "GET",
+      "path": "/api/models",
+      "summary": "List available LLM models",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "models": [
+            {
+              "id": "sonnet-4.5",
+              "bedrock_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+              "name": "Claude Sonnet 4.5",
+              "description": "Fast, balanced model for general tasks ($3/$15 per 1M tokens)"
+            },
+            {
+              "id": "opus-4.5",
+              "bedrock_id": "us.anthropic.claude-opus-4-5-20251101-v1:0",
+              "name": "Claude Opus 4.5",
+              "description": "Powerful reasoning, 64K output ($15/$75 per 1M tokens)"
+            },
+            {
+              "id": "opus-4.6",
+              "bedrock_id": "us.anthropic.claude-opus-4-6-v1",
+              "name": "Claude Opus 4.6",
+              "description": "Best value: 1M context, 128K output ($5/$25 per 1M tokens)"
+            }
+          ],
+          "default": "opus-4.6"
+        }
+      }
+    },
+    {
+      "id": "get-sessions",
+      "method": "GET",
+      "path": "/api/sessions",
+      "summary": "List chat sessions (newest first by updated_at)",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "sessions": [
+            {
+              "id": "40545afd-b989-4c86-85eb-91bbfb660892",
+              "agent_type": "base",
+              "title": "New Conversation",
+              "created_at": "2026-06-09T13:39:36.918857+00:00",
+              "updated_at": "2026-06-09T13:39:36.918857+00:00"
+            },
+            {
+              "id": "b8af0e92-ae75-4719-8a2c-cefab758674b",
+              "agent_type": "base",
+              "title": "New Conversation",
+              "created_at": "2026-06-08T15:32:31.173871+00:00",
+              "updated_at": "2026-06-08T15:32:31.173871+00:00"
+            },
+            {
+              "id": "3a105afb-dc08-4ca9-b8da-6f4614d17e15",
+              "agent_type": "base",
+              "title": "Financial Reconciliation Process Delegation",
+              "created_at": "2026-06-04T17:08:24.627758+00:00",
+              "updated_at": "2026-06-04T17:35:49.392069+00:00"
+            },
+            {
+              "id": "e17dec46-bcfa-4009-a8b7-9e7fe43b8fc2",
+              "agent_type": "base",
+              "title": "New Conversation",
+              "created_at": "2026-05-27T18:27:19.972248+00:00",
+              "updated_at": "2026-05-27T18:27:19.972248+00:00"
+            },
+            {
+              "id": "df8bf55e-5af3-4b9d-a544-31645adbf9d3",
+              "agent_type": "base",
+              "title": "FOBO Break Analysis and Reconciliation",
+              "created_at": "2026-05-21T14:38:54.870189+00:00",
+              "updated_at": "2026-05-21T14:40:58.300250+00:00"
+            },
+            {
+              "id": "e820969b-e7ad-4416-8dab-3a984a333fa9",
+              "agent_type": "base",
+              "title": "FOBO Break Analysis",
+              "created_at": "2026-05-20T10:15:00.000000+00:00",
+              "updated_at": "2026-05-20T10:20:00.000000+00:00"
+            },
+            {
+              "id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+              "agent_type": "base",
+              "title": "New Conversation",
+              "created_at": "2024-06-17T17:07:27.957712+00:00",
+              "updated_at": "2024-06-17T17:07:27.957712+00:00"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "post-sessions",
+      "method": "POST",
+      "path": "/api/sessions",
+      "summary": "Create a new chat session",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "pathParams": {},
+        "body": {
+          "title": "New Conversation",
+          "agent_type": "base"
+        }
+      },
+      "response": {
+        "status": 201,
+        "contentType": "application/json",
+        "body": {
+          "id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "agent_type": "base",
+          "title": "New Conversation",
+          "created_at": "2024-06-17T17:07:27.957712+00:00",
+          "updated_at": "2024-06-17T17:07:27.957712+00:00"
+        }
+      },
+      "notes": "Request body is optional; defaults to title='New Conversation' and agent_type='base'. Response id and timestamps are generated at runtime (example shows screenshot shape)."
+    },
+    {
+      "id": "get-session",
+      "method": "GET",
+      "path": "/api/sessions/:sessionId",
+      "summary": "Get a single session by ID",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "agent_type": "base",
+          "title": "New Conversation",
+          "created_at": "2024-06-17T17:07:27.957712+00:00",
+          "updated_at": "2024-06-17T17:07:27.957712+00:00"
+        }
+      },
+      "notes": "Returns 404 with { \"error\": \"Session not found\" } when sessionId is unknown."
+    },
+    {
+      "id": "get-session-stats",
+      "method": "GET",
+      "path": "/api/sessions/:sessionId/stats",
+      "summary": "Get session usage statistics",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "stats": {}
+        }
+      },
+      "notes": "Returns 404 with { \"error\": \"Session not found\" } when sessionId is unknown."
+    },
+    {
+      "id": "get-session-documents",
+      "method": "GET",
+      "path": "/api/sessions/:sessionId/documents",
+      "summary": "List input documents and output artifacts for a session",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "input_documents": [
+            {
+              "id": "23f8b425-b9d7-4f52-aa7d-64d2e0cff513",
+              "document_id": "30a2ac84-8c63-4c30-b4cf-981823bbfb73",
+              "filename": "16902f92-6c78-4d4b-a701-cfbc8f4e5ada.csv",
+              "original_filename": "DAILY_MI_REPORT_05_18_2026_2611946.CSV",
+              "content_type": "text/csv",
+              "file_size": 8792549,
+              "processing_mode": "uploaded_no_text",
+              "processing_status": "completed",
+              "created_at": "2026-06-17T17:09:31.581007+00:00",
+              "document_type": "input",
+              "s3_key": "documents/mock-user@c9db1973-54cd-4818-9ecd-6ad62e05e650/16902f92-6c78-4d4b-a701-cfbc8f4e5ada.csv"
+            }
+          ],
+          "output_artifacts": []
+        }
+      },
+      "notes": "Empty state returns input_documents: [] and output_artifacts: []. After async upload, mock server completes processing after ~3 seconds and adds the document to input_documents. Returns 404 when session not found."
+    },
+    {
+      "id": "get-session-messages",
+      "method": "GET",
+      "path": "/api/sessions/:sessionId/messages",
+      "summary": "Get chat message history for a session",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "messages": [],
+          "total": 0
+        }
+      },
+      "notes": "Returns 404 with { \"error\": \"Session not found\" } when sessionId is unknown."
+    },
+    {
+      "id": "get-session-actions",
+      "method": "GET",
+      "path": "/api/sessions/:sessionId/actions",
+      "summary": "Get quick-action capabilities for a session",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": [
+          {
+            "category": "Daily NPL",
+            "actions": [
+              {
+                "id": "run-daily-npl",
+                "category": "Daily NPL",
+                "label": "Run Daily PnL",
+                "description": "Start the daily P&L process with uploaded data",
+                "icon": "BarChart3",
+                "message": "Run the Daily PnL process on my uploaded data."
+              },
+              {
+                "id": "whats-missing",
+                "category": "Daily NPL",
+                "label": "What's missing?",
+                "description": "Check which files are uploaded and what capabilities are available",
+                "icon": "Search",
+                "message": "What files have I uploaded? What capabilities are ready and what is still missing?"
+              },
+              {
+                "id": "generate-commentary",
+                "category": "Daily NPL",
+                "label": "Generate Commentary",
+                "description": "Write the 9-section NPL narrative",
+                "icon": "FileText",
+                "message": "Generate the NPL commentary from all the data analyzed so far."
+              }
+            ]
+          },
+          {
+            "category": "Analysis",
+            "actions": [
+              {
+                "id": "check-fobo",
+                "category": "Analysis",
+                "label": "Check FOBO",
+                "description": "Analyze FOBO reconciliation for breaks",
+                "icon": "Search",
+                "message": "Analyze the FOBO data for breaks and issues."
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Returns 404 with { \"error\": \"Session not found\" } when sessionId is unknown."
+    },
+    {
+      "id": "get-actions",
+      "method": "GET",
+      "path": "/api/actions",
+      "summary": "Get quick-action capabilities (global alias, no session scope)",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": [
+          {
+            "category": "Daily NPL",
+            "actions": [
+              {
+                "id": "run-daily-npl",
+                "category": "Daily NPL",
+                "label": "Run Daily PnL",
+                "description": "Start the daily P&L process with uploaded data",
+                "icon": "BarChart3",
+                "message": "Run the Daily PnL process on my uploaded data."
+              },
+              {
+                "id": "whats-missing",
+                "category": "Daily NPL",
+                "label": "What's missing?",
+                "description": "Check which files are uploaded and what capabilities are available",
+                "icon": "Search",
+                "message": "What files have I uploaded? What capabilities are ready and what is still missing?"
+              },
+              {
+                "id": "generate-commentary",
+                "category": "Daily NPL",
+                "label": "Generate Commentary",
+                "description": "Write the 9-section NPL narrative",
+                "icon": "FileText",
+                "message": "Generate the NPL commentary from all the data analyzed so far."
+              }
+            ]
+          },
+          {
+            "category": "Analysis",
+            "actions": [
+              {
+                "id": "check-fobo",
+                "category": "Analysis",
+                "label": "Check FOBO",
+                "description": "Analyze FOBO reconciliation for breaks",
+                "icon": "Search",
+                "message": "Analyze the FOBO data for breaks and issues."
+              }
+            ]
+          }
+        ]
+      },
+      "notes": "Same payload as GET /api/sessions/:sessionId/actions; some clients call without session scope."
+    },
+    {
+      "id": "post-activate-plugin-by-path",
+      "method": "POST",
+      "path": "/api/sessions/:sessionId/plugins/:pluginId/activate",
+      "summary": "Activate a plugin for a session (plugin ID in path)",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "pluginId": "1f79fe96-153f-4862-829e-fb14cec288e5"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "message": "Plugin 'Daily Profit & Loss (Orchestrated)' is now active for this session",
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "plugin_id": "1f79fe96-153f-4862-829e-fb14cec288e5",
+          "plugin_name": "daily-pnl-v2",
+          "display_name": "Daily Profit & Loss (Orchestrated)"
+        }
+      },
+      "notes": "Returns 404 with { \"error\": \"Session not found\" } or { \"error\": \"Plugin not found\" }."
+    },
+    {
+      "id": "post-activate-plugin-by-body",
+      "method": "POST",
+      "path": "/api/sessions/:sessionId/plugins/activate",
+      "summary": "Activate a plugin for a session (plugin ID in request body)",
+      "request": {
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": {
+          "plugin_id": "1f79fe96-153f-4862-829e-fb14cec288e5"
+        }
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "message": "Plugin 'Daily Profit & Loss (Orchestrated)' is now active for this session",
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650",
+          "plugin_id": "1f79fe96-153f-4862-829e-fb14cec288e5",
+          "plugin_name": "daily-pnl-v2",
+          "display_name": "Daily Profit & Loss (Orchestrated)"
+        }
+      },
+      "notes": "Request body is optional; defaults to plugin_id 1f79fe96-153f-4862-829e-fb14cec288e5 (daily-pnl-v2). Returns 404 with { \"error\": \"Session not found\" } or { \"error\": \"Plugin not found\" }."
+    },
+    {
+      "id": "post-upload",
+      "method": "POST",
+      "path": "/api/upload",
+      "summary": "Upload a file (multipart form)",
+      "request": {
+        "headers": {
+          "Content-Type": "multipart/form-data"
+        },
+        "query": {},
+        "pathParams": {},
+        "body": {
+          "file": {
+            "type": "binary",
+            "required": true,
+            "example": "DAILY_MI_REPORT_05_18_2026_2611946.CSV",
+            "description": "CSV or other document file"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "required": true,
+            "example": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+          },
+          "async_processing": {
+            "type": "string",
+            "required": false,
+            "example": "true",
+            "description": "Set to 'false' to skip async mock processing and immediately seed a demo document; any other value (or omitted) enables async processing (~3s delay)"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "contentType": "application/json",
+        "body": {
+          "id": "30a2ac84-8c63-4c30-b4cf-981823bbfb73",
+          "filename": "DAILY_MI_REPORT_05_18_2026_2611946.CSV",
+          "status": "processing",
+          "message": "File uploaded (8.4MB). Processing in background...",
+          "s3_key": "documents/mock-user@c9db1973-54cd-4818-9ecd-6ad62e05e650/16902f92-6c78-4d4b-a701-cfbc8f4e5ada.csv",
+          "estimated_time": "1-2 minutes",
+          "processing_status": "pending"
+        }
+      },
+      "notes": "Returns 400 with { \"error\": \"session_id is required\" } or { \"error\": \"file is required\" }. Returns 404 when session not found. Upload id and s3_key are generated at runtime (example shows screenshot shape)."
+    },
+    {
+      "id": "post-documents-upload",
+      "method": "POST",
+      "path": "/api/documents/upload",
+      "summary": "Upload a file (alternate multipart path, alias for POST /api/upload)",
+      "request": {
+        "headers": {
+          "Content-Type": "multipart/form-data"
+        },
+        "query": {},
+        "pathParams": {},
+        "body": {
+          "file": {
+            "type": "binary",
+            "required": true,
+            "example": "DAILY_MI_REPORT_05_18_2026_2611946.CSV",
+            "description": "CSV or other document file"
+          },
+          "session_id": {
+            "type": "string",
+            "format": "uuid",
+            "required": true,
+            "example": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+          },
+          "async_processing": {
+            "type": "string",
+            "required": false,
+            "example": "true",
+            "description": "Set to 'false' to skip async mock processing and immediately seed a demo document"
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "contentType": "application/json",
+        "body": {
+          "id": "30a2ac84-8c63-4c30-b4cf-981823bbfb73",
+          "filename": "DAILY_MI_REPORT_05_18_2026_2611946.CSV",
+          "status": "processing",
+          "message": "File uploaded (8.4MB). Processing in background...",
+          "s3_key": "documents/mock-user@c9db1973-54cd-4818-9ecd-6ad62e05e650/16902f92-6c78-4d4b-a701-cfbc8f4e5ada.csv",
+          "estimated_time": "1-2 minutes",
+          "processing_status": "pending"
+        }
+      },
+      "notes": "Identical semantics to POST /api/upload."
+    },
+    {
+      "id": "post-admin-reset",
+      "method": "POST",
+      "path": "/api/admin/reset",
+      "summary": "Reset in-memory store to initial seed data",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "message": "Mock store reset"
+        }
+      },
+      "notes": "Test helper endpoint. Clears runtime mutations and restores seed sessions."
+    },
+    {
+      "id": "post-admin-seed-demo-document",
+      "method": "POST",
+      "path": "/api/admin/seed-demo-document/:sessionId",
+      "summary": "Pre-populate a completed demo document for a session",
+      "request": {
+        "headers": {},
+        "query": {},
+        "pathParams": {
+          "sessionId": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "contentType": "application/json",
+        "body": {
+          "message": "Demo document seeded",
+          "session_id": "c9db1973-54cd-4818-9ecd-6ad62e05e650"
+        }
+      },
+      "notes": "Test helper. Adds SAMPLE_COMPLETED_DOCUMENT to input_documents only if the session has no documents yet. Returns 404 when session not found."
+    }
+  ]
+}
