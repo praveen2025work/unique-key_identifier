@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent One — Delivery Planning Workbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0B2740; --navy-2:#123A5C; --paper:#F5F7FA; --card:#FFFFFF;
+    --cyan:#00AEEF; --cyan-dark:#0086B8; --ink:#1C2733; --muted:#5B6B7C;
+    --line:#D9E1E9; --green:#1D8A5F; --amber:#C9791D;
+    --red:#B33A3A; --heat:#EAF6FD;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'IBM Plex Sans',system-ui,sans-serif; background:var(--paper); color:var(--ink); font-size:14px; line-height:1.5;}
+  h1,h2,h3{font-family:'Archivo',system-ui,sans-serif; color:var(--navy);}
+  .num, input.cell, .kpi-v, td.calc, .mono{font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums;}
+
+  /* ---------- header ---------- */
+  header{background:var(--navy); color:#fff; padding:20px 28px 0; position:sticky; top:0; z-index:50; box-shadow:0 2px 12px rgba(11,39,64,.25);}
+  .hd-top{display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; justify-content:space-between;}
+  .hd-title h1{color:#fff; font-size:19px; font-weight:800; letter-spacing:.2px;}
+  .hd-title .sub{color:#9FB6C9; font-size:12px; margin-top:2px;}
+  .hd-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  button{font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; font-weight:600; border:1px solid transparent; border-radius:6px; padding:7px 12px; cursor:pointer; transition:background .15s,border-color .15s;}
+  button:focus-visible{outline:2px solid var(--cyan); outline-offset:2px;}
+  .btn-ghost{background:transparent; color:#CFE4F2; border-color:#2B5473;}
+  .btn-ghost:hover{background:#123A5C;}
+  .btn-accent{background:var(--cyan); color:#04263B;}
+  .btn-accent:hover{background:#33C1F5;}
+  .save-status{font-size:11.5px; color:#8FB4CC; min-width:120px; text-align:right;}
+  nav{display:flex; gap:2px; margin-top:14px; overflow-x:auto;}
+  nav button.tab{color:#B9CDDC; background:transparent; border:none; font-size:12.5px; font-weight:600; padding:9px 14px; border-radius:6px 6px 0 0; white-space:nowrap; cursor:pointer;}
+  nav button.tab:hover{background:#123A5C; color:#fff;}
+  nav button.tab:focus-visible{outline:2px solid var(--cyan); outline-offset:-2px;}
+  nav button.tab.active{background:var(--paper); color:var(--navy);}
+  main section{display:none;}
+  main section.active{display:block;}
+  main.show-all section{display:block;}
+
+  main{max-width:1280px; margin:0 auto; padding:22px 28px 80px;}
+  section{margin-bottom:34px;}
+  .sec-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; flex-wrap:wrap;}
+  .sec-head h2{font-size:16px; font-weight:700;}
+  .sec-head .hint{font-size:12px; color:var(--muted);}
+
+  /* ---------- KPI strip ---------- */
+  .kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:26px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-left:3px solid var(--cyan); border-radius:8px; padding:12px 14px;}
+  .kpi-l{font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); font-weight:600;}
+  .kpi-v{font-size:21px; font-weight:600; color:var(--navy); margin-top:3px;}
+  .kpi-s{font-size:11.5px; color:var(--muted); margin-top:2px;}
+
+  /* ---------- settings ---------- */
+  .settings{display:flex; gap:18px; flex-wrap:wrap; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin-bottom:26px; align-items:center;}
+  .settings label{font-size:12px; font-weight:600; color:var(--muted); display:flex; align-items:center; gap:8px;}
+  .settings input{width:70px;}
+
+  /* ---------- tables ---------- */
+  .tbl-wrap{background:var(--card); border:1px solid var(--line); border-radius:8px; overflow-x:auto;}
+  table{border-collapse:collapse; width:100%; min-width:640px;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; text-align:left; padding:10px 10px 8px; border-bottom:2px solid var(--line); background:#FBFCFE; position:sticky; top:0;}
+  th.r, td.r{text-align:right;}
+  td{padding:4px 6px; border-bottom:1px solid #EEF2F6; vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  td.calc{color:var(--navy); font-weight:500; font-size:13px; padding-right:12px;}
+  tfoot td{border-top:2px solid var(--line); background:#FBFCFE; font-weight:600; color:var(--navy); padding:9px 12px 9px 6px;}
+  input.cell, select.cell{width:100%; border:1px solid transparent; background:transparent; font-size:13px; padding:6px 6px; border-radius:5px; color:var(--ink);}
+  input.cell:hover, select.cell:hover{border-color:var(--line); background:#fff;}
+  input.cell:focus, select.cell:focus{outline:none; border-color:var(--cyan); background:#fff; box-shadow:0 0 0 2px rgba(0,174,239,.15);}
+  input.cell.n{text-align:right;}
+  input.cell.hours{background:var(--heat);}
+  .del{background:none; border:none; color:#B9C4CF; font-size:15px; padding:4px 8px; line-height:1;}
+  .del:hover{color:var(--red);}
+  .add-row{margin-top:8px; background:#EDF3F8; color:var(--navy-2); border:1px dashed #AFC3D4;}
+  .add-row:hover{background:#E0EBF3;}
+
+  /* ---------- gantt ---------- */
+  .gantt{--glabel:330px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px 16px 8px; overflow-x:auto;}
+  .g-grid{position:relative; min-width:720px;}
+  .g-row{display:flex; align-items:center; height:40px;}
+  .g-label{width:var(--glabel); flex:none; display:flex; align-items:center; gap:5px; padding-right:10px;}
+  .g-label input.g-name{flex:1; min-width:0; font-family:'IBM Plex Sans',sans-serif; font-size:12.5px; font-weight:600; color:var(--navy);}
+  .g-label input.g-wk{width:48px; flex:none;}
+  .g-track{flex:1; position:relative; height:100%; border-left:1px solid var(--line);}
+  .g-bar{position:absolute; top:9px; height:22px; border-radius:4px; background:linear-gradient(90deg,var(--navy-2),#1E5A85); color:#DFF2FC; font-size:11px; font-family:'IBM Plex Mono',monospace; display:flex; align-items:center; padding:0 8px; white-space:nowrap; overflow:hidden;}
+  .g-axis{display:flex; margin-left:var(--glabel); border-top:1px solid var(--line); margin-top:4px;}
+  .g-axis span{flex:1; font-size:10.5px; color:var(--muted); font-family:'IBM Plex Mono',monospace; padding-top:4px; border-left:1px solid #EEF2F6; padding-left:4px;}
+  .fte-curve{margin-top:14px; margin-left:var(--glabel);}
+  .fte-title{font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); font-weight:600; margin:10px 0 4px var(--glabel);}
+
+  /* remove number spinners so narrow week/hour cells don't get clipped */
+  input.cell[type=number]{-moz-appearance:textfield; appearance:textfield;}
+  input.cell::-webkit-outer-spin-button, input.cell::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+
+  textarea.narrative{width:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-family:'IBM Plex Sans',sans-serif; font-size:13.5px; line-height:1.6; color:var(--ink); resize:vertical;}
+  textarea.narrative:focus{outline:none; border-color:var(--cyan); box-shadow:0 0 0 2px rgba(0,174,239,.15);}
+  .rag{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle;}
+  .kpi.good{border-left-color:var(--green);}
+  .kpi.warn{border-left-color:var(--amber);}
+
+  .note{font-size:12px; color:var(--muted); margin-top:8px;}
+  footer{max-width:1280px; margin:0 auto; padding:0 28px 40px; font-size:11.5px; color:var(--muted);}
+
+  @media (max-width:720px){
+    header{padding:14px 14px 0;}
+    main{padding:16px 14px 60px;}
+    .gantt{--glabel:200px;}
+    .g-label input.g-wk{width:40px;}
+  }
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-top">
+    <div class="hd-title">
+      <h1>Agent One · Lean Pilot Scenario (1/3 budget)</h1>
+      <div class="sub">Scenario B — RecFactory pilot only · 10-person team · MBR &amp; FAS gated behind G4</div>
+    </div>
+    <div class="hd-actions">
+      <span class="save-status" id="saveStatus">—</span>
+      <button class="btn-accent" onclick="saveNow()">Save</button>
+      <button class="btn-accent" onclick="downloadHTML()" title="Download this page with all current data baked in — your local, self-contained copy">Download HTML</button>
+      <button class="btn-ghost" onclick="exportJSON()">Export JSON</button>
+      <button class="btn-ghost" onclick="document.getElementById('importFile').click()">Import JSON</button>
+      <button class="btn-ghost" onclick="exportCSV()">Export CSV</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+  <nav id="tabs">
+    <button class="tab" data-tab="timeline">Timeline</button>
+    <button class="tab" data-tab="exec">Executive view</button>
+    <button class="tab" data-tab="ratecard">Rate card</button>
+    <button class="tab" data-tab="alloc">Allocation grid</button>
+    <button class="tab" data-tab="run">Run &amp; support</button>
+    <button class="tab" data-tab="risks">Risk log</button>
+    <button class="tab" data-tab="all">Full view</button>
+  </nav>
+</header>
+
+<main id="main">
+  <div class="kpis" id="kpis"></div>
+
+  <div class="settings">
+    <label>Currency <input class="cell" id="setCurrency" maxlength="3" style="width:48px"></label>
+    <label>Contingency % <input class="cell n" id="setContingency" type="number" min="0" max="60"></label>
+    <label>Hours / FTE-month <input class="cell n" id="setHpm" type="number" min="100" max="200"></label>
+    <label>Run period (months) <input class="cell n" id="setRunMonths" type="number" min="1" max="36"></label>
+  </div>
+
+  <section id="timeline">
+    <div class="sec-head"><h2>Programme timeline &amp; loading</h2><span class="hint">Phase names and start / end weeks are editable right here — bars and FTE curve redraw live</span></div>
+    <div class="gantt" id="gantt"></div>
+  </section>
+
+  <section id="exec">
+    <div class="sec-head"><h2>Executive summary — return on investment</h2><span class="hint">Computed live from the benefits model below against the budget ask</span></div>
+    <div class="kpis" id="execKpis"></div>
+
+    <div class="settings">
+      <label>Benefit realization % <input class="cell n" id="setRealization" type="number" min="10" max="100" title="Haircut for adoption ramp and estimation optimism — execs trust a plan that discounts itself"></label>
+      <label>Run cost starts (week) <input class="cell n" id="setRunStart" type="number" min="1" title="Week the support team starts being charged — typically pilot go-live"></label>
+    </div>
+
+    <div class="sec-head"><h3 style="font-size:14px">Benefits model — capacity released per month</h3><span class="hint">Hours currently spent × % Agent One removes × loaded cost rate</span></div>
+    <div class="tbl-wrap"><table id="benTbl"></table></div>
+    <button class="add-row" onclick="addBenefit()">＋ Add benefit driver</button>
+    <p class="note">Position this as capacity released for control and analysis work — not headcount reduction. That framing gets Finance MD sponsorship; the other one gets resistance.</p>
+
+    <div class="sec-head" style="margin-top:22px"><h3 style="font-size:14px">Quarterly funding profile</h3><span class="hint">Auto-derived from the phase plan — CTB (build) vs RTB (run) split for budget lines</span></div>
+    <div class="tbl-wrap"><table id="fundTbl"></table></div>
+
+    <div class="sec-head" style="margin-top:22px"><h3 style="font-size:14px">Milestones &amp; decision gates</h3><span class="hint">Funding is released gate by gate — later waves only proceed on pilot evidence</span></div>
+    <div class="tbl-wrap"><table id="gateTbl"></table></div>
+    <button class="add-row" onclick="addGate()">＋ Add gate</button>
+
+    <div class="sec-head" style="margin-top:22px"><h3 style="font-size:14px">Board narrative</h3><span class="hint">The two-minute version — keep it sharp enough for the CIO to repeat upward</span></div>
+    <textarea class="cell narrative" id="narrativeBox" rows="5" onchange="upNarrative(this.value)"></textarea>
+  </section>
+
+  <section id="ratecard">
+    <div class="sec-head"><h2>Rate card &amp; roles</h2><span class="hint">Rates drive every cost calculation. Edit inline; add roles as the team shape changes.</span></div>
+    <div class="tbl-wrap"><table id="rolesTbl"></table></div>
+    <button class="add-row" onclick="addRole()">＋ Add role</button>
+  </section>
+
+  <section id="alloc">
+    <div class="sec-head"><h2>Allocation grid — hours by phase × role</h2><span class="hint">Blue cells are editable hours. Costs, FTE and the timeline recompute live.</span></div>
+    <div class="tbl-wrap"><table id="allocTbl"></table></div>
+    <button class="add-row" onclick="addPhase()">＋ Add phase / workstream</button>
+    <p class="note">Avg FTE per phase = phase hours ÷ (phase weeks × 40). Use it to sanity-check whether the plan implies a team you can actually staff.</p>
+  </section>
+
+  <section id="run">
+    <div class="sec-head"><h2>Run &amp; support (post go-live)</h2><span class="hint">Steady-state team once RecFactory is live; costed over the run period set above</span></div>
+    <div class="tbl-wrap"><table id="runTbl"></table></div>
+    <button class="add-row" onclick="addRun()">＋ Add support role</button>
+  </section>
+
+  <section id="risks">
+    <div class="sec-head"><h2>Risk &amp; dependency log</h2><span class="hint">Keep this current — it is the first thing a CIO steering group asks about</span></div>
+    <div class="tbl-wrap"><table id="riskTbl"></table></div>
+    <button class="add-row" onclick="addRisk()">＋ Add risk</button>
+  </section>
+</main>
+
+<footer>Estimates are planning-grade (±15%). Blended onshore / offshore delivery model assumed. All figures editable — this page is the model, not a report of one.</footer>
+
+<script type="application/json" id="savedState">{"savedAt": "2026-08-07T12:00:00.000Z", "settings": {"currency": "$", "contingency": 15, "hpm": 160, "runMonths": 12}, "execSettings": {"realization": 60, "runStartWeek": 23}, "roles": [{"id": "r1", "name": "Solution Architect / Delivery Lead (you \u2014 BAU-funded)", "pod": "Architecture", "loc": "Onshore", "rate": 0}, {"id": "r2", "name": "Tech Lead (offshore senior)", "pod": "Platform", "loc": "Offshore", "rate": 70}, {"id": "r3", "name": "Backend Engineer 1 (Java / Python)", "pod": "Platform", "loc": "Offshore", "rate": 62}, {"id": "r4", "name": "Backend Engineer 2 (Java / Python)", "pod": "Platform", "loc": "Offshore", "rate": 62}, {"id": "r5", "name": "Frontend Engineer (React)", "pod": "Platform", "loc": "Offshore", "rate": 58}, {"id": "r6", "name": "AI / Prompt Engineer", "pod": "AI & Eval", "loc": "Offshore", "rate": 70}, {"id": "r7", "name": "QA Engineer", "pod": "Domain", "loc": "Offshore", "rate": 50}, {"id": "r8", "name": "Business Analyst", "pod": "Domain", "loc": "Offshore", "rate": 55}, {"id": "r9", "name": "DevOps Engineer (part-time)", "pod": "Platform", "loc": "Offshore", "rate": 60}, {"id": "r10", "name": "Business SME (RecFactory)", "pod": "Business", "loc": "Onshore", "rate": 95}], "phases": [{"id": "p0", "name": "P0 \u00b7 Mobilization & Architecture", "start": 1, "end": 4, "a": {"r1": 120, "r2": 120, "r9": 100, "r8": 100, "r6": 40}}, {"id": "p1", "name": "P1 \u00b7 Core Platform Build (lean)", "start": 3, "end": 12, "a": {"r1": 120, "r2": 300, "r3": 380, "r4": 380, "r5": 400, "r6": 240, "r9": 140, "r7": 240, "r8": 120}}, {"id": "p2", "name": "P2 \u00b7 FOBO Workflow + RecFactory Pilot", "start": 13, "end": 22, "a": {"r1": 100, "r2": 250, "r3": 350, "r4": 350, "r5": 250, "r6": 400, "r7": 350, "r8": 300, "r10": 200, "r9": 80}}, {"id": "p3", "name": "P3 \u00b7 Evaluation (minimum viable Phoenix)", "start": 13, "end": 20, "a": {"r6": 120, "r7": 80, "r9": 40, "r3": 60}}, {"id": "p4", "name": "P4 \u00b7 Hardening & Go-live", "start": 20, "end": 26, "a": {"r9": 160, "r7": 160, "r3": 120, "r2": 100, "r5": 40}}], "run": [{"id": "s1", "role": "L2 / L3 Support Engineer (combined)", "fte": 1.0, "rate": 55}, {"id": "s2", "role": "AI-Ops Engineer (prompt / eval drift)", "fte": 0.5, "rate": 70}], "benefits": [{"id": "b1", "item": "FOBO rec break investigation", "domain": "RecFactory", "hrs": 1400, "pct": 35, "rate": 70}, {"id": "b2", "item": "P&L Explain (PLEX) commentary drafting", "domain": "RecFactory", "hrs": 900, "pct": 40, "rate": 75}, {"id": "b3", "item": "Month-end cycle compression (overtime avoided)", "domain": "RecFactory", "hrs": 200, "pct": 40, "rate": 85}], "gates": [{"id": "g0", "name": "G0 \u00b7 Lean pilot approval", "month": "M0", "criteria": "Lean business case approved; funding released for RecFactory pilot only", "funding": "Pilot budget", "rag": "Green"}, {"id": "g1", "name": "G1 \u00b7 Architecture baseline", "month": "M1", "criteria": "HLD approved; model-risk engaged; RecFactory data access signed", "funding": "Continue", "rag": "Green"}, {"id": "g2", "name": "G2 \u00b7 Core platform demo", "month": "M3", "criteria": "End-to-end demo on AOF; entitlements integrated; minimum eval harness running", "funding": "Continue", "rag": "Green"}, {"id": "g3", "name": "G3 \u00b7 RecFactory pilot live", "month": "M5.5", "criteria": "Pilot in production; eval scores >= threshold; SME sign-off", "funding": "\u2014", "rag": "Green"}, {"id": "g4", "name": "G4 \u00b7 Benefits review & scale-out decision", "month": "M6.5", "criteria": "Benefits evidenced vs model; pre-scoped MBR + FAS wave-2 estimate presented", "funding": "New funding request (wave 2)", "rag": "Green"}], "risks": [{"id": "k1", "sev": "High", "text": "Single-threaded roles (one FE, one AI engineer) \u2014 attrition stalls delivery", "owner": "Delivery", "mit": "Cross-train Backend 2; SKILL.md coding standards cut replacement ramp time"}, {"id": "k2", "sev": "High", "text": "SME availability from RecFactory during build and UAT", "owner": "Business", "mit": "Named SME with signed % allocation at G0"}, {"id": "k3", "sev": "Medium", "text": "Minimum-viable Phoenix scope may slow model-risk approval", "owner": "AI & Eval", "mit": "Pre-agree minimum evaluation evidence pack with model-risk at G1"}, {"id": "k4", "sev": "Medium", "text": "MBR / FAS deferral must be messaged as gated, not cancelled", "owner": "Architecture", "mit": "G4 is a scheduled, pre-scoped decision point with a wave-2 estimate ready"}, {"id": "k5", "sev": "Low", "text": "Offshore ramp-up in first 4 weeks", "owner": "Delivery", "mit": "AI-assisted development plus onboarding sprint on coding standards"}], "narrative": "Scenario B \u2014 Lean Pilot: proves Agent One end-to-end on RecFactory for roughly one third of the full-programme budget, with a 10-person team. Architecture and delivery leadership are BAU-funded; the build team is offshore-weighted and AI-assisted using our established Claude Code standards, which is priced into the estimate. MBR and FAS are deferred, not cancelled: G4 at month 6.5 is a scheduled decision point where pilot benefits evidence unlocks the scale-out case. The trade-offs are explicit \u2014 single-threaded roles, a slimmer evaluation platform, and a longer total journey if wave 2 proceeds \u2014 but the bank commits only pilot money before seeing proof."}</script>
+<script>
+/* Capture pristine page source before any rendering — used by Download HTML to
+   produce a standalone copy of this file with the current plan baked in. */
+const PAGE_TEMPLATE='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+
+/* ================= executive view: defaults ================= */
+function ensureDefaults(){
+  if(!state.execSettings) state.execSettings={ realization:70, runStartWeek:25 };
+  if(!state.benefits) state.benefits=[
+    {id:uid(), item:'FOBO rec break investigation', domain:'RecFactory', hrs:1400, pct:35, rate:70},
+    {id:uid(), item:'P&L Explain (PLEX) commentary drafting', domain:'RecFactory', hrs:900, pct:40, rate:75},
+    {id:uid(), item:'Flash vs Formal variance analysis', domain:'MBR', hrs:700, pct:35, rate:75},
+    {id:uid(), item:'Adjustments processing & evidencing', domain:'MBR', hrs:500, pct:30, rate:70},
+    {id:uid(), item:'Commentary & sign-off preparation', domain:'FAS', hrs:800, pct:40, rate:75},
+    {id:uid(), item:'Month-end cycle compression (overtime avoided)', domain:'All', hrs:300, pct:50, rate:85},
+  ];
+  if(!state.gates) state.gates=[
+    {id:uid(), name:'G0 · Programme approval & funding', month:'M0',  criteria:'Business case approved; ARB endorsement; P0–P1 funding released', funding:'P0–P1', rag:'Green'},
+    {id:uid(), name:'G1 · Architecture & governance baseline', month:'M1.5', criteria:'HLD approved; model-risk engaged; data access agreements signed', funding:'Continue', rag:'Green'},
+    {id:uid(), name:'G2 · Core platform complete', month:'M4', criteria:'End-to-end demo on AOF; entitlements integrated; NFR baseline met', funding:'P2 (pilot)', rag:'Green'},
+    {id:uid(), name:'G3 · RecFactory pilot live', month:'M6', criteria:'Pilot in production; Phoenix eval scores ≥ threshold; SME sign-off', funding:'—', rag:'Green'},
+    {id:uid(), name:'G4 · Scale-out go / no-go', month:'M7', criteria:'Pilot benefits evidenced vs model; run support proven in hypercare', funding:'P4–P5 (MBR + FAS)', rag:'Green'},
+    {id:uid(), name:'G5 · MBR live', month:'M8.5', criteria:'MBR workflows in production; evaluators green; BAU handover started', funding:'Continue', rag:'Green'},
+    {id:uid(), name:'G6 · FAS live & programme close', month:'M10', criteria:'All three domains live; handover to run complete; benefits tracking active', funding:'RTB only', rag:'Green'},
+  ];
+  if(state.narrative===undefined) state.narrative=
+'Agent One turns the monthly P&L close from a manual investigation exercise into a governed, AI-assisted workflow on the bank\'s approved Bedrock platform. '+
+'Funding is gated: the RecFactory pilot proves the model at month 6 before scale-out money is committed, and every subsequent domain onboards at roughly 60% of the pilot\'s cost — we are funding a platform, not a one-off project. '+
+'Every AI output is scored and gated through the Phoenix evaluation loop before release, giving model-risk a control framework rather than a black box. '+
+'Benefits are capacity released back into control and analysis work across RecFactory, MBR and FAS — payback inside the numbers shown even after a realization haircut.';
+}
+
+/* ================= state ================= */
+const uid = () => Math.random().toString(36).slice(2,9);
+const R = {}; // role id shortcuts for seeding
+['arch','pm','tl','be','fe','devops','ai','eval','ba','qa','sme'].forEach(k => R[k]=uid());
+
+let state = {
+  settings:{ currency:'$', contingency:15, hpm:160, runMonths:12 },
+  roles:[
+    {id:R.arch,  name:'Solution Architect (lead — you)', pod:'Architecture', loc:'Onshore',  rate:150},
+    {id:R.pm,    name:'Project Manager',                 pod:'Architecture', loc:'Onshore',  rate:110},
+    {id:R.tl,    name:'Tech Lead',                       pod:'Platform',     loc:'Onshore',  rate:130},
+    {id:R.be,    name:'Backend Engineer (Java / Python)',pod:'Platform',     loc:'Offshore', rate:62},
+    {id:R.fe,    name:'Frontend Engineer (React)',       pod:'Platform',     loc:'Offshore', rate:58},
+    {id:R.devops,name:'DevOps Engineer',                 pod:'Platform',     loc:'Offshore', rate:60},
+    {id:R.ai,    name:'AI / Prompt Engineer',            pod:'AI & Eval',    loc:'Onshore',  rate:120},
+    {id:R.eval,  name:'Eval Engineer (Phoenix / Langfuse)',pod:'AI & Eval',  loc:'Offshore', rate:65},
+    {id:R.ba,    name:'Business Analyst',                pod:'Domain',       loc:'Offshore', rate:55},
+    {id:R.qa,    name:'QA Engineer',                     pod:'Domain',       loc:'Offshore', rate:50},
+    {id:R.sme,   name:'Business SME (RecFactory / MBR / FAS)',pod:'Business',loc:'Onshore',  rate:95},
+  ],
+  phases:[
+    {id:uid(), name:'P0 · Mobilization & Architecture', start:1,  end:6,
+      a:{[R.arch]:200,[R.pm]:120,[R.tl]:220,[R.devops]:220,[R.ba]:200,[R.ai]:80,[R.be]:60}},
+    {id:uid(), name:'P1 · Core Platform Build', start:5, end:16,
+      a:{[R.tl]:400,[R.be]:850,[R.fe]:850,[R.ai]:420,[R.devops]:240,[R.qa]:420,[R.pm]:220,[R.arch]:200,[R.ba]:200}},
+    {id:uid(), name:'P2 · FOBO Workflow + RecFactory Pilot', start:13, end:24,
+      a:{[R.be]:700,[R.fe]:450,[R.ai]:600,[R.tl]:350,[R.qa]:550,[R.ba]:450,[R.sme]:300,[R.pm]:240,[R.arch]:160,[R.devops]:120,[R.eval]:180}},
+    {id:uid(), name:'P3 · Evaluation & Observability (Phoenix)', start:15, end:24,
+      a:{[R.eval]:600,[R.ai]:240,[R.qa]:160,[R.devops]:60,[R.arch]:40}},
+    {id:uid(), name:'P4 · MBR Onboarding', start:25, end:34,
+      a:{[R.be]:500,[R.ai]:450,[R.ba]:400,[R.qa]:400,[R.sme]:250,[R.eval]:150,[R.pm]:120,[R.tl]:80,[R.fe]:50}},
+    {id:uid(), name:'P5 · FAS Onboarding', start:31, end:40,
+      a:{[R.be]:450,[R.ai]:400,[R.ba]:380,[R.qa]:380,[R.sme]:250,[R.eval]:120,[R.pm]:120,[R.tl]:60,[R.fe]:40}},
+    {id:uid(), name:'P6 · Hardening & Go-live Waves', start:22, end:42,
+      a:{[R.devops]:330,[R.be]:220,[R.qa]:270,[R.tl]:140,[R.arch]:80,[R.pm]:110,[R.fe]:50}},
+  ],
+  run:[
+    {id:uid(), role:'L2 Support Analyst', fte:1.0, rate:50},
+    {id:uid(), role:'L3 Platform Engineer', fte:1.0, rate:62},
+    {id:uid(), role:'AI-Ops Engineer (prompt / eval drift)', fte:1.0, rate:70},
+    {id:uid(), role:'Domain Liaison (rotating)', fte:0.5, rate:60},
+  ],
+  risks:[
+    {id:uid(), sev:'High',   text:'ARB / model-risk approval cadence becomes the critical path', owner:'Architecture', mit:'Engage governance in Phase 0; pre-book review slots per wave'},
+    {id:uid(), sev:'High',   text:'SME availability from RecFactory / MBR / FAS during UAT windows', owner:'Business',  mit:'Named SMEs with % allocation signed off at kickoff'},
+    {id:uid(), sev:'Medium', text:'Bedrock model version upgrade mid-programme shifts output behaviour', owner:'AI & Eval', mit:'Phoenix eval harness gates every model change'},
+    {id:uid(), sev:'Medium', text:'Data access agreements / feeds from source systems delayed', owner:'Domain', mit:'Start feed onboarding in Phase 0, not per-phase'},
+    {id:uid(), sev:'Low',    text:'Offshore ramp-up slower than plan in first 6 weeks', owner:'Delivery', mit:'Pair with SKILL.md coding standards + onboarding sprint'},
+  ],
+};
+
+/* ================= helpers ================= */
+const fmt = n => n.toLocaleString('en-US', {maximumFractionDigits:0});
+const money = n => state.settings.currency + fmt(Math.round(n));
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const roleById = id => state.roles.find(r=>r.id===id);
+
+function phaseHours(p){ return Object.values(p.a||{}).reduce((s,h)=>s+(+h||0),0); }
+function phaseCost(p){ return Object.entries(p.a||{}).reduce((s,[rid,h])=>{const r=roleById(rid); return s+(r?(+h||0)*(+r.rate||0):0);},0); }
+function buildHours(){ return state.phases.reduce((s,p)=>s+phaseHours(p),0); }
+function buildCost(){ return state.phases.reduce((s,p)=>s+phaseCost(p),0); }
+function runMonthly(){ return state.run.reduce((s,r)=>s+(+r.fte||0)*state.settings.hpm*(+r.rate||0),0); }
+function maxWeek(){ return Math.max(4, ...state.phases.map(p=>+p.end||0)); }
+
+function weeklyFTE(){
+  const W = maxWeek(), arr = new Array(W+1).fill(0);
+  state.phases.forEach(p=>{
+    const s=+p.start||1, e=Math.max(+p.end||s, s), weeks=e-s+1;
+    const perWeekFTE = phaseHours(p)/weeks/40;
+    for(let w=s; w<=e; w++) arr[w]+=perWeekFTE;
+  });
+  return arr;
+}
+
+/* ================= renders ================= */
+function renderKPIs(){
+  const bh=buildHours(), bc=buildCost(), cont=state.settings.contingency/100;
+  const budget=bc*(1+cont), fte=weeklyFTE(), peak=Math.max(...fte);
+  const runTotal=runMonthly()*state.settings.runMonths;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-l">Build effort</div><div class="kpi-v">${fmt(bh)} h</div><div class="kpi-s">across ${state.phases.length} phases</div></div>
+    <div class="kpi"><div class="kpi-l">Build cost</div><div class="kpi-v">${money(bc)}</div><div class="kpi-s">before contingency</div></div>
+    <div class="kpi"><div class="kpi-l">Budget ask</div><div class="kpi-v">${money(budget)}</div><div class="kpi-s">incl. ${state.settings.contingency}% contingency</div></div>
+    <div class="kpi"><div class="kpi-l">Duration</div><div class="kpi-v">${maxWeek()} wks</div><div class="kpi-s">≈ ${Math.round(maxWeek()/4.33)} months elapsed</div></div>
+    <div class="kpi"><div class="kpi-l">Peak team</div><div class="kpi-v">${peak.toFixed(1)} FTE</div><div class="kpi-s">busiest week of plan</div></div>
+    <div class="kpi"><div class="kpi-l">Run cost</div><div class="kpi-v">${money(runTotal)}</div><div class="kpi-s">${money(runMonthly())}/mo × ${state.settings.runMonths} mo</div></div>`;
+}
+
+function renderGantt(){
+  const W=maxWeek();
+  let rows = state.phases.map(p=>{
+    const s=+p.start||1, e=Math.max(+p.end||s,s);
+    const left=((s-1)/W*100).toFixed(2), width=((e-s+1)/W*100).toFixed(2);
+    return `<div class="g-row">
+      <div class="g-label">
+        <input class="cell g-name" value="${esc(p.name)}" title="${esc(p.name)}" onchange="upPhase('${p.id}','name',this.value)">
+        <input class="cell n g-wk" type="number" min="1" value="${s}" title="Start week" onchange="upPhase('${p.id}','start',+this.value)">
+        <input class="cell n g-wk" type="number" min="1" value="${e}" title="End week" onchange="upPhase('${p.id}','end',+this.value)">
+      </div>
+      <div class="g-track"><div class="g-bar" style="left:${left}%;width:${width}%">w${s}–${e}</div></div></div>`;
+  }).join('');
+  const ticks=[]; const step=Math.ceil(W/8);
+  for(let w=1; w<=W; w+=step) ticks.push(`<span>w${w}</span>`);
+  const fte=weeklyFTE().slice(1), peak=Math.max(...fte,1);
+  const pts=fte.map((v,i)=>`${(i/(fte.length-1)*720).toFixed(1)},${(46-v/peak*40).toFixed(1)}`).join(' ');
+  document.getElementById('gantt').innerHTML = rows +
+    `<div class="g-axis">${ticks.join('')}</div>
+     <div class="fte-title">Weekly FTE loading (peak ${peak.toFixed(1)})</div>
+     <div class="fte-curve"><svg width="100%" height="50" viewBox="0 0 720 50" preserveAspectRatio="none" aria-label="Weekly FTE loading curve">
+       <polyline points="${pts}" fill="none" stroke="var(--cyan-dark)" stroke-width="2"/>
+       <polygon points="0,50 ${pts} 720,50" fill="rgba(0,174,239,.12)"/></svg></div>`;
+}
+
+function renderRoles(){
+  const head=`<thead><tr><th style="width:34%">Role</th><th>Pod</th><th>Location</th><th class="r">Rate /h</th><th class="r">Plan hours</th><th class="r">Plan cost</th><th></th></tr></thead>`;
+  const rows=state.roles.map(r=>{
+    const hrs=state.phases.reduce((s,p)=>s+(+((p.a||{})[r.id])||0),0);
+    return `<tr>
+      <td><input class="cell" value="${esc(r.name)}" onchange="upRole('${r.id}','name',this.value)"></td>
+      <td><input class="cell" value="${esc(r.pod)}" onchange="upRole('${r.id}','pod',this.value)"></td>
+      <td><select class="cell" onchange="upRole('${r.id}','loc',this.value)">
+        ${['Onshore','Offshore','Nearshore'].map(o=>`<option ${o===r.loc?'selected':''}>${o}</option>`).join('')}</select></td>
+      <td class="r"><input class="cell n" type="number" min="0" value="${r.rate}" onchange="upRole('${r.id}','rate',+this.value)"></td>
+      <td class="r calc">${fmt(hrs)}</td>
+      <td class="r calc">${money(hrs*(+r.rate||0))}</td>
+      <td><button class="del" title="Remove role" onclick="delRole('${r.id}')">✕</button></td></tr>`;
+  }).join('');
+  document.getElementById('rolesTbl').innerHTML=head+`<tbody>${rows}</tbody>`;
+}
+
+function renderAlloc(){
+  const roles=state.roles;
+  const head=`<thead><tr><th style="min-width:210px">Phase / workstream</th><th class="r" style="width:68px;min-width:68px">Start wk</th><th class="r" style="width:68px;min-width:68px">End wk</th>`+
+    roles.map(r=>`<th class="r" style="min-width:74px" title="${esc(r.name)}">${esc(shortName(r.name))}</th>`).join('')+
+    `<th class="r">Hours</th><th class="r">Cost</th><th class="r">Avg FTE</th><th></th></tr></thead>`;
+  const rows=state.phases.map(p=>{
+    const hrs=phaseHours(p), weeks=Math.max((+p.end||+p.start)-(+p.start)+1,1), avg=hrs/weeks/40;
+    return `<tr>
+      <td><input class="cell" value="${esc(p.name)}" onchange="upPhase('${p.id}','name',this.value)"></td>
+      <td class="r"><input class="cell n" type="number" min="1" value="${p.start}" onchange="upPhase('${p.id}','start',+this.value)"></td>
+      <td class="r"><input class="cell n" type="number" min="1" value="${p.end}" onchange="upPhase('${p.id}','end',+this.value)"></td>`+
+      roles.map(r=>`<td class="r"><input class="cell n hours" type="number" min="0" step="10" value="${(p.a||{})[r.id]||''}" placeholder="·" onchange="upAlloc('${p.id}','${r.id}',this.value)"></td>`).join('')+
+      `<td class="r calc">${fmt(hrs)}</td><td class="r calc">${money(phaseCost(p))}</td><td class="r calc">${avg.toFixed(1)}</td>
+      <td><button class="del" title="Remove phase" onclick="delPhase('${p.id}')">✕</button></td></tr>`;
+  }).join('');
+  const foot=`<tfoot><tr><td colspan="3">Build total</td>`+
+    roles.map(r=>{const h=state.phases.reduce((s,p)=>s+(+((p.a||{})[r.id])||0),0);return `<td class="r num">${h?fmt(h):''}</td>`;}).join('')+
+    `<td class="r num">${fmt(buildHours())}</td><td class="r num">${money(buildCost())}</td><td></td><td></td></tr></tfoot>`;
+  document.getElementById('allocTbl').innerHTML=head+`<tbody>${rows}</tbody>`+foot;
+}
+
+function shortName(n){
+  return n.replace(/\s*\(.*\)/,'').split(' ').map(w=>w.length>9?w.slice(0,8)+'.':w).slice(0,2).join(' ');
+}
+
+function renderRun(){
+  const head=`<thead><tr><th style="width:42%">Support role</th><th class="r">FTE</th><th class="r">Rate /h</th><th class="r">Cost / month</th><th class="r">Cost / period</th><th></th></tr></thead>`;
+  const rows=state.run.map(r=>{
+    const mo=(+r.fte||0)*state.settings.hpm*(+r.rate||0);
+    return `<tr>
+      <td><input class="cell" value="${esc(r.role)}" onchange="upRun('${r.id}','role',this.value)"></td>
+      <td class="r"><input class="cell n" type="number" step="0.5" min="0" value="${r.fte}" onchange="upRun('${r.id}','fte',+this.value)"></td>
+      <td class="r"><input class="cell n" type="number" min="0" value="${r.rate}" onchange="upRun('${r.id}','rate',+this.value)"></td>
+      <td class="r calc">${money(mo)}</td><td class="r calc">${money(mo*state.settings.runMonths)}</td>
+      <td><button class="del" onclick="delRun('${r.id}')">✕</button></td></tr>`;
+  }).join('');
+  const totMo=runMonthly();
+  const foot=`<tfoot><tr><td>Run total</td><td class="r num">${state.run.reduce((s,r)=>s+(+r.fte||0),0).toFixed(1)}</td><td></td><td class="r num">${money(totMo)}</td><td class="r num">${money(totMo*state.settings.runMonths)}</td><td></td></tr></tfoot>`;
+  document.getElementById('runTbl').innerHTML=head+`<tbody>${rows}</tbody>`+foot;
+}
+
+function renderRisks(){
+  const sevColor={High:'var(--red)',Medium:'var(--amber)',Low:'var(--green)'};
+  const head=`<thead><tr><th style="width:90px">Severity</th><th style="width:36%">Risk / dependency</th><th style="width:14%">Owner</th><th>Mitigation</th><th></th></tr></thead>`;
+  const rows=state.risks.map(r=>`<tr>
+    <td><select class="cell" style="color:${sevColor[r.sev]||'var(--ink)'};font-weight:600" onchange="upRisk('${r.id}','sev',this.value)">
+      ${['High','Medium','Low'].map(o=>`<option ${o===r.sev?'selected':''}>${o}</option>`).join('')}</select></td>
+    <td><input class="cell" value="${esc(r.text)}" onchange="upRisk('${r.id}','text',this.value)"></td>
+    <td><input class="cell" value="${esc(r.owner)}" onchange="upRisk('${r.id}','owner',this.value)"></td>
+    <td><input class="cell" value="${esc(r.mit||'')}" onchange="upRisk('${r.id}','mit',this.value)"></td>
+    <td><button class="del" onclick="delRisk('${r.id}')">✕</button></td></tr>`).join('');
+  document.getElementById('riskTbl').innerHTML=head+`<tbody>${rows}</tbody>`;
+}
+
+function renderSettings(){
+  const s=state.settings;
+  setVal('setCurrency',s.currency); setVal('setContingency',s.contingency);
+  setVal('setHpm',s.hpm); setVal('setRunMonths',s.runMonths);
+}
+function setVal(id,v){ document.getElementById(id).value=v; }
+
+/* ================= executive view: calc & render ================= */
+function benefitMonthly(b){ return (+b.hrs||0)*((+b.pct||0)/100)*(+b.rate||0); }
+function grossMonthlyBenefit(){ return state.benefits.reduce((s,b)=>s+benefitMonthly(b),0); }
+function budgetAsk(){ return buildCost()*(1+state.settings.contingency/100); }
+
+function fundingByQuarter(){
+  const W=maxWeek(), nQ=Math.max(1,Math.ceil(W/13));
+  const ctb=new Array(nQ).fill(0), rtb=new Array(nQ).fill(0);
+  state.phases.forEach(p=>{
+    const s=+p.start||1, e=Math.max(+p.end||s,s), perWk=phaseCost(p)/(e-s+1);
+    for(let w=s;w<=e;w++) ctb[Math.min(Math.floor((w-1)/13),nQ-1)]+=perWk;
+  });
+  const rs=+state.execSettings.runStartWeek||25, runWk=runMonthly()/4.33;
+  for(let w=rs;w<=W;w++) rtb[Math.min(Math.floor((w-1)/13),nQ-1)]+=runWk;
+  return {ctb,rtb,nQ};
+}
+
+function renderExecKpis(){
+  const real=(+state.execSettings.realization||70)/100;
+  const gross=grossMonthlyBenefit()*12;
+  const netMonthly=grossMonthlyBenefit()*real - runMonthly();
+  const netAnnual=netMonthly*12;
+  const ask=budgetAsk();
+  const payback=netMonthly>0 ? ask/netMonthly : null;
+  const net3yr=netAnnual*3 - ask;
+  document.getElementById('execKpis').innerHTML = `
+    <div class="kpi"><div class="kpi-l">Budget ask</div><div class="kpi-v">${money(ask)}</div><div class="kpi-s">build incl. ${state.settings.contingency}% contingency</div></div>
+    <div class="kpi"><div class="kpi-l">Gross benefit</div><div class="kpi-v">${money(gross)}/yr</div><div class="kpi-s">before realization haircut</div></div>
+    <div class="kpi good"><div class="kpi-l">Net benefit</div><div class="kpi-v">${money(netAnnual)}/yr</div><div class="kpi-s">at ${state.execSettings.realization}% realization, after run cost</div></div>
+    <div class="kpi ${payback&&payback<=24?'good':'warn'}"><div class="kpi-l">Payback</div><div class="kpi-v">${payback?payback.toFixed(1)+' mo':'—'}</div><div class="kpi-s">${payback?(payback<=24?'inside a 2-year window':'review benefit assumptions'):'net benefit not positive'}</div></div>
+    <div class="kpi ${net3yr>0?'good':'warn'}"><div class="kpi-l">3-year net value</div><div class="kpi-v">${money(net3yr)}</div><div class="kpi-s">net benefits less budget ask</div></div>`;
+}
+
+function renderBenefits(){
+  const head=`<thead><tr><th style="width:32%">Benefit driver</th><th>Domain</th><th class="r">Hrs / month today</th><th class="r">% reduced</th><th class="r">Loaded rate /h</th><th class="r">Monthly</th><th class="r">Annual</th><th></th></tr></thead>`;
+  const rows=state.benefits.map(b=>{const m=benefitMonthly(b);return `<tr>
+    <td><input class="cell" value="${esc(b.item)}" onchange="upBen('${b.id}','item',this.value)"></td>
+    <td><input class="cell" value="${esc(b.domain)}" onchange="upBen('${b.id}','domain',this.value)"></td>
+    <td class="r"><input class="cell n" type="number" min="0" value="${b.hrs}" onchange="upBen('${b.id}','hrs',+this.value)"></td>
+    <td class="r"><input class="cell n" type="number" min="0" max="100" value="${b.pct}" onchange="upBen('${b.id}','pct',+this.value)"></td>
+    <td class="r"><input class="cell n" type="number" min="0" value="${b.rate}" onchange="upBen('${b.id}','rate',+this.value)"></td>
+    <td class="r calc">${money(m)}</td><td class="r calc">${money(m*12)}</td>
+    <td><button class="del" onclick="delBen('${b.id}')">✕</button></td></tr>`;}).join('');
+  const totM=grossMonthlyBenefit();
+  const foot=`<tfoot><tr><td colspan="5">Gross benefit total</td><td class="r num">${money(totM)}</td><td class="r num">${money(totM*12)}</td><td></td></tr></tfoot>`;
+  document.getElementById('benTbl').innerHTML=head+`<tbody>${rows}</tbody>`+foot;
+}
+
+function renderFunding(){
+  const {ctb,rtb,nQ}=fundingByQuarter(), cont=state.settings.contingency/100;
+  const head=`<thead><tr><th>Budget line</th>${Array.from({length:nQ},(_,i)=>`<th class="r">Q${i+1}</th>`).join('')}<th class="r">Total</th></tr></thead>`;
+  const row=(label,arr)=>`<tr><td style="padding-left:12px;font-weight:600;color:var(--navy)">${label}</td>${arr.map(v=>`<td class="r calc">${v?money(v):'—'}</td>`).join('')}<td class="r calc">${money(arr.reduce((s,v)=>s+v,0))}</td></tr>`;
+  const contArr=ctb.map(v=>v*cont);
+  const totArr=ctb.map((v,i)=>v+contArr[i]+rtb[i]);
+  document.getElementById('fundTbl').innerHTML=head+`<tbody>
+    ${row('CTB — build',ctb)}
+    ${row('Contingency ('+state.settings.contingency+'%)',contArr)}
+    ${row('RTB — run & support',rtb)}
+  </tbody><tfoot>${row('Total',totArr).replace('<tr>','<tr style="font-weight:600">')}</tfoot>`;
+}
+
+function renderGates(){
+  const ragC={Green:'var(--green)',Amber:'var(--amber)',Red:'var(--red)'};
+  const head=`<thead><tr><th style="width:22%">Gate</th><th style="width:64px">Target</th><th style="width:34%">Exit criteria</th><th>Funding released</th><th style="width:96px">Status</th><th></th></tr></thead>`;
+  const rows=state.gates.map(g=>`<tr>
+    <td><input class="cell" value="${esc(g.name)}" onchange="upGate('${g.id}','name',this.value)"></td>
+    <td><input class="cell" value="${esc(g.month)}" onchange="upGate('${g.id}','month',this.value)"></td>
+    <td><input class="cell" value="${esc(g.criteria)}" onchange="upGate('${g.id}','criteria',this.value)"></td>
+    <td><input class="cell" value="${esc(g.funding)}" onchange="upGate('${g.id}','funding',this.value)"></td>
+    <td><select class="cell" style="color:${ragC[g.rag]||'var(--ink)'};font-weight:600" onchange="upGate('${g.id}','rag',this.value)">
+      ${['Green','Amber','Red'].map(o=>`<option ${o===g.rag?'selected':''}>${o}</option>`).join('')}</select></td>
+    <td><button class="del" onclick="delGate('${g.id}')">✕</button></td></tr>`).join('');
+  document.getElementById('gateTbl').innerHTML=head+`<tbody>${rows}</tbody>`;
+}
+
+function renderNarrative(){ document.getElementById('narrativeBox').value=state.narrative||''; }
+
+function renderExecSettings(){
+  setVal('setRealization', state.execSettings.realization);
+  setVal('setRunStart', state.execSettings.runStartWeek);
+}
+function renderExec(){ renderExecSettings(); renderExecKpis(); renderBenefits(); renderFunding(); renderGates(); renderNarrative(); }
+
+/* exec mutations */
+function upBen(id,k,v){ const b=state.benefits.find(x=>x.id===id); if(b){ b[k]=v; renderBenefits(); renderExecKpis(); queueSave(); } }
+function delBen(id){ state.benefits=state.benefits.filter(b=>b.id!==id); renderBenefits(); renderExecKpis(); queueSave(); }
+function addBenefit(){ state.benefits.push({id:uid(), item:'New benefit driver', domain:'', hrs:200, pct:30, rate:70}); renderBenefits(); renderExecKpis(); queueSave(); }
+function upGate(id,k,v){ const g=state.gates.find(x=>x.id===id); if(g){ g[k]=v; renderGates(); queueSave(); } }
+function delGate(id){ state.gates=state.gates.filter(g=>g.id!==id); renderGates(); queueSave(); }
+function addGate(){ state.gates.push({id:uid(), name:'New gate', month:'M', criteria:'', funding:'', rag:'Green'}); renderGates(); queueSave(); }
+function upNarrative(v){ state.narrative=v; queueSave(); }
+
+['setRealization','setRunStart'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',e=>{
+    if(id==='setRealization') state.execSettings.realization=Math.min(100,Math.max(10,+e.target.value||70));
+    if(id==='setRunStart') state.execSettings.runStartWeek=Math.max(1,+e.target.value||25);
+    renderExec(); queueSave();
+  });
+});
+
+function renderAll(){ renderSettings(); renderKPIs(); renderGantt(); renderRoles(); renderAlloc(); renderRun(); renderRisks(); renderExec(); }
+function refreshCalc(){ renderKPIs(); renderGantt(); renderExecKpis(); renderFunding(); }
+
+/* ================= mutations ================= */
+function upRole(id,k,v){ const r=roleById(id); if(r){ r[k]=v; renderRoles(); renderAlloc(); refreshCalc(); queueSave(); } }
+function delRole(id){ if(!confirm('Remove this role and its allocated hours?'))return; state.roles=state.roles.filter(r=>r.id!==id); state.phases.forEach(p=>{ if(p.a) delete p.a[id]; }); renderAll(); queueSave(); }
+function addRole(){ state.roles.push({id:uid(),name:'New role',pod:'Platform',loc:'Offshore',rate:60}); renderRoles(); renderAlloc(); queueSave(); }
+
+function upPhase(id,k,v){ const p=state.phases.find(x=>x.id===id); if(p){ p[k]=v; renderAlloc(); refreshCalc(); queueSave(); } }
+function delPhase(id){ if(!confirm('Remove this phase?'))return; state.phases=state.phases.filter(p=>p.id!==id); renderAll(); queueSave(); }
+function addPhase(){ const e=maxWeek(); state.phases.push({id:uid(),name:'New phase',start:e+1,end:e+6,a:{}}); renderAlloc(); refreshCalc(); queueSave(); }
+function upAlloc(pid,rid,v){ const p=state.phases.find(x=>x.id===pid); if(!p)return; p.a=p.a||{}; if(v===''||+v===0) delete p.a[rid]; else p.a[rid]=+v; renderAlloc(); renderRoles(); refreshCalc(); queueSave(); }
+
+function upRun(id,k,v){ const r=state.run.find(x=>x.id===id); if(r){ r[k]=v; renderRun(); refreshCalc(); queueSave(); } }
+function delRun(id){ state.run=state.run.filter(r=>r.id!==id); renderRun(); refreshCalc(); queueSave(); }
+function addRun(){ state.run.push({id:uid(),role:'New support role',fte:0.5,rate:60}); renderRun(); refreshCalc(); queueSave(); }
+
+function upRisk(id,k,v){ const r=state.risks.find(x=>x.id===id); if(r){ r[k]=v; renderRisks(); queueSave(); } }
+function delRisk(id){ state.risks=state.risks.filter(r=>r.id!==id); renderRisks(); queueSave(); }
+function addRisk(){ state.risks.push({id:uid(),sev:'Medium',text:'New risk',owner:'',mit:''}); renderRisks(); queueSave(); }
+
+['setCurrency','setContingency','setHpm','setRunMonths'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',e=>{
+    const s=state.settings;
+    if(id==='setCurrency') s.currency=e.target.value||'$';
+    if(id==='setContingency') s.contingency=Math.max(0,+e.target.value||0);
+    if(id==='setHpm') s.hpm=Math.max(1,+e.target.value||160);
+    if(id==='setRunMonths') s.runMonths=Math.max(1,+e.target.value||12);
+    renderAll(); queueSave();
+  });
+});
+
+/* ================= persistence & export ================= */
+const STORE_KEY='agent-one-delivery-plan';
+let saveTimer=null, storageOK=null;
+function status(msg){ document.getElementById('saveStatus').textContent=msg; }
+
+async function saveNow(){
+  state.savedAt=new Date().toISOString();
+  if(!window.storage){ storageOK=false; status('Local file — use Download HTML to save'); return; }
+  try{
+    await window.storage.set(STORE_KEY, JSON.stringify(state));
+    storageOK=true; status('Saved '+new Date().toLocaleTimeString());
+  }catch(e){ storageOK=false; status('Save failed — use Download HTML'); }
+}
+function queueSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveNow,1200); status('Editing…'); }
+
+function loadEmbedded(){
+  try{
+    const el=document.getElementById('savedState');
+    if(el){ const parsed=JSON.parse(el.textContent); if(parsed && parsed.roles && parsed.phases) return parsed; }
+  }catch(e){}
+  return null;
+}
+
+async function loadSaved(){
+  if(!window.storage){ status(state.savedAt?('Loaded plan saved '+new Date(state.savedAt).toLocaleString()):'Local file — Download HTML to save edits'); return; }
+  try{
+    const res=await window.storage.get(STORE_KEY);
+    if(res && res.value){
+      const parsed=JSON.parse(res.value);
+      if(parsed && parsed.roles && parsed.phases){
+        // Prefer whichever copy (embedded vs stored) was saved most recently
+        if(!state.savedAt || !parsed.savedAt || parsed.savedAt>=state.savedAt) state=parsed;
+      }
+      status('Loaded saved plan');
+    }
+  }catch(e){ status(state.savedAt?'Loaded embedded plan':'New plan (nothing saved yet)'); }
+}
+
+function downloadHTML(){
+  state.savedAt=new Date().toISOString();
+  const json=JSON.stringify(state).replace(/<\//g,'<\\/');
+  const re=new RegExp('(<script type="application\\/json" id="savedState">)[\\s\\S]*?(<\\/'+'script>)');
+  const html=PAGE_TEMPLATE.replace(re, (m,open,close)=>open+json+close);
+  download('agent-one-delivery-planner.html', html, 'text/html');
+  status('Downloaded — replace your local file with it');
+  if(window.storage) saveNow();
+}
+
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); downloadHTML(); }
+});
+
+function download(name, text, type){
+  const blob=new Blob([text],{type}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click(); URL.revokeObjectURL(a.href);
+}
+function exportJSON(){ download('agent-one-plan.json', JSON.stringify(state,null,2), 'application/json'); }
+function importJSON(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ const parsed=JSON.parse(rd.result); if(parsed.roles&&parsed.phases){ state=parsed; renderAll(); queueSave(); status('Imported'); } else alert('Not a valid plan file.'); }catch(e){ alert('Could not parse that file.'); } };
+  rd.readAsText(f); ev.target.value='';
+}
+function exportCSV(){
+  const rows=[['Phase','Start wk','End wk','Role','Pod','Location','Rate','Hours','Cost']];
+  state.phases.forEach(p=>Object.entries(p.a||{}).forEach(([rid,h])=>{
+    const r=roleById(rid); if(!r)return;
+    rows.push([p.name,p.start,p.end,r.name,r.pod,r.loc,r.rate,h,(+h||0)*(+r.rate||0)]);
+  }));
+  rows.push([]); rows.push(['Build hours',buildHours()]); rows.push(['Build cost',Math.round(buildCost())]);
+  rows.push(['Budget incl contingency',Math.round(buildCost()*(1+state.settings.contingency/100))]);
+  const csv=rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  download('agent-one-plan.csv', csv, 'text/csv');
+}
+
+/* ================= tabs ================= */
+function switchTab(name){
+  const main=document.getElementById('main');
+  document.querySelectorAll('nav .tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  if(name==='all'){
+    main.classList.add('show-all');
+    document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
+  }else{
+    main.classList.remove('show-all');
+    document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active', s.id===name));
+  }
+  // Gantt SVG width depends on visibility — re-render when timeline becomes visible
+  if(name==='timeline'||name==='all') renderGantt();
+}
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn=e.target.closest('.tab'); if(btn) switchTab(btn.dataset.tab);
+});
+
+/* ================= init ================= */
+(async function init(){
+  const embedded=loadEmbedded();
+  if(embedded) state=embedded;
+  await loadSaved();
+  ensureDefaults();
+  renderAll();
+  switchTab('timeline');
+})();
+</script>
+</body>
+</html>
