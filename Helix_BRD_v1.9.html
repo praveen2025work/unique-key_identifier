@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Helix Controller Investigation Model - BRD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  /* Barclays: Eagle blue #00AEEF, deep navy #002D5F, midnight #00395D */
+  --bg:#FFFFFF; --bg-alt:#F2F7FB; --bg-code:#EDF4F9;
+  --text:#00243F; --text-mute:#44637E; --text-soft:#7796AE;
+  --border:#CFE0EC; --border-soft:#E4EFF6;
+  --accent:#006BA6; --accent-soft:#E2F1FA;
+  --tbl-head:#E8F3FA;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#001526; --bg-alt:#002138; --bg-code:#00283F;
+    --text:#DCEBF5; --text-mute:#8FB4CC; --text-soft:#5B85A3;
+    --border:#0C3A57; --border-soft:#062B44;
+    --accent:#00AEEF; --accent-soft:#00293F;
+    --tbl-head:#012B45;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#001526; --bg-alt:#002138; --bg-code:#00283F;
+  --text:#DCEBF5; --text-mute:#8FB4CC; --text-soft:#5B85A3;
+  --border:#0C3A57; --border-soft:#062B44;
+  --accent:#00AEEF; --accent-soft:#00293F;
+  --tbl-head:#012B45;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 56px);}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+
+/* ── Top bar ── */
+.topbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:50;
+  background:#002D5F; border-bottom:2px solid #00AEEF;
+  padding:10px 24px; display:flex; align-items:center; gap:16px;
+}
+.topbar h1{font-size:14px;font-weight:600;margin:0;flex:1;min-width:0;
+  color:#FFFFFF;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar .tbtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.22);color:#CFE6F5;}
+.topbar .tbtn:hover{background:rgba(0,174,239,.25);color:#FFFFFF;}
+[data-theme="dark"] .topbar{background:#001020;}
+.topbar .tag{font-size:10px;font-weight:600;color:var(--accent);
+  border:1px solid var(--accent);border-radius:20px;padding:2px 9px;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+.tbtn{background:var(--bg-alt);border:1px solid var(--border);color:var(--text-mute);
+  border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;
+  font-family:inherit;transition:.15s;}
+.tbtn:hover{background:var(--accent-soft);color:var(--accent);}
+
+/* ── Layout ── */
+.wrap{display:flex;gap:0;align-items:flex-start;}
+.toc{
+  position:sticky; top:calc(env(safe-area-inset-top,0px) + 50px);
+  width:250px; flex-shrink:0; max-height:calc(100vh - 60px);
+  overflow-y:auto; overflow-x:hidden;
+  padding:20px 12px 40px 20px;
+  border-right:1px solid var(--border-soft);
+  transition:width .22s ease, padding .22s ease, opacity .18s ease;
+}
+body.toc-collapsed .toc{
+  width:0; padding-left:0; padding-right:0;
+  opacity:0; pointer-events:none; border-right:none;
+}
+body.toc-collapsed .doc{max-width:none;}
+/* toggle button in the top bar */
+#tocBtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:26px; flex-shrink:0; padding:0;
+  font-size:14px; line-height:1;
+}
+#tocBtn .bar{
+  display:block; width:13px; height:11px; position:relative;
+}
+#tocBtn .bar::before,#tocBtn .bar::after{
+  content:''; position:absolute; left:0; right:0; height:1.5px;
+  background:currentColor; border-radius:1px;
+}
+#tocBtn .bar::before{top:0; box-shadow:0 4.75px 0 currentColor;}
+#tocBtn .bar::after{bottom:0;}
+.toc-title{font-size:10px;font-weight:700;color:var(--text-soft);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+.toc a{display:block;color:var(--text-mute);text-decoration:none;
+  font-size:12.5px;padding:3px 8px;border-radius:4px;line-height:1.45;
+  border-left:2px solid transparent;}
+.toc a:hover{background:var(--accent-soft);color:var(--accent);}
+.toc a.h3{padding-left:20px;font-size:11.5px;color:var(--text-soft);}
+
+.doc{flex:1;min-width:0;padding:28px 40px 80px;max-width:1400px;}
+
+/* ── Typography ── */
+.doc h1{font-size:28px;font-weight:700;margin:0 0 6px;letter-spacing:-.4px;line-height:1.2;}
+.doc h2{font-size:20px;font-weight:600;margin:38px 0 12px;
+  padding-top:18px;border-top:1px solid var(--border-soft);letter-spacing:-.2px;}
+.doc h2:first-of-type{border-top:none;padding-top:0;}
+.doc h3{font-size:15.5px;font-weight:600;margin:24px 0 8px;color:var(--text);}
+.doc p{margin:0 0 12px;color:var(--text-mute);}
+.doc strong{color:var(--text);font-weight:600;}
+.doc ul,.doc ol{margin:0 0 14px;padding-left:22px;color:var(--text-mute);}
+.doc li{margin-bottom:5px;}
+.doc hr{border:none;border-top:1px solid var(--border-soft);margin:32px 0;}
+.doc blockquote{margin:16px 0;padding:14px 18px;background:var(--accent-soft);
+  border-radius:8px;color:var(--text);font-size:14.5px;}
+.doc blockquote p{margin:0;color:var(--text);}
+.doc code{font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  background:var(--bg-code);padding:1px 5px;border-radius:4px;color:var(--accent);}
+.doc em{color:var(--text-soft);}
+
+/* ── Tables ── */
+.tbl-scroll{overflow-x:auto;margin:0 0 18px;border:1px solid var(--border);
+  border-radius:8px;}
+.doc table{border-collapse:collapse;width:100%;font-size:13px;}
+.doc th{background:var(--tbl-head);text-align:left;padding:9px 13px;
+  font-weight:600;color:var(--text);border-bottom:1px solid var(--border);
+  white-space:nowrap;}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--border-soft);
+  color:var(--text-mute);vertical-align:top;}
+.doc tr:last-child td{border-bottom:none;}
+.doc tbody tr:nth-child(even){background:var(--bg-alt);}
+
+/* ── Mermaid ── */
+.mermaid-box{
+  margin:0 0 22px; padding:20px; background:var(--bg-alt);
+  border:1px solid var(--border); border-radius:10px;
+  overflow-x:auto; text-align:center;
+}
+/* Render at natural size. Never upscale a small diagram to fill the column
+   (that inflates the text); never stretch a wide one thin. */
+.mermaid-box svg{max-width:100% !important;width:auto !important;height:auto !important;}
+.mermaid-box.wide{padding:24px 18px;}
+
+/* ── Hand-drawn architecture SVG ── */
+.arch-svg{
+  margin:0 0 20px; padding:18px 14px;
+  background:var(--bg-alt); border:1px solid var(--border);
+  border-radius:10px; overflow-x:auto;
+}
+.arch-svg svg{
+  display:block; width:100%; min-width:760px; height:auto;
+  --ln:#006BA6; --ln2:#7796AE;
+}
+.arch-svg .zbg{fill:var(--bg);stroke:var(--border);stroke-width:1;stroke-dasharray:4 3;}
+.arch-svg .zt{font:600 10px 'Inter',sans-serif;fill:var(--text-soft);letter-spacing:.9px;}
+.arch-svg .bx{fill:#FFFFFF;stroke:#A8C6DA;stroke-width:1.2;}
+.arch-svg .bx.gate{stroke:#00539F;stroke-width:2;fill:#E2F1FA;}
+.arch-svg .bx.svc{stroke:#00AEEF;stroke-dasharray:5 3;fill:#F4FBFE;}
+.arch-svg .bx.store{stroke:#4E7E9B;fill:#F2F7FB;}
+.arch-svg .bx.lane{stroke:#A8C6DA;}
+.arch-svg .bt{font:600 11px 'Inter',sans-serif;fill:var(--text);}
+.arch-svg .bs{font:400 9.5px 'Inter',sans-serif;fill:var(--text-mute);}
+.arch-svg .el{font:500 9px 'Inter',sans-serif;fill:#006BA6;}
+.arch-svg .el2{font:400 9px 'Inter',sans-serif;fill:var(--text-soft);}
+.arch-svg .ln{fill:none;stroke:var(--ln);stroke-width:1.5;}
+.arch-svg .ln2{fill:none;stroke:var(--ln2);stroke-width:1.3;stroke-dasharray:5 3;}
+.arch-svg .num{fill:#006BA6;}
+.arch-svg .num2{fill:#7796AE;}
+.arch-svg .nt{font:700 9px 'Inter',sans-serif;fill:#fff;}
+[data-theme="dark"] .arch-svg svg{--ln:#00AEEF;--ln2:#5B85A3;}
+[data-theme="dark"] .arch-svg .bx{fill:#00283F;stroke:#17506F;}
+[data-theme="dark"] .arch-svg .bx.gate{stroke:#00AEEF;fill:#00344F;}
+[data-theme="dark"] .arch-svg .bx.svc{stroke:#00AEEF;fill:#002E47;}
+[data-theme="dark"] .arch-svg .bx.store{stroke:#3E7EA0;fill:#002538;}
+[data-theme="dark"] .arch-svg .zbg{fill:#001220;stroke:#0C3A57;}
+[data-theme="dark"] .arch-svg .el{fill:#00AEEF;}
+[data-theme="dark"] .arch-svg .num{fill:#0071A8;}
+[data-theme="dark"] .arch-svg .num2{fill:#3E6683;}
+
+/* ── Responsive ── */
+@media (max-width:1000px){
+  .toc, #tocBtn{display:none !important;}
+  .doc{padding:20px 18px 60px;max-width:none;}
+}
+::-webkit-scrollbar{width:7px;height:7px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="tbtn" id="tocBtn" title="Hide contents" aria-label="Toggle contents"><span class="bar"></span></button>
+  <h1>Helix Controller Investigation Model &mdash; Business Requirements Document</h1>
+  <button class="tbtn" id="themeBtn">Dark</button>
+</div>
+
+<div class="wrap">
+  <nav class="toc"><div class="toc-title">Contents</div><div id="tocList"></div></nav>
+  <main class="doc" id="doc"></main>
+</div>
+
+<script>
+const MD = "# Business Requirements Document\n## Helix Controller Investigation Model\n\n| | |\n|---|---|\n| **Document** | Helix Controller Investigation Model - BRD |\n| **Version** | 1.9 (Draft for review) |\n| **Owner** | Finance Technology Architecture |\n| **Source basis** | Helix architecture, FOBO design discussions, Helix Controller Investigation Model, One Finance UX material, official MCP documentation |\n| **Status** | Proposed design choices, pending confirmation by Helix architecture, source-system owners, security and records-management teams |\n\n### Version history\n\n| Version | Date | Change | Sections affected |\n|---|---|---|---|\n| **1.0** | 19 Sep 2026 | Initial BRD drafted from the Helix Controller Investigation Model source document | All |\n| **1.1** | 19 Sep 2026 | Delivery plan retargeted from Aug 2027 to end Dec 2026. Sequential phases replaced with four parallel workstreams, two gates and explicit scope reductions | 19 |\n| **1.2** | 19 Sep 2026 | Decision logic restated as seven numbered rules R1-R7 with worked illustrations. Worked example relabelled into four colour-coded steps with a narrative walkthrough | 13, 14 |\n| **1.3** | 19 Sep 2026 | Component architecture simplified from five layers to three. Adapter and source layers collapsed into one self-contained lane per application, arranged 2x2 | 7.1 |\n| **1.4** | 19 Sep 2026 | LLM engine and deterministic compare service added to the component architecture. New subsection stating which functions use the model and which must not | 7.1, 7.1.1 |\n| **1.5** | 19 Sep 2026 | Component architecture rebalanced - platform layer split into two rows and node labels shortened, so the diagram is no longer forced wide and text renders at a readable size | 7.1 |\n| **1.6** | 19 Sep 2026 | Application lanes flattened from a 2x2 nested arrangement to a single row, removing the wrapper subgraphs that were adding nested padding | 7.1 |\n| **1.7** | 19 Sep 2026 | Component architecture split into a layer stack and a separate request-path sequence, so neither diagram carries both structure and flow | 7.1.1, 7.1.2 |\n| **1.8** | 19 Sep 2026 | Component architecture redrawn as a single-column flow with no nested subgraphs, matching the readability of section 6. Application lanes moved from a diagram into a table | 7.1, 7.1.1 |\n| **1.9** | 19 Sep 2026 | Component architecture replaced with a hand-laid-out diagram at fixed coordinates, removing auto-layout artefacts. Numbered nine-step flow with a matching control table | 7.1 |\n\n---\n\n## 1. Executive summary\n\nHelix completes automated reconciliation analysis before a controller starts their shift. This document specifies what happens **after** that automated analysis is complete - how a controller reviews the result, asks follow-up questions in business language, obtains additional evidence from approved source systems on demand, and reaches a controlled business decision with a complete audit record.\n\nThe central design position is that a **persistent Helix investigation session** is the source of continuity. Each Claude conversation is treated as temporary and disposable. Controller context is rebuilt from stored summaries, evidence references and identifiers rather than from a live model conversation. MCP tools are separated by application so that a MOTIF request, a CATS request and a Trade Store request are each explicit, independently controlled and independently auditable.\n\n---\n\n## 2. Business context and problem statement\n\n### 2.1 Current position\n\nAutomated analysis produces a result, but the controller has no governed way to interrogate it. Questions such as \"why is this break present?\" or \"show me the CATS and MOTIF values\" require the controller to leave the tool, query source systems manually, and reconcile the answer by hand. The investigation trail is fragmented across systems and is not retained as a single auditable record.\n\n### 2.2 Problems to solve\n\n| # | Problem | Business impact |\n|---|---|---|\n| P1 | Controller cannot interrogate an automated analysis in business language | Manual source-system queries, slow resolution, inconsistent investigation depth |\n| P2 | No single record links analysis, evidence, questions, source calls and decisions | Audit reconstruction is manual and incomplete |\n| P3 | Evidence retrieval is ungoverned and not entitlement-aware | Risk of unauthorised data exposure |\n| P4 | Large exception populations cannot be passed to a model safely | Payload limits, cost, and loss of determinism |\n| P5 | Controller context is lost when a conversation ends | Investigation cannot be resumed or handed over |\n| P6 | Original analysis evidence and newly retrieved evidence are indistinguishable | Cannot demonstrate what the model saw versus what was added later |\n\n### 2.3 Business objectives\n\n- Allow a controller to investigate an automated analysis without leaving the Control Tower\n- Retrieve only the missing evidence, from the owning application, through an approved tool\n- Keep every calculation and comparison deterministic and outside the language model\n- Retain a complete, replayable audit record of what was asked, retrieved, shown and decided\n- Preserve the controller as the owner of every material business decision\n\n---\n\n## 3. Scope\n\n### 3.1 In scope\n\n- Controller investigation workflow in the Control Tower, starting from a completed automated analysis\n- Persistent Helix investigation session as the business record\n- Investigation agent and skill framework for question interpretation and tool selection\n- Application-separated MCP tool layer (Helix, MBR, MOTIF, CATS, Trade Store)\n- Application adapters connecting each MCP tool group to its approved database, API or service\n- Session and evidence store\n- Entitlement checks before data is requested or displayed\n- Audit trail covering every question, application, tool call, evidence item, answer and controller action\n- Controlled handling of very large exception populations\n\n### 3.2 Out of scope\n\n- The automated analysis run itself (already delivered)\n- Changes to source-system data models\n- Automated posting without controller decision\n- Cross-entity or cross-region aggregation beyond the current reconciliation scope\n\n### 3.3 Assumptions\n\n- Each source application can expose a dedicated MCP server or a clearly separated tool group\n- An existing governed service (query service, REST API, search index) is preferred over direct database access where one is available\n- Entitlement service is available and authoritative\n\n---\n\n## 4. Starting point: automated analysis is complete\n\nHelix stores the analysis against an **investigation session**. The session retains:\n\n- the analysis result\n- the evidence already used\n- the affected reconciliation or master book\n- the current run\n- the history of actions taken\n\nThe controller opens this session in the Control Tower. The Control Tower shows the outcome, the Helix explanation, evidence used, confidence or risk information, and the recommended next step.\n\n---\n\n## 5. How the controller investigates\n\n| Stage | Description |\n|---|---|\n| **Review the result** | Check what Helix found, which books, instruments or trades are affected, and which evidence was used |\n| **Ask a follow-up question** | Ask in business language, for example \"Why is this break present?\" or \"Show the CATS and MOTIF values\" |\n| **Check existing evidence** | Helix first checks the information already linked to the investigation session |\n| **Retrieve missing evidence** | When more information is needed, Helix calls an approved MCP tool for the specific application - MOTIF, MBR, CATS or Trade Store |\n| **Add and explain evidence** | The returned data is registered against the session, then used to refresh the explanation |\n| **Record the decision** | The controller records the business action. Helix supports the decision but does not own it |\n\n---\n\n## 6. End-to-end investigation flow\n```mermaid\nflowchart TD\n    A[Automated analysis completes<br/>Investigation session stored] --> B[Controller opens case<br/>in Control Tower]\n    B --> C[Helix loads analysis summary,<br/>evidence references, prior tool calls]\n    C --> D[Controller asks a question]\n    D --> E{Session already contains<br/>enough evidence?}\n    E -->|Yes| I[Answer from stored evidence]\n    E -->|No| F[Helix identifies the<br/>source application]\n    F --> G[Call approved MCP tool<br/>for that application]\n    G --> H[Application adapter retrieves<br/>small, filtered result from DB / API / service]\n    H --> I\n    I --> J[Helix records result,<br/>refreshes explanation, shows source]\n    J --> K[Controller records final action]\n    K --> L[Full audit history retained]\n```\n\n### 6.1 Numbered steps\n\n1. Automated analysis completes and an investigation session is stored\n2. The controller opens the case in the Control Tower\n3. Helix loads the analysis summary, evidence references and prior tool calls\n4. The controller asks a question\n5. Helix decides whether the session already contains enough evidence\n6. If not, Helix identifies the source application and calls its approved MCP tool\n7. The application adapter retrieves a small, filtered result from its database, API or service\n8. Helix records the result, refreshes the explanation and shows its source\n9. The controller records the final action and the full audit history is retained\n\n---\n\n## 7. Solution architecture\n\n### 7.1 Component architecture\n\nThree zones, left to right. Numbers mark the order of a single request.\n\n<div class=\"arch-svg\">\n<svg viewBox=\"0 0 980 470\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Helix component architecture\">\n  <defs>\n    <marker id=\"a1\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\n      <path d=\"M1 1 L9 5 L1 9\" fill=\"none\" stroke=\"var(--ln)\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    </marker>\n    <marker id=\"a2\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"6\" markerHeight=\"6\" orient=\"auto-start-reverse\">\n      <path d=\"M1 1 L9 5 L1 9\" fill=\"none\" stroke=\"var(--ln2)\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n    </marker>\n  </defs>\n  <!-- ZONE BACKGROUNDS -->\n  <rect x=\"8\"   y=\"40\" width=\"150\" height=\"330\" rx=\"10\" class=\"zbg\"/>\n  <rect x=\"180\" y=\"40\" width=\"470\" height=\"410\" rx=\"10\" class=\"zbg\"/>\n  <rect x=\"672\" y=\"40\" width=\"300\" height=\"410\" rx=\"10\" class=\"zbg\"/>\n  <text x=\"83\"  y=\"26\" class=\"zt\" text-anchor=\"middle\">CONTROLLER</text>\n  <text x=\"415\" y=\"26\" class=\"zt\" text-anchor=\"middle\">HELIX PLATFORM</text>\n  <text x=\"822\" y=\"26\" class=\"zt\" text-anchor=\"middle\">APPLICATION LANES</text>\n  <!-- ZONE 1 : Controller -->\n  <rect x=\"24\" y=\"150\" width=\"118\" height=\"70\" rx=\"7\" class=\"bx\"/>\n  <text x=\"83\" y=\"176\" class=\"bt\" text-anchor=\"middle\">Control Tower</text>\n  <text x=\"83\" y=\"192\" class=\"bs\" text-anchor=\"middle\">Controller</text>\n  <text x=\"83\" y=\"206\" class=\"bs\" text-anchor=\"middle\">working view</text>\n  <!-- ZONE 2 : Helix platform -->\n  <rect x=\"200\" y=\"70\" width=\"180\" height=\"58\" rx=\"7\" class=\"bx\"/>\n  <text x=\"290\" y=\"92\"  class=\"bt\" text-anchor=\"middle\">Investigation agent</text>\n  <text x=\"290\" y=\"108\" class=\"bs\" text-anchor=\"middle\">orchestrates,</text>\n  <text x=\"290\" y=\"120\" class=\"bs\" text-anchor=\"middle\">does not compute</text>\n  <rect x=\"200\" y=\"152\" width=\"180\" height=\"52\" rx=\"7\" class=\"bx\"/>\n  <text x=\"290\" y=\"174\" class=\"bt\" text-anchor=\"middle\">Context builder</text>\n  <text x=\"290\" y=\"191\" class=\"bs\" text-anchor=\"middle\">minimum context only</text>\n  <rect x=\"200\" y=\"228\" width=\"180\" height=\"58\" rx=\"7\" class=\"bx gate\"/>\n  <text x=\"290\" y=\"250\" class=\"bt\" text-anchor=\"middle\">Entitlement gate</text>\n  <text x=\"290\" y=\"266\" class=\"bs\" text-anchor=\"middle\">every call, before</text>\n  <text x=\"290\" y=\"278\" class=\"bs\" text-anchor=\"middle\">any data moves</text>\n  <!-- side services -->\n  <rect x=\"412\" y=\"70\" width=\"218\" height=\"58\" rx=\"7\" class=\"bx svc\"/>\n  <text x=\"521\" y=\"92\"  class=\"bt\" text-anchor=\"middle\">LLM engine \u2014 Claude via Bedrock</text>\n  <text x=\"521\" y=\"108\" class=\"bs\" text-anchor=\"middle\">interprets question, picks application</text>\n  <text x=\"521\" y=\"120\" class=\"bs\" text-anchor=\"middle\">and tool. No source access.</text>\n  <rect x=\"412\" y=\"152\" width=\"218\" height=\"52\" rx=\"7\" class=\"bx svc\"/>\n  <text x=\"521\" y=\"174\" class=\"bt\" text-anchor=\"middle\">Compare service</text>\n  <text x=\"521\" y=\"191\" class=\"bs\" text-anchor=\"middle\">deterministic code, no model</text>\n  <!-- stores -->\n  <rect x=\"200\" y=\"318\" width=\"136\" height=\"48\" rx=\"7\" class=\"bx store\"/>\n  <text x=\"268\" y=\"338\" class=\"bt\" text-anchor=\"middle\">Evidence store</text>\n  <text x=\"268\" y=\"354\" class=\"bs\" text-anchor=\"middle\">labelled by source</text>\n  <rect x=\"352\" y=\"318\" width=\"136\" height=\"48\" rx=\"7\" class=\"bx store\"/>\n  <text x=\"420\" y=\"338\" class=\"bt\" text-anchor=\"middle\">Investigation</text>\n  <text x=\"420\" y=\"354\" class=\"bs\" text-anchor=\"middle\">session</text>\n  <rect x=\"504\" y=\"318\" width=\"126\" height=\"48\" rx=\"7\" class=\"bx store\"/>\n  <text x=\"567\" y=\"338\" class=\"bt\" text-anchor=\"middle\">Audit trail</text>\n  <text x=\"567\" y=\"354\" class=\"bs\" text-anchor=\"middle\">every call logged</text>\n  <!-- ZONE 3 : four lanes -->\n  <rect x=\"688\" y=\"70\"  width=\"132\" height=\"82\" rx=\"7\" class=\"bx lane\"/>\n  <text x=\"754\" y=\"90\"  class=\"bt\" text-anchor=\"middle\">MBR</text>\n  <text x=\"754\" y=\"108\" class=\"bs\" text-anchor=\"middle\">tool group</text>\n  <text x=\"754\" y=\"122\" class=\"bs\" text-anchor=\"middle\">adapter</text>\n  <text x=\"754\" y=\"136\" class=\"bs\" text-anchor=\"middle\">query service</text>\n  <rect x=\"832\" y=\"70\"  width=\"132\" height=\"82\" rx=\"7\" class=\"bx lane\"/>\n  <text x=\"898\" y=\"90\"  class=\"bt\" text-anchor=\"middle\">MOTIF</text>\n  <text x=\"898\" y=\"108\" class=\"bs\" text-anchor=\"middle\">tool group</text>\n  <text x=\"898\" y=\"122\" class=\"bs\" text-anchor=\"middle\">adapter</text>\n  <text x=\"898\" y=\"136\" class=\"bs\" text-anchor=\"middle\">query service</text>\n  <rect x=\"688\" y=\"172\" width=\"132\" height=\"82\" rx=\"7\" class=\"bx lane\"/>\n  <text x=\"754\" y=\"192\" class=\"bt\" text-anchor=\"middle\">CATS</text>\n  <text x=\"754\" y=\"210\" class=\"bs\" text-anchor=\"middle\">tool group</text>\n  <text x=\"754\" y=\"224\" class=\"bs\" text-anchor=\"middle\">adapter</text>\n  <text x=\"754\" y=\"238\" class=\"bs\" text-anchor=\"middle\">file or API</text>\n  <rect x=\"832\" y=\"172\" width=\"132\" height=\"82\" rx=\"7\" class=\"bx lane\"/>\n  <text x=\"898\" y=\"192\" class=\"bt\" text-anchor=\"middle\">Trade Store</text>\n  <text x=\"898\" y=\"210\" class=\"bs\" text-anchor=\"middle\">tool group</text>\n  <text x=\"898\" y=\"224\" class=\"bs\" text-anchor=\"middle\">adapter</text>\n  <text x=\"898\" y=\"238\" class=\"bs\" text-anchor=\"middle\">REST API</text>\n  <text x=\"822\" y=\"290\" class=\"bs\" text-anchor=\"middle\">Each lane: one tool group, one adapter,</text>\n  <text x=\"822\" y=\"304\" class=\"bs\" text-anchor=\"middle\">one system, one owning team.</text>\n  <text x=\"822\" y=\"322\" class=\"bs\" text-anchor=\"middle\">Helix session tools and cross-source tools</text>\n  <text x=\"822\" y=\"336\" class=\"bs\" text-anchor=\"middle\">have no adapter - they never leave Helix.</text>\n  <!-- \u2550\u2550 FLOW ARROWS \u2550\u2550 -->\n  <!-- 1 controller -> agent -->\n  <path d=\"M142 172 L176 172 L176 99 L196 99\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"176\" cy=\"132\" r=\"9\" class=\"num\"/><text x=\"176\" y=\"136\" class=\"nt\" text-anchor=\"middle\">1</text>\n  <!-- 2 agent -> context builder -->\n  <path d=\"M290 128 L290 148\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"308\" cy=\"140\" r=\"9\" class=\"num\"/><text x=\"308\" y=\"144\" class=\"nt\" text-anchor=\"middle\">2</text>\n  <!-- 3 context builder -> LLM -->\n  <path d=\"M380 172 L396 172 L396 99 L408 99\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"396\" cy=\"134\" r=\"9\" class=\"num\"/><text x=\"396\" y=\"138\" class=\"nt\" text-anchor=\"middle\">3</text>\n  <!-- 4 LLM -> agent (return) -->\n  <path d=\"M412 84 L392 84 L392 62 L290 62 L290 66\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"340\" cy=\"62\" r=\"9\" class=\"num\"/><text x=\"340\" y=\"66\" class=\"nt\" text-anchor=\"middle\">4</text>\n  <!-- 5 agent -> entitlement -->\n  <path d=\"M212 128 L212 224\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"194\" cy=\"180\" r=\"9\" class=\"num\"/><text x=\"194\" y=\"184\" class=\"nt\" text-anchor=\"middle\">5</text>\n  <!-- 6 entitlement -> lanes -->\n  <path d=\"M380 250 L640 250 L640 130 L684 130\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <path d=\"M640 210 L684 210\" class=\"ln\" marker-end=\"url(#a1)\"/>\n  <circle cx=\"512\" cy=\"250\" r=\"9\" class=\"num\"/><text x=\"512\" y=\"254\" class=\"nt\" text-anchor=\"middle\">6</text>\n  <text x=\"512\" y=\"240\" class=\"el\" text-anchor=\"middle\">permitted call only</text>\n  <!-- 7 lanes -> evidence store (dotted return) -->\n  <path d=\"M688 254 L660 254 L660 300 L300 300 L300 314\" class=\"ln2\" marker-end=\"url(#a2)\"/>\n  <circle cx=\"480\" cy=\"300\" r=\"9\" class=\"num2\"/><text x=\"480\" y=\"304\" class=\"nt\" text-anchor=\"middle\">7</text>\n  <text x=\"480\" y=\"290\" class=\"el2\" text-anchor=\"middle\">evidence, labelled by source and time</text>\n  <!-- 8 evidence -> compare -->\n  <path d=\"M336 330 L400 330 L400 210 L470 210 L470 208\" class=\"ln2\" marker-end=\"url(#a2)\"/>\n  <circle cx=\"400\" cy=\"270\" r=\"9\" class=\"num2\"/><text x=\"400\" y=\"274\" class=\"nt\" text-anchor=\"middle\">8</text>\n  <!-- 9 evidence -> session -->\n  <path d=\"M336 342 L348 342\" class=\"ln2\" marker-end=\"url(#a2)\"/>\n  <!-- 10 session -> controller -->\n  <path d=\"M352 366 L352 400 L83 400 L83 224\" class=\"ln2\" marker-end=\"url(#a2)\"/>\n  <circle cx=\"200\" cy=\"400\" r=\"9\" class=\"num2\"/><text x=\"200\" y=\"404\" class=\"nt\" text-anchor=\"middle\">9</text>\n  <text x=\"240\" y=\"418\" class=\"el2\" text-anchor=\"middle\">explanation, original and new evidence separated</text>\n</svg>\n</div>\n\n| # | Step | Control |\n|---|---|---|\n| 1 | Controller asks a question in business language | Exact question and scope stored |\n| 2 | Agent requests a context package | Never a full dataset |\n| 3 | Context builder sends summary, identifiers and evidence references to the model | No credentials, no raw rows |\n| 4 | Model returns its interpretation, chosen application and chosen tool | Bounded by the skill framework's allow-list |\n| 5 | Agent asks the entitlement gate to authorise | Deterministic, not model-decided |\n| 6 | Only a permitted call reaches an application lane | Denied calls are blocked and recorded |\n| 7 | Evidence returns labelled by source application and retrieval time | Filtering and paging happen at source |\n| 8 | Values are compared by deterministic code | Every figure reproducible from evidence IDs |\n| 9 | Explanation returns to the controller, who records the decision | Original and newly retrieved evidence shown separately |\n\n#### 7.1.1 The four application lanes\n\nEvery application has the same three parts and one owning team. That repetition is the control:\nit is what makes a MOTIF request independently governed from a CATS request.\n\n| Application | Tool group | Adapter | System |\n|---|---|---|---|\n| **MBR** | `mbr_summarise_breaks`, `mbr_search_breaks`, `mbr_get_break_details` | MBR adapter | MBR query service |\n| **MOTIF** | `motif_summarise_exceptions`, `motif_search_exceptions`, `motif_get_exception_details`, `motif_get_record_history` | MOTIF adapter | MOTIF query service |\n| **CATS** | `cats_get_book_values`, `cats_get_trade_values`, `cats_get_record_history` | CATS adapter | CATS file or API |\n| **Trade Store** | `tradestore_get_trade_details`, `tradestore_get_trades`, `tradestore_get_trade_history` | Trade Store adapter | Trade Store REST API |\n\nTwo tool groups sit outside this pattern because they never leave Helix and therefore need no\nadapter or external system: **Helix session tools** read stored analysis and evidence from the\nsession, and **cross-source tools** combine evidence already retrieved.\n\n#### 7.1.2 Request path\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor C as Controller\n    participant AG as Investigation agent\n    participant CB as Context builder\n    participant LLM as LLM engine\n    participant EN as Entitlement\n    participant LANE as Application lane\n    participant CMP as Compare service\n    participant ST as Session and evidence store\n\n    C->>AG: Question in business language\n    AG->>CB: Request context package\n    CB->>ST: Read summary, identifiers, evidence refs\n    ST-->>CB: Context package\n    CB->>LLM: Context package only, never a full dataset\n    LLM-->>AG: Interpretation, application, tool choice\n\n    AG->>EN: Authorise this call\n    alt Denied\n        EN-->>AG: Blocked\n        AG-->>C: Access denied, recorded, no data shown\n    else Permitted\n        EN-->>AG: Allowed, fields filtered\n        AG->>LANE: Approved tool call\n        LANE->>LANE: Filter, aggregate, page at source\n        LANE-->>AG: Bounded result, row count, truncation flag\n        AG->>ST: Register evidence by source and time\n    end\n\n    opt Values need comparing\n        AG->>CMP: Linked evidence IDs\n        CMP-->>AG: Difference plus references\n    end\n\n    AG->>LLM: Draft explanation from labelled evidence\n    LLM-->>AG: Narrative\n    AG-->>C: Explanation, original and new evidence separated\n    C->>ST: Record action and reason\n```\n\n#### 7.1.3 Where the LLM engine is used, and where it is not\n\nThe model sits beside the agent, not in the data path. It never queries a source system, never\nreceives an unfiltered dataset, and never performs a calculation.\n\n| Function | Performed by | Rationale |\n|---|---|---|\n| Interpret the controller's question | **LLM engine** | Natural language is what the model is for |\n| Decide which application owns the missing data | **LLM engine**, bounded by the skill framework's allow-list | Selection is reasoning; the allow-list constrains it |\n| Choose which approved tool to call | **LLM engine**, approved tools only | The model picks from a list; it cannot invent a tool or write a query |\n| Authorise the call | **Entitlement service** | Access control must be deterministic and auditable |\n| Retrieve, filter, aggregate, page | **Application adapter**, at source | Keeps large data out of the model and enforces limits at source |\n| Compare values, totals, differences | **Compare service** - deterministic code | A figure in a financial adjustment must be reproducible, not generated |\n| Draft the explanation narrative | **LLM engine**, from labelled evidence | Explanation is language; the figures come from evidence references |\n| Record the decision | **Controller** | Material actions stay with the human |\n\n**What reaches the model.** The context package only - analysis summary, business identifiers,\nevidence references and the controller's access scope. Never a full dataset, never credentials,\nnever raw source rows before entitlement checks and field filtering.\n\n**Why the compare service is separate.** If the model computed the difference between a CATS\nvalue and a MOTIF value, that figure could not be reproduced or audited. The compare service\nruns versioned deterministic code against linked evidence IDs and returns the result with its\nreferences, so every number in an adjustment traces back to a retrieval.\n\n### 7.2 Architecture components\n\n| Component | Responsibility |\n|---|---|\n| **Investigation session** | The central business record for analysis, evidence, questions, source calls and decisions |\n| **Control Tower** | The controller working view for reviewing and continuing the investigation |\n| **Investigation agent and skills** | Interpret questions, select the source application and choose an approved tool |\n| **MCP tool layer** | Provides separate, controlled tool groups for Helix, MBR, MOTIF, CATS and Trade Store |\n| **Application adapters** | Connect each MCP tool group to that application's approved database, API or service |\n| **Session and evidence store** | Persists context and evidence independently from any single Claude conversation |\n| **Entitlement service** | Checks access before data is requested or displayed |\n| **Audit trail** | Records each question, application, tool call, evidence item, answer and controller action |\n\n---\n\n## 8. Session continuity design\n\n### 8.1 Design position\n\nThe controller session must not depend on access to another live Claude conversation. Helix persists business context at application level. When the controller opens the case, Helix reconstructs a new Claude request from the stored session summary, identifiers, evidence references, skill and prompt versions, and relevant prior actions.\n```mermaid\nsequenceDiagram\n    participant C as Controller\n    participant CT as Control Tower\n    participant H as Helix Session Store\n    participant CB as Context Builder\n    participant AG as Investigation Agent\n    participant CL as Claude (stateless)\n\n    Note over H: Automated run created<br/>investigation_session_id\n    H->>H: Analysis output + evidence refs<br/>saved under same session_id\n\n    C->>CT: Open case\n    CT->>H: Load business session\n    CT->>CT: Create NEW interaction session\n    C->>CT: Ask question\n    CT->>CB: Request context package\n    CB->>H: Read summary, identifiers,<br/>evidence catalogue, tool policy\n    CB-->>AG: Minimum relevant context\n    AG->>CL: Reconstructed request<br/>(summary + refs, NOT full dataset)\n    CL-->>AG: Interpretation + tool selection\n    AG->>H: Append question, answer, tool calls<br/>to same business session\n    Note over H: Later controller or resumed<br/>browser session reconstructs<br/>context the same way\n```\n\n### 8.2 Continuity rules\n\n| # | Rule |\n|---|---|\n| 10 | The automated run creates an investigation session and analysis version |\n| 11 | The analysis output and evidence references are saved using the same `investigation_session_id` |\n| 12 | The Control Tower opens that business session and creates a new interaction session for the controller |\n| 13 | A context builder selects the minimum relevant stored context and supplies it to Claude |\n| 14 | New questions, answers and tool calls are appended to the same business session |\n| 15 | A later controller or resumed browser session can reconstruct the context in the same way |\n\n---\n\n## 9. Data provision to the agent\n\n### 9.1 Design position\n\nThe controller question is sent with the Helix `investigation_session_id`, **not with a full dataset**. Helix loads a small context package from the session store containing the analysis summary, relevant identifiers, evidence references and the controller access scope. The agent then calls the approved application-specific MCP tool for only the missing data.\n\n### 9.2 Rules\n\n- Pass business identifiers first: business date, reconciliation ID, master book, exception ID and trade ID\n- Select the source application before selecting the tool\n- Return summaries, counts and selected fields before detailed rows\n- Keep full source data in the source application; store a reference and integrity details in Helix\n- Send data to Claude only after entitlement checks and field filtering\n\n---\n\n## 10. MCP integration patterns\n\nMCP is not limited to databases. Each application can expose a dedicated MCP server or a clearly separated tool group. Behind each tool, an adapter can call an Oracle query service, REST API, existing business service, file service or search index. **Helix should prefer an existing governed service over direct database access where one is available.**\n\n| Integration type | Example use | Recommended pattern |\n|---|---|---|\n| **Database** | Read selected MOTIF or MBR records | Use a read-only query service or restricted database adapter |\n| **REST service** | Retrieve Trade Store or reference data | Call the approved API with user or delegated service identity |\n| **File / object service** | Read a controlled CATS extract | Validate the file and read only the required section |\n| **Search / index service** | Search a large exception population | Apply filters and return aggregated or paged results |\n| **Calculation service** | Compare CATS and MOTIF values | Run deterministic code and return evidence references |\n\n---\n\n## 11. Handling very large exception data\n\nThe agent must not receive the complete exception population. The application-specific MCP tool performs filtering and aggregation close to the source, then returns a controlled result.\n```mermaid\nflowchart LR\n    S1[1. Scope<br/>Mandatory filters] --> S2[2. Summarise<br/>Counts and grouped totals]\n    S2 --> S3[3. Narrow<br/>Select a group]\n    S3 --> S4[4. Page<br/>Bounded page + token]\n    S4 --> S5[5. Detail<br/>Selected records only]\n    S5 --> S6[6. Bulk path<br/>Async export when justified]\n```\n\n| Step | What happens | Example |\n|---|---|---|\n| **1. Scope** | Use mandatory filters | COB date, master book, reconciliation and region |\n| **2. Summarise** | Return counts and grouped totals first | Count by break type, currency or age |\n| **3. Narrow** | Select a group | Material breaks for one master book |\n| **4. Page** | Return a bounded page and continuation token | First 100 rows by materiality |\n| **5. Detail** | Fetch selected records only | Details for five exception IDs |\n| **6. Bulk path** | Create an asynchronous export when justified | Store a file reference outside the prompt |\n\n### 11.1 Technical controls\n\n- Use fixed query templates or validated filter parameters. **Do not allow unrestricted model-generated SQL**\n- Apply database indexes or a prepared search index on common filters\n- Set row, column, time and payload limits for every tool\n- Return counts and truncation indicators so the agent knows what it did not receive\n- Cache stable summaries for the current run while keeping source timestamps visible\n- Run comparisons and totals in code or the data service, **not in the language model**\n\n---\n\n## 12. Single-use FOBO controller session: complete flow\n\nThe twelve stages group into four phases. Setup and Close are system-owned; the controller\nacts at Ask, Decide; Helix acts at Select, Authorise, Retrieve.\n\n### 12.1 Phase view\n\n```mermaid\nflowchart LR\n    subgraph P1[\"PHASE 1  -  Establish\"]\n        direction TB\n        S1[\"1   Open case<br/>Load session + evidence refs\"]\n        S2[\"2   Create interaction<br/>Link user, role, start time\"]\n        S3[\"3   Build context<br/>Summary, identifiers, tool policy\"]\n        S1 --> S2 --> S3\n    end\n\n    subgraph P2[\"PHASE 2  -  Interpret\"]\n        direction TB\n        S4[\"4   Ask question<br/>Store exact question + scope\"]\n        S5[\"5   Select source<br/>MBR / MOTIF / CATS / Trade Store\"]\n        S6[\"6   Select tool<br/>Map to an approved MCP tool\"]\n        S4 --> S5 --> S6\n    end\n\n    subgraph P3[\"PHASE 3  -  Retrieve\"]\n        direction TB\n        S7[\"7   Authorise<br/>Block call or strip fields\"]\n        S8[\"8   Retrieve<br/>Filter / aggregate at source\"]\n        S9[\"9   Register evidence<br/>App, tool, params, rows, ref\"]\n        S7 --> S8 --> S9\n    end\n\n    subgraph P4[\"PHASE 4  -  Conclude\"]\n        direction TB\n        S10[\"10   Explain<br/>Evidence labelled by application\"]\n        S11[\"11   Decide<br/>Acknowledge / amend / escalate\"]\n        S12[\"12   Close<br/>Persist all for audit\"]\n        S10 --> S11 --> S12\n    end\n\n    P1 ==> P2 ==> P3 ==> P4\n    S9 -.->|\"more evidence needed\"| S4\n```\n\n### 12.2 Interaction view\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor C as Controller\n    participant CT as Control Tower\n    participant AG as Helix Agent\n    participant EN as Entitlement\n    participant MC as MCP Tool\n    participant SR as Source App\n    participant ST as Session Store\n\n    rect rgb(232,241,250)\n    Note over C,ST: PHASE 1 - Establish\n    C->>CT: Open Helix analysis\n    CT->>ST: Load session, analysis, evidence refs\n    CT->>ST: Create interaction (user, role, start)\n    ST-->>AG: Context package (summary, IDs, tool policy)\n    end\n\n    rect rgb(255,243,224)\n    Note over C,ST: PHASE 2 - Interpret\n    C->>AG: Ask question\n    AG->>ST: Store exact question + scope\n    AG->>AG: Identify owning application\n    AG->>AG: Map to approved MCP tool\n    end\n\n    rect rgb(232,245,233)\n    Note over C,ST: PHASE 3 - Retrieve\n    AG->>EN: Check entitlement\n    alt Denied\n        EN-->>AG: Blocked\n        AG-->>C: Access denied (recorded, no data shown)\n    else Permitted\n        EN-->>AG: Allowed (fields filtered)\n        AG->>MC: Call approved tool\n        MC->>SR: Filter / aggregate / page at source\n        SR-->>MC: Bounded result\n        MC-->>AG: Result + row count + truncation flag\n        AG->>ST: Register evidence (app, tool, params, time, ref)\n    end\n    end\n\n    rect rgb(243,238,250)\n    Note over C,ST: PHASE 4 - Conclude\n    AG-->>C: Explanation (original vs new evidence separated)\n    C->>ST: Record action and reason\n    CT->>ST: Persist messages, tool calls, evidence, status\n    end\n```\n\n### 12.3 Stage reference\n\n| # | Stage | Controller view | System action |\n|---|---|---|---|\n| 1 | Open case | Open Helix analysis in the Control Tower | Load session, analysis and authorised evidence references |\n| 2 | Create interaction | Start the controller session | Link user, role, investigation session and start time |\n| 3 | Build context | Prepare a small context package | Load summary, identifiers, evidence catalogue and tool policy |\n| 4 | Ask question | Request more analysis | Store the exact question and selected scope |\n| 5 | Select source | Helix identifies the owning application | Choose MBR, MOTIF, CATS, Trade Store or Helix session tools |\n| 6 | Select tool | Map the question to an approved tool | For example, summarise MOTIF exceptions or retrieve a Trade Store record |\n| 7 | Authorise | Check access | Block the call or remove restricted fields |\n| 8 | Retrieve | Call the application adapter | Filter, aggregate or page at the source |\n| 9 | Register evidence | Record the source response | Store application, tool, parameters, time, row count and reference |\n| 10 | Explain | Answer from stored and new evidence | Keep evidence labelled by application |\n| 11 | Decide | Record action and reason | Acknowledge, investigate, amend, escalate or close |\n| 12 | Close | End the interaction | Persist messages, tool calls, evidence and final status for audit |\n\n---\n\n## 13. Decision logic\n\nThis section defines what Helix does each time a controller asks a question. It is the rulebook\nthe investigation agent follows on every interaction, checked in order.\n\n### 13.1 The seven rules in plain terms\n\n| # | The question being answered | Rule |\n|---|---|---|\n| **R1** | Do I already have this? | If the evidence already in the session is sufficient, answer from it. Make no source call |\n| **R2** | If not, who owns the missing data? | Identify the owning application and call **only that application's** approved tool |\n| **R3** | What if I need two systems? | Call each separately. Keep every returned record labelled by its source. Never merge into one undifferentiated result |\n| **R4** | What if the result is enormous? | Return a count and summary first. Let the controller narrow the scope, then request a bounded page |\n| **R5** | What if the source fails? | Show the failure. **Never invent an answer** to fill the gap |\n| **R6** | What if access is denied? | Do not retrieve the data and do not display it. Record that the attempt was blocked |\n| **R7** | What if new evidence changes the picture? | Preserve both versions and show what changed. Never silently overwrite the original explanation |\n\n### 13.2 Why the order matters\n\nR1 comes first because it is the cheapest and lowest-risk path - no source call, no entitlement\nexposure, no payload. R2 and R3 constrain **where** data comes from, so provenance is never\nambiguous. R4 constrains **how much** comes back. R5 and R6 are not steps in the sequence: they\ncan interrupt at any point during retrieval, which is why the diagram shows them branching to\nthe side. R7 governs what happens **after** evidence arrives.\n\n### 13.3 Decision flow\n\n```mermaid\nflowchart TD\n    Q[\"Controller asks a question\"] --> R1{\"R1   Is stored evidence<br/>sufficient?\"}\n    R1 -->|Yes| ANS[\"Answer from the session<br/>no source call made\"]\n    R1 -->|No| R2{\"R2   How many applications<br/>hold the missing data?\"}\n\n    R2 -->|One| ONE[\"Call only that application's<br/>approved MCP tool\"]\n    R2 -->|More than one| MULTI[\"R3   Call each separately<br/>Keep evidence labelled by source\"]\n\n    ONE --> R4{\"R4   Is the result<br/>within limits?\"}\n    MULTI --> R4\n    R4 -->|Too large| NARROW[\"Return count and summary first<br/>Then request a bounded page\"]\n    R4 -->|Within limits| REG[\"Register evidence<br/>source, tool, params, time, rows\"]\n    NARROW --> REG\n\n    REG --> R7{\"R7   Does new evidence change<br/>the explanation?\"}\n    R7 -->|Yes| BOTH[\"Preserve both versions<br/>Show what changed\"]\n    R7 -->|No| ANS\n    BOTH --> ANS\n\n    ONE -.->|\"R5   source unavailable\"| FAIL[\"Show the failure<br/>Do not invent an answer\"]\n    ONE -.->|\"R6   not entitled\"| DENY[\"Do not retrieve or display<br/>Record the blocked attempt\"]\n    MULTI -.->|\"R5\"| FAIL\n    MULTI -.->|\"R6\"| DENY\n```\n\n### 13.4 Worked illustrations\n\n| Controller asks | Rule applied | What Helix does |\n|---|---|---|\n| \"What did the analysis find?\" | R1 | Answers from the stored analysis summary. No source call |\n| \"Show me the CATS value for this book\" | R2 | Calls `cats_get_book_values` only. MOTIF and Trade Store are not touched |\n| \"Compare the CATS and MOTIF values\" | R3 | Two separate calls. Results stay labelled CATS and MOTIF, then compared by deterministic code |\n| \"Show me every break on this reconciliation\" | R4 | Returns \"4,812 breaks, grouped by type\" first. Controller picks a group before rows are fetched |\n| \"Show the Trade Store lifecycle\" (service down) | R5 | \"Trade Store is unavailable. No lifecycle data retrieved.\" No substitute answer |\n| \"Show me book X\" (outside controller scope) | R6 | Retrieval blocked. Nothing displayed. Attempt recorded in the audit trail |\n| Controller pulls new CATS data that contradicts the original finding | R7 | Both explanations retained. Diff shown: analysis said X at 06:00, revised to Y at 09:15 |\n\n---\n\n## 14. Worked example: CATS versus MOTIF break\n\n**Scenario.** The automated run has flagged a difference between the CATS front-office value\nand the MOTIF back-office value for one master book. The controller opens the case and asks\nwhy the values differ.\n\n**What this example demonstrates**\n\n| Principle | Where it appears below |\n|---|---|\n| Check stored evidence before calling any source | Step 2 - session store returns \"partial\" |\n| Call only the owning application's approved tool | Steps 3, 4, 5 - three separate, conditional calls |\n| Keep every returned record labelled by source | Each `-->>` response carries its application label |\n| Compare in deterministic code, never in the model | Step 6 - compare service, not the agent |\n| Separate original analysis evidence from new evidence | Step 8 - explanation shows both, distinctly |\n| The controller owns the decision | Step 9 - action and reason recorded by the controller |\n\n**Reading the diagram.** Each shaded band is one step, colour-coded:\n**blue** = check what we already hold, **amber** = retrieve from source,\n**green** = compare deterministically, **purple** = explain and decide.\n\n```mermaid\nsequenceDiagram\n    autonumber\n    actor C as Controller\n    participant H as Helix Agent\n    participant S as Session Store\n    participant CM as CATS MCP\n    participant MM as MOTIF MCP\n    participant TM as Trade Store MCP\n    participant D as Compare Service<br/>(deterministic code)\n\n    Note over H,S: STARTING POINT<br/>Automated analysis has flagged a CATS vs MOTIF difference\n\n    C->>H: \"Why do the CATS and MOTIF values differ?\"\n\n    rect rgb(232,241,250)\n    Note over H,S: STEP 1 - Check what we already have\n    H->>S: Retrieve evidence used by the automated analysis\n    S-->>H: PARTIAL - MOTIF value present, CATS value missing\n    end\n\n    rect rgb(255,243,224)\n    Note over H,TM: STEP 2 - Retrieve only what is missing, from the owning application\n    alt CATS value missing\n        H->>CM: cats_get_book_values (COB date, master book, field allow-list)\n        CM-->>H: CATS values [source: CATS, retrieved 09:14]\n    end\n    alt MOTIF record missing\n        H->>MM: motif_get_exception_details (max ID count, approved fields)\n        MM-->>H: MOTIF records [source: MOTIF, retrieved 09:14]\n    end\n    alt Trade attributes or lifecycle required\n        H->>TM: tradestore_get_trade_details (trade ID, field allow-list)\n        TM-->>H: Trade facts [source: Trade Store, retrieved 09:15]\n    end\n    end\n\n    rect rgb(232,245,233)\n    Note over H,D: STEP 3 - Compare in code, not in the model\n    H->>D: compare_cats_motif_values (linked evidence IDs, versioned rules)\n    D-->>H: Difference + evidence references\n    end\n\n    rect rgb(243,238,250)\n    Note over C,S: STEP 4 - Explain, then the controller decides\n    H->>S: Register all new evidence by source application and time\n    H-->>C: Explanation<br/>ORIGINAL analysis evidence vs NEWLY retrieved evidence, shown separately\n    C->>S: Record action and reason\n    end\n\n    Note over C,S: OUTCOME<br/>Difference explained, every figure traceable to its source system,<br/>full audit trail retained under one investigation_session_id\n```\n\n### 14.1 Narrative walkthrough\n\n| Step | What happens | Control applied |\n|---|---|---|\n| **Starting point** | Automated analysis reports a difference between the CATS front-office value and the MOTIF back-office value | Analysis already stored against the investigation session |\n| **1. Check stored evidence** | The controller opens the existing investigation session and asks why the values differ. Helix checks the evidence already used by the automated analysis | No source call is made if the session already holds the answer |\n| **2. Retrieve what is missing** | If the CATS value is missing, Helix calls a CATS MCP tool. If the MOTIF record is missing, it calls a MOTIF MCP tool. If trade attributes or lifecycle data are required, it calls a Trade Store MCP tool | Each application is called separately through its own approved tool, with filters and field allow-lists applied at source |\n| **3. Compare deterministically** | The returned records stay labelled by application and are compared by deterministic code | The language model never performs the comparison |\n| **4. Explain and decide** | Helix explains the difference, separating original analysis evidence from newly retrieved evidence. The controller records the action | The controller owns the decision; Helix supports it |\n\n---\n\n## 15. MCP tool catalogue by application\n\nTools are separated by application. This makes it clear which system is being called, which team owns the integration, which entitlement applies and where the evidence came from. Names below are illustrative.\n\n### 15.1 Helix session tools\n\nThese tools read Helix-owned context. They do not retrieve source-system business data.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `helix_get_analysis_context` | Load the stored analysis, identifiers and evidence catalogue | `investigation_session_id`; controller entitlement |\n| `helix_get_evidence_item` | Load one previously registered evidence item | `evidence_id`; retention and access check |\n| `helix_get_investigation_history` | Return prior questions, source calls and decisions | Bounded history; authorised session only |\n\n### 15.2 MBR tools\n\nThese tools retrieve reconciliation and break information owned by MBR.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `mbr_summarise_breaks` | Return break counts and grouped totals | COB date and reconciliation scope required |\n| `mbr_search_breaks` | Return filtered, paged break rows | Approved filters, sort fields and page limit |\n| `mbr_get_break_details` | Return details for selected break IDs | Maximum ID count and field allow-list |\n\n### 15.3 MOTIF tools\n\nThese tools retrieve back-office exception, accounting or reconciliation evidence from MOTIF.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `motif_summarise_exceptions` | Return grouped MOTIF exception totals | COB date, master book and payload limit |\n| `motif_search_exceptions` | Search MOTIF exceptions with paging | Validated filters and continuation token |\n| `motif_get_exception_details` | Return selected MOTIF exception records | Maximum ID count and approved fields |\n| `motif_get_record_history` | Return history for a selected MOTIF record | Bounded date range and source timestamp |\n\n### 15.4 CATS tools\n\nThese tools retrieve front-office values or records from the approved CATS interface.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `cats_get_book_values` | Return selected CATS values for a master book | COB date, master book and field allow-list |\n| `cats_get_trade_values` | Return selected CATS values for trade IDs | Maximum ID count and controller entitlement |\n| `cats_get_record_history` | Return available history for a selected CATS record | Bounded date range |\n\n### 15.5 Trade Store tools\n\nThese tools retrieve trade facts and lifecycle information from the approved Trade Store service.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `tradestore_get_trade_details` | Return approved facts for one trade | Trade ID and field allow-list |\n| `tradestore_get_trades` | Return details for a bounded list of trade IDs | Maximum ID count and payload limit |\n| `tradestore_get_trade_history` | Return lifecycle or change history for one trade | Bounded date range and source timestamp |\n\n### 15.6 Cross-source and operational tools\n\nThese tools combine already retrieved evidence or manage long-running requests.\n\n| Tool | Purpose | Key controls |\n|---|---|---|\n| `compare_cats_motif_values` | Compare selected CATS and MOTIF evidence using deterministic code | Linked evidence IDs and versioned rules |\n| `create_evidence_export` | Create an approved bulk export outside model context | Asynchronous job, encrypted storage and expiry |\n| `get_request_status` | Check a long-running query or export | Requesting session or authorised controller |\n| `check_application_health` | Show whether an application adapter is available | No business data returned |\n\n---\n\n## 16. Controls that must be built in\n\n| # | Control |\n|---|---|\n| C1 | Source calls are approved, entitlement-aware and limited to required data |\n| C2 | Each answer separates original analysis evidence from newly retrieved evidence |\n| C3 | Every returned item identifies its source application and retrieval time |\n| C4 | Calculations and comparisons remain deterministic |\n| C5 | Failures, missing data and low-confidence explanations are visible |\n| C6 | The full session history is retained for audit |\n| C7 | Material actions remain with the controller and use the required approval process |\n\n---\n\n## 17. Minimum controls and audit record\n```mermaid\nflowchart TD\n    subgraph SESSION[\"One investigation_session_id\"]\n        AR[Automated run] --> CI1[Controller interaction 1]\n        CI1 --> CI2[Controller interaction 2]\n        CI2 --> CIn[Controller interaction n]\n    end\n\n    subgraph PERINT[\"Per interaction, recorded separately\"]\n        Q[Exact question]\n        CTX[Context supplied to model<br/>or reproducible reference]\n        VER[Prompt version, skill version,<br/>model identifier, tool policy]\n    end\n\n    subgraph PERCALL[\"Per source call\"]\n        APP[Application name]\n        TOOL[MCP tool + validated parameters]\n        ENTR[Entitlement result]\n        TIME[Timing, row count, errors]\n    end\n\n    subgraph STORE[\"Evidence storage\"]\n        REF[Store by reference where possible]\n        COPY[Copy only when retention and<br/>classification rules permit]\n        ENC[Encrypt in transit and at rest<br/>Restrict audit access]\n        NOCRED[No credentials, tokens or<br/>unnecessary raw data in prompts]\n    end\n\n    CI1 -.records.-> PERINT\n    PERINT -.each call.-> PERCALL\n    PERCALL -.registers.-> STORE\n```\n\n- Use **one** `investigation_session_id` across the automated run and later controller interactions\n- Record each controller interaction separately so history is not overwritten\n- Record the context supplied to the model, or a secure reproducible reference to it\n- Record prompt and skill versions, model identifier, tool policy and response status\n- For every source call, record the application name, MCP tool, validated parameters, entitlement result, timing, row count and error details\n- Register returned evidence with its source application and retrieval time\n- Store evidence by reference where possible; copy data only when retention and classification rules permit it\n- Encrypt data in transit and at rest, and restrict audit access\n- Do not store database credentials, service tokens or unnecessary raw data in prompts\n\n---\n\n## 18. Data model (proposed)\n```mermaid\nerDiagram\n    INVESTIGATION_SESSION ||--o{ INTERACTION_SESSION : \"has many\"\n    INVESTIGATION_SESSION ||--|| ANALYSIS_VERSION : \"produced by\"\n    INVESTIGATION_SESSION ||--o{ EVIDENCE_ITEM : \"catalogues\"\n    INVESTIGATION_SESSION ||--o{ CONTROLLER_DECISION : \"records\"\n    INTERACTION_SESSION ||--o{ QUESTION : \"contains\"\n    QUESTION ||--o{ SOURCE_CALL : \"triggers\"\n    SOURCE_CALL ||--o| EVIDENCE_ITEM : \"produces\"\n    SOURCE_CALL }o--|| MCP_TOOL : \"invokes\"\n    MCP_TOOL }o--|| APPLICATION : \"belongs to\"\n    EVIDENCE_ITEM }o--|| APPLICATION : \"sourced from\"\n    CONTROLLER_DECISION ||--o{ AUDIT_ENTRY : \"writes\"\n\n    INVESTIGATION_SESSION {\n        string investigation_session_id PK\n        string reconciliation_id\n        string master_book\n        date business_date\n        string run_id\n        string status\n        timestamp created_ts\n    }\n    ANALYSIS_VERSION {\n        string analysis_version_id PK\n        string investigation_session_id FK\n        string summary\n        string confidence_tier\n        string prompt_version\n        string skill_version\n        string model_identifier\n    }\n    INTERACTION_SESSION {\n        string interaction_session_id PK\n        string investigation_session_id FK\n        string controller_user_id\n        string controller_role\n        timestamp start_ts\n        timestamp end_ts\n    }\n    QUESTION {\n        string question_id PK\n        string interaction_session_id FK\n        string question_text\n        string selected_scope\n        timestamp asked_ts\n    }\n    SOURCE_CALL {\n        string call_id PK\n        string question_id FK\n        string application_name\n        string mcp_tool_name\n        string validated_parameters\n        string entitlement_result\n        number row_count\n        number latency_ms\n        string error_detail\n        timestamp called_ts\n    }\n    EVIDENCE_ITEM {\n        string evidence_id PK\n        string investigation_session_id FK\n        string source_application\n        string storage_mode\n        string reference_uri\n        string integrity_hash\n        boolean is_original_analysis\n        timestamp retrieved_ts\n    }\n    MCP_TOOL {\n        string tool_name PK\n        string application_name FK\n        string tool_group\n        string field_allow_list\n        number max_rows\n        number timeout_ms\n    }\n    APPLICATION {\n        string application_name PK\n        string integration_type\n        string adapter_endpoint\n        string owning_team\n    }\n    CONTROLLER_DECISION {\n        string decision_id PK\n        string investigation_session_id FK\n        string controller_user_id\n        string action\n        string reason\n        timestamp decided_ts\n    }\n    AUDIT_ENTRY {\n        string audit_id PK\n        string decision_id FK\n        string event_type\n        string payload_reference\n        timestamp event_ts\n    }\n```\n\n---\n\n## 19. Delivery plan\n\n**Target: production go-live by end of December 2026.**\n\nFourteen weeks from the start of October leaves no room for a sequential phase model. The plan\nbelow runs four workstreams in parallel, gated by two hard checkpoints. The scope reductions in\n19.4 are what make the date achievable; they are choices, not omissions.\n\n### 19.1 Timeline\n\n```mermaid\ngantt\n    title Helix Controller Investigation - delivery to end December 2026\n    dateFormat YYYY-MM-DD\n    axisFormat %d %b\n\n    section Gate 0 - Design lock\n    Confirm D1-D6 design points        :crit, g0, 2026-09-22, 14d\n    Source system + entitlement sign-off :crit, g0b, 2026-09-22, 14d\n    GATE 0 - design locked             :milestone, crit, m0, 2026-10-06, 0d\n\n    section WS1 - Session and context\n    Session + evidence store schema    :w1a, 2026-10-06, 14d\n    Investigation session persistence  :w1b, 2026-10-13, 21d\n    Context builder                    :w1c, 2026-10-27, 21d\n    Control Tower open and resume      :w1d, 2026-11-10, 14d\n\n    section WS2 - MCP tool layer\n    Tool contract + adapter pattern    :w2a, 2026-10-06, 10d\n    Helix session tools                :w2b, 2026-10-13, 14d\n    MBR + MOTIF tool groups            :w2c, 2026-10-20, 21d\n    CATS + Trade Store tool groups     :w2d, 2026-11-03, 21d\n    Entitlement enforcement in layer   :crit, w2e, 2026-11-17, 14d\n\n    section WS3 - Agent and skills\n    Skill framework + tool selection   :w3a, 2026-10-20, 21d\n    Deterministic compare service      :w3b, 2026-11-03, 14d\n    Large population handling          :w3c, 2026-11-10, 14d\n    Evidence labelling + versioning    :w3d, 2026-11-17, 14d\n\n    section WS4 - Controls and audit\n    Audit trail completeness           :crit, w4a, 2026-10-27, 28d\n    Maker-checker integration          :w4b, 2026-11-17, 14d\n\n    section Gate 1 - Feature complete\n    GATE 1 - feature complete          :milestone, crit, m1, 2026-12-01, 0d\n\n    section Release\n    Integrated test                    :r1, 2026-12-01, 10d\n    Shadow run against live analysis   :crit, r2, 2026-12-08, 10d\n    Controller UAT                     :r3, 2026-12-15, 7d\n    Go-live - limited population       :milestone, crit, m2, 2026-12-22, 0d\n```\n\n### 19.2 Workstreams\n\n| WS | Scope | Runs | Depends on |\n|---|---|---|---|\n| **WS1 - Session and context** | Investigation session persistence, evidence store, context builder, Control Tower open and resume | Oct 6 - Nov 24 | Gate 0 (D4 retention) |\n| **WS2 - MCP tool layer** | Tool contracts, adapter pattern, five tool groups, entitlement enforcement | Oct 6 - Dec 1 | Gate 0 (D1, D2, D3) |\n| **WS3 - Agent and skills** | Skill framework, tool selection, deterministic compare, large-population handling, evidence labelling | Oct 20 - Dec 1 | WS2 tool contract (not full tools) |\n| **WS4 - Controls and audit** | Audit trail completeness, maker-checker integration | Oct 27 - Dec 1 | WS1 schema, Gate 0 (D5) |\n\n### 19.3 Gates\n\n| Gate | Date | Exit criteria | If missed |\n|---|---|---|---|\n| **Gate 0 - Design locked** | 6 Oct | All six design points D1-D6 answered. Source-system owners have signed off on approved tools, returned fields and integration type per application | WS2 cannot start. December date is lost - escalate immediately |\n| **Gate 1 - Feature complete** | 1 Dec | All four workstreams code-complete. Every acceptance criterion A1-A10 has a passing test | Drop to a narrower go-live scope (see 19.4) rather than compressing shadow run or UAT |\n| **Go-live** | 22 Dec | Shadow run shows no unexplained divergence. Controller UAT signed off. Audit record verified replayable | Hold to January. Do not release into the year-end close period without a clean shadow run |\n\n### 19.4 Scope decisions that make December achievable\n\n| Decision | Rationale |\n|---|---|\n| **Go live on one reconciliation type and one region first** | Proves the full chain end to end without multiplying entitlement and source-approval work |\n| **Two source applications at go-live, not four** | MOTIF and CATS cover the primary worked example. MBR and Trade Store tool groups are built but released in January |\n| **Bulk export path deferred** | `create_evidence_export` and the asynchronous job path are Phase 2. Scope, summarise, narrow, page and detail cover the December population |\n| **Read-only investigation at go-live** | Controller records a decision; automated posting stays out of scope until the audit record has run in production for a full cycle |\n\n### 19.5 Critical path\n\nGate 0 \u2192 MCP tool contract \u2192 MBR/MOTIF tool groups \u2192 entitlement enforcement \u2192 Gate 1 \u2192 shadow run \u2192 go-live.\n\nThe binding constraint is **Gate 0 on 6 October**. Every day D1, D2 and D3 remain open is a\nday lost from the MCP tool layer, which is the longest workstream and sits on the critical\npath. Nothing else in the plan can absorb that slip.\n\n### 19.6 Key risks to the date\n\n| Risk | Impact | Mitigation |\n|---|---|---|\n| Source-system owners cannot confirm approved tools and fields by 6 Oct | Critical path slips week for week | Book the sign-off sessions now. Escalate any non-response by 29 Sept |\n| Entitlement service integration proves more complex than assumed | Gate 1 slips | Spike the integration in week 1 of October, before committing to the design |\n| Year-end change freeze | Go-live blocked in late December | Confirm the freeze window now. If it starts before 22 Dec, target 15 Dec or hold to January |\n| Shadow run reveals divergence from automated analysis | Go-live delayed | Start shadow run 8 Dec, not later - the ten-day window is the buffer |\n\n---\n\n## 20. Design points still to confirm\n\n| # | Open point | Owner | Decision needed by |\n|---|---|---|---|\n| D1 | Approved source systems and services for each investigation type | Helix architecture + source-system owners | Phase 0 |\n| D2 | Allowed MCP tools and returned fields for each application | Source-system owners | Phase 0 |\n| D3 | Whether each application exposes an API, governed query service, file interface or restricted database adapter | Source-system owners | Phase 0 |\n| D4 | Retention periods for sessions, evidence and prompts | Records management | Phase 0 |\n| D5 | Maker-checker rules and source-system entitlements | Controls + security | Phase 1 |\n| D6 | Handling of unavailable sources and conflicting evidence | Helix architecture | Phase 2 |\n\n---\n\n## 21. Recommended design position\n\n> Use a **persistent Helix investigation session** as the source of continuity. Treat each Claude conversation as temporary. Rebuild controller context from stored summaries, evidence references and identifiers. Separate MCP tools by application so a MOTIF request, CATS request or Trade Store request is explicit and independently controlled. Keep large datasets outside the model, query them through bounded application tools, and retain a complete audit record of what was requested, retrieved, shown and decided.\n\n---\n\n## 22. Non-functional requirements\n\n| Category | Requirement |\n|---|---|\n| **Performance** | Context package assembly under 2 seconds; bounded tool call timeout per application |\n| **Scalability** | Support concurrent controller sessions across all regions without cross-session contention |\n| **Availability** | Investigation available whenever the Control Tower is available; graceful degradation when a single source adapter is down |\n| **Security** | Encryption in transit and at rest; entitlement check before every retrieval and before display; no credentials in prompts |\n| **Auditability** | Every question, call, evidence item and decision replayable from the audit record |\n| **Data residency** | Evidence stored by reference where possible; copies subject to retention and classification rules |\n| **Determinism** | All comparisons and totals computed in code or a data service, never in the language model |\n\n---\n\n## 23. Acceptance criteria\n\n| # | Criterion |\n|---|---|\n| A1 | A controller can open a completed automated analysis and see the outcome, explanation, evidence used and recommended next step |\n| A2 | A controller can ask a follow-up question in business language and receive an answer grounded in labelled evidence |\n| A3 | Helix answers from stored evidence when sufficient, and calls only the owning application's approved tool when not |\n| A4 | Every returned evidence item identifies its source application and retrieval time |\n| A5 | Original analysis evidence and newly retrieved evidence are visually and structurally separated |\n| A6 | A denied entitlement blocks retrieval and display, and is recorded |\n| A7 | A source failure is shown as a failure; no answer is fabricated |\n| A8 | A large exception population is handled through scope, summarise, narrow, page, detail without exceeding payload limits |\n| A9 | A resumed or later session reconstructs context from the stored business session, not from a live model conversation |\n| A10 | The complete session history - questions, tool calls, evidence, decisions - is retained and replayable for audit |\n\n";
+/* ── Mermaid theme: greyscale, high contrast, no orange ── */
+if (typeof mermaid === 'undefined') {
+  document.getElementById('doc').innerHTML =
+    '<p style="color:#B02020">Diagram engine failed to load. Check network access to cdn.jsdelivr.net.</p>';
+  throw new Error('mermaid not loaded');
+}
+mermaid.initialize({
+  startOnLoad:false,
+  theme:'base',
+  themeVariables:{
+    fontFamily:'Inter, sans-serif',
+    fontSize:'13px',
+    primaryColor:'#FFFFFF',
+    primaryTextColor:'#00243F',
+    primaryBorderColor:'#8FB4CC',
+    lineColor:'#44637E',
+    secondaryColor:'#E8F3FA',
+    tertiaryColor:'#F2F7FB',
+    background:'#FFFFFF',
+    mainBkg:'#FFFFFF',
+    secondBkg:'#E8F3FA',
+    clusterBkg:'#F2F7FB',
+    clusterBorder:'#BBD7E8',
+    titleColor:'#00243F',
+    edgeLabelBackground:'#FFFFFF',
+    nodeBorder:'#8FB4CC',
+    nodeTextColor:'#00243F',
+    /* sequence */
+    actorBkg:'#FFFFFF', actorBorder:'#8FB4CC', actorTextColor:'#00243F',
+    actorLineColor:'#A8C6DA',
+    signalColor:'#006BA6', signalTextColor:'#00243F',
+    labelBoxBkgColor:'#E8F3FA', labelBoxBorderColor:'#BBD7E8',
+    labelTextColor:'#00243F', loopTextColor:'#00243F',
+    noteBkgColor:'#E2F1FA', noteBorderColor:'#9FCFE8', noteTextColor:'#00243F',
+    activationBkgColor:'#D6ECF8', activationBorderColor:'#00AEEF',
+    sequenceNumberColor:'#FFFFFF',
+    /* state */
+    labelColor:'#00243F',
+    /* gantt */
+    sectionBkgColor:'#EDF6FB', altSectionBkgColor:'#FFFFFF',
+    sectionBkgColor2:'#E2F1FA',
+    taskBkgColor:'#BFE3F5', taskBorderColor:'#4FA9D8',
+    taskTextColor:'#00243F', taskTextOutsideColor:'#00243F',
+    taskTextDarkColor:'#00243F', taskTextLightColor:'#00243F',
+    activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#00539F',
+    doneTaskBkgColor:'#DCE9F2', doneTaskBorderColor:'#A8C6DA',
+    critBkgColor:'#FADDE0', critBorderColor:'#C26A78',
+    gridColor:'#CFE0EC', todayLineColor:'#C08080',
+    /* er */
+    attributeBackgroundColorOdd:'#FFFFFF',
+    attributeBackgroundColorEven:'#F2F7FB'
+  },
+  flowchart:{curve:'basis',padding:8,nodeSpacing:28,rankSpacing:36,subGraphTitleMargin:{top:2,bottom:4},useMaxWidth:false},
+  sequence:{useMaxWidth:false,wrap:true,width:160},
+  gantt:{useMaxWidth:false,barHeight:18,barGap:4,fontSize:11},
+  er:{useMaxWidth:false,fontSize:11}
+});
+
+const DARK_VARS = {
+  primaryColor:'#00283F', primaryTextColor:'#DCEBF5', primaryBorderColor:'#17506F',
+  lineColor:'#5B85A3', secondaryColor:'#012B45', tertiaryColor:'#002138',
+  background:'#001526', mainBkg:'#00283F', secondBkg:'#012B45',
+  clusterBkg:'#001C2E', clusterBorder:'#0C3A57',
+  titleColor:'#DCEBF5', edgeLabelBackground:'#002138',
+  nodeBorder:'#17506F', nodeTextColor:'#DCEBF5',
+  actorBkg:'#00283F', actorBorder:'#17506F', actorTextColor:'#DCEBF5',
+  actorLineColor:'#0C3A57', signalColor:'#00AEEF', signalTextColor:'#DCEBF5',
+  labelBoxBkgColor:'#012B45', labelBoxBorderColor:'#0C3A57',
+  labelTextColor:'#DCEBF5', loopTextColor:'#DCEBF5',
+  noteBkgColor:'#00344F', noteBorderColor:'#0071A8', noteTextColor:'#DCEBF5',
+  activationBkgColor:'#00344F', activationBorderColor:'#00AEEF',
+  labelColor:'#DCEBF5',
+  sectionBkgColor:'#001C2E', altSectionBkgColor:'#001526', sectionBkgColor2:'#00283F',
+  taskBkgColor:'#014A70', taskBorderColor:'#0080BE', taskTextColor:'#DCEBF5',
+  taskTextOutsideColor:'#DCEBF5', taskTextDarkColor:'#DCEBF5', taskTextLightColor:'#DCEBF5',
+  activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#4FC8F5',
+  doneTaskBkgColor:'#02334E', doneTaskBorderColor:'#0C3A57',
+  critBkgColor:'#4A2828', critBorderColor:'#8A4A4A',
+  gridColor:'#0C3A57', todayLineColor:'#8A4A4A',
+  attributeBackgroundColorOdd:'#00283F', attributeBackgroundColorEven:'#002138'
+};
+
+/* ── Extract mermaid blocks, render markdown, re-inject ── */
+let dark = false;
+const diagrams = [];
+const mdNoMermaid = MD.replace(/```mermaid\n([\s\S]*?)```/g, (m, code) => {
+  diagrams.push(code.trim());
+  return `<!--MERMAID:${diagrams.length - 1}-->`;
+});
+
+marked.setOptions({gfm:true, breaks:false, sanitize:false});
+let html = marked.parse(mdNoMermaid);
+
+// wrap tables for horizontal scroll
+html = html.replace(/<table>/g, '<div class="tbl-scroll"><table>')
+           .replace(/<\/table>/g, '</table></div>');
+
+// re-inject diagram placeholders
+html = html.replace(/<!--MERMAID:(\d+)-->/g,
+  (m, i) => `<div class="mermaid-box"><pre class="mermaid">${
+    diagrams[i].replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }</pre></div>`);
+
+document.getElementById('doc').innerHTML = html;
+
+/* ── Build table of contents ── */
+const toc = document.getElementById('tocList');
+document.querySelectorAll('.doc h2, .doc h3').forEach((h, i) => {
+  const id = 'sec' + i; h.id = id;
+  const a = document.createElement('a');
+  a.href = '#' + id;
+  a.textContent = h.textContent;
+  if (h.tagName === 'H3') a.className = 'h3';
+  toc.appendChild(a);
+});
+
+/* ── Render diagrams ── */
+/* Sequence-diagram band colours: light source -> dark equivalent.
+   Hardcoded rect rgb() in mermaid source does not follow the theme,
+   so swap it at render time or dark mode gets white text on pale bands. */
+const BAND_DARK = {
+  '232,241,250':'0,40,63',   /* blue   - check stored / establish */
+  '255,243,224':'0,52,79',   /* amber  - retrieve / interpret     */
+  '232,245,233':'1,43,69',   /* green  - compare / retrieve       */
+  '243,238,250':'0,28,46'    /* purple - explain, decide          */
+};
+function themeBands(src){
+  if(!dark) return src;
+  return src.replace(/rect rgb\(([\d, ]+)\)/g, (m, rgb) => {
+    const key = rgb.replace(/\s/g,'');
+    return BAND_DARK[key] ? `rect rgb(${BAND_DARK[key]})` : m;
+  });
+}
+
+const isWide = src => /^\s*%%\s*wide\b/m.test(src);
+
+async function renderDiagrams(){
+  document.querySelectorAll('.mermaid-box').forEach((box, i) => {
+    box.classList.toggle('wide', isWide(diagrams[i]));
+    box.innerHTML = `<pre class="mermaid">${
+      themeBands(diagrams[i]).replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }</pre>`;
+  });
+  await mermaid.run({querySelector:'.mermaid'});
+
+  /* Leave diagrams at their natural size - CSS handles overflow. */
+  document.querySelectorAll('.mermaid-box svg').forEach(svg => {
+    svg.style.maxWidth = '100%';
+    svg.style.width    = 'auto';
+    svg.style.height   = 'auto';
+  });
+}
+/* ── Theme toggle ── */
+const btn = document.getElementById('themeBtn');
+dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  btn.textContent = dark ? 'Light' : 'Dark';
+  mermaid.initialize({
+    startOnLoad:false, theme:'base',
+    themeVariables: dark
+      ? Object.assign({fontFamily:'Inter, sans-serif', fontSize:'13px'}, DARK_VARS)
+      : {
+          fontFamily:'Inter, sans-serif', fontSize:'13px',
+          primaryColor:'#FFFFFF', primaryTextColor:'#00243F', primaryBorderColor:'#8FB4CC',
+          lineColor:'#44637E', secondaryColor:'#E8F3FA', tertiaryColor:'#F2F7FB',
+          background:'#FFFFFF', mainBkg:'#FFFFFF', secondBkg:'#E8F3FA',
+          clusterBkg:'#F2F7FB', clusterBorder:'#BBD7E8',
+          titleColor:'#00243F', edgeLabelBackground:'#FFFFFF',
+          nodeBorder:'#8FB4CC', nodeTextColor:'#00243F',
+          actorBkg:'#FFFFFF', actorBorder:'#8FB4CC', actorTextColor:'#00243F',
+          actorLineColor:'#A8C6DA', signalColor:'#006BA6', signalTextColor:'#00243F',
+          labelBoxBkgColor:'#E8F3FA', labelBoxBorderColor:'#BBD7E8',
+          labelTextColor:'#00243F', loopTextColor:'#00243F',
+          noteBkgColor:'#E2F1FA', noteBorderColor:'#9FCFE8', noteTextColor:'#00243F',
+          activationBkgColor:'#D6ECF8', activationBorderColor:'#00AEEF',
+          labelColor:'#00243F',
+          sectionBkgColor:'#EDF6FB', altSectionBkgColor:'#FFFFFF', sectionBkgColor2:'#E2F1FA',
+          taskBkgColor:'#BFE3F5', taskBorderColor:'#4FA9D8', taskTextColor:'#00243F',
+          taskTextOutsideColor:'#00243F', taskTextDarkColor:'#00243F', taskTextLightColor:'#00243F',
+          activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#00539F',
+          doneTaskBkgColor:'#DCE9F2', doneTaskBorderColor:'#A8C6DA',
+          critBkgColor:'#FADDE0', critBorderColor:'#C26A78',
+          gridColor:'#CFE0EC', todayLineColor:'#C08080',
+          attributeBackgroundColorOdd:'#FFFFFF', attributeBackgroundColorEven:'#F2F7FB'
+        },
+    flowchart:{curve:'basis',padding:8,nodeSpacing:28,rankSpacing:36,subGraphTitleMargin:{top:2,bottom:4},useMaxWidth:false},
+    sequence:{useMaxWidth:false,wrap:true,width:160},
+    gantt:{useMaxWidth:false,barHeight:18,barGap:4,fontSize:11},
+    er:{useMaxWidth:false,fontSize:11}
+  });
+  renderDiagrams();
+}
+btn.onclick = () => { dark = !dark; applyTheme(); };
+applyTheme();
+
+/* ── Contents panel collapse ── */
+const tocBtn = document.getElementById('tocBtn');
+function setToc(collapsed){
+  document.body.classList.toggle('toc-collapsed', collapsed);
+  tocBtn.title = collapsed ? 'Show contents' : 'Hide contents';
+  try{ localStorage.setItem('helixBrdToc', collapsed ? '1' : '0'); }catch(e){}
+  /* diagrams size to their container - re-render once the width settles */
+  setTimeout(renderDiagrams, 260);
+}
+let tocHidden = false;
+try{ tocHidden = localStorage.getItem('helixBrdToc') === '1'; }catch(e){}
+document.body.classList.toggle('toc-collapsed', tocHidden);
+tocBtn.title = tocHidden ? 'Show contents' : 'Hide contents';
+tocBtn.onclick = () => { tocHidden = !tocHidden; setToc(tocHidden); };
+</script>
+</body>
+</html>

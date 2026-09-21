@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Helix Controller Investigation - Story BRD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  /* Barclays: Eagle blue #00AEEF, deep navy #002D5F, midnight #00395D */
+  --bg:#FFFFFF; --bg-alt:#F2F7FB; --bg-code:#EDF4F9;
+  --text:#00243F; --text-mute:#44637E; --text-soft:#7796AE;
+  --border:#CFE0EC; --border-soft:#E4EFF6;
+  --accent:#006BA6; --accent-soft:#E2F1FA;
+  --tbl-head:#E8F3FA;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#001526; --bg-alt:#002138; --bg-code:#00283F;
+    --text:#DCEBF5; --text-mute:#8FB4CC; --text-soft:#5B85A3;
+    --border:#0C3A57; --border-soft:#062B44;
+    --accent:#00AEEF; --accent-soft:#00293F;
+    --tbl-head:#012B45;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#001526; --bg-alt:#002138; --bg-code:#00283F;
+  --text:#DCEBF5; --text-mute:#8FB4CC; --text-soft:#5B85A3;
+  --border:#0C3A57; --border-soft:#062B44;
+  --accent:#00AEEF; --accent-soft:#00293F;
+  --tbl-head:#012B45;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 56px);}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+}
+
+/* ── Top bar ── */
+.topbar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:50;
+  background:#002D5F; border-bottom:2px solid #00AEEF;
+  padding:10px 24px; display:flex; align-items:center; gap:16px;
+}
+.topbar h1{font-size:14px;font-weight:600;margin:0;flex:1;min-width:0;
+  color:#FFFFFF;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar .tbtn{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.22);color:#CFE6F5;}
+.topbar .tbtn:hover{background:rgba(0,174,239,.25);color:#FFFFFF;}
+[data-theme="dark"] .topbar{background:#001020;}
+.topbar .tag{font-size:10px;font-weight:600;color:var(--accent);
+  border:1px solid var(--accent);border-radius:20px;padding:2px 9px;
+  letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
+.tbtn{background:var(--bg-alt);border:1px solid var(--border);color:var(--text-mute);
+  border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;
+  font-family:inherit;transition:.15s;}
+.tbtn:hover{background:var(--accent-soft);color:var(--accent);}
+
+/* ── Layout ── */
+.wrap{display:flex;gap:0;align-items:flex-start;}
+.toc{
+  position:sticky; top:calc(env(safe-area-inset-top,0px) + 50px);
+  width:250px; flex-shrink:0; max-height:calc(100vh - 60px);
+  overflow-y:auto; overflow-x:hidden;
+  padding:20px 12px 40px 20px;
+  border-right:1px solid var(--border-soft);
+  transition:width .22s ease, padding .22s ease, opacity .18s ease;
+}
+body.toc-collapsed .toc{
+  width:0; padding-left:0; padding-right:0;
+  opacity:0; pointer-events:none; border-right:none;
+}
+body.toc-collapsed .doc{max-width:none;}
+/* toggle button in the top bar */
+#tocBtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:30px; height:26px; flex-shrink:0; padding:0;
+  font-size:14px; line-height:1;
+}
+#tocBtn .bar{
+  display:block; width:13px; height:11px; position:relative;
+}
+#tocBtn .bar::before,#tocBtn .bar::after{
+  content:''; position:absolute; left:0; right:0; height:1.5px;
+  background:currentColor; border-radius:1px;
+}
+#tocBtn .bar::before{top:0; box-shadow:0 4.75px 0 currentColor;}
+#tocBtn .bar::after{bottom:0;}
+.toc-title{font-size:10px;font-weight:700;color:var(--text-soft);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+.toc a{display:block;color:var(--text-mute);text-decoration:none;
+  font-size:12.5px;padding:3px 8px;border-radius:4px;line-height:1.45;
+  border-left:2px solid transparent;}
+.toc a:hover{background:var(--accent-soft);color:var(--accent);}
+.toc a.h3{padding-left:20px;font-size:11.5px;color:var(--text-soft);}
+
+.doc{flex:1;min-width:0;padding:28px 40px 80px;max-width:1400px;}
+
+/* ── Typography ── */
+.doc h1{font-size:28px;font-weight:700;margin:0 0 6px;letter-spacing:-.4px;line-height:1.2;}
+.doc h2{font-size:20px;font-weight:600;margin:38px 0 12px;
+  padding-top:18px;border-top:1px solid var(--border-soft);letter-spacing:-.2px;}
+.doc h2:first-of-type{border-top:none;padding-top:0;}
+.doc h3{font-size:15.5px;font-weight:600;margin:24px 0 8px;color:var(--text);}
+.doc p{margin:0 0 12px;color:var(--text-mute);}
+.doc strong{color:var(--text);font-weight:600;}
+.doc ul,.doc ol{margin:0 0 14px;padding-left:22px;color:var(--text-mute);}
+.doc li{margin-bottom:5px;}
+.doc hr{border:none;border-top:1px solid var(--border-soft);margin:32px 0;}
+.doc blockquote{margin:16px 0;padding:14px 18px;background:var(--accent-soft);
+  border-radius:8px;color:var(--text);font-size:14.5px;}
+.doc blockquote p{margin:0;color:var(--text);}
+.doc code{font-family:'JetBrains Mono',monospace;font-size:12.5px;
+  background:var(--bg-code);padding:1px 5px;border-radius:4px;color:var(--accent);}
+.doc em{color:var(--text-soft);}
+
+/* ── Tables ── */
+.tbl-scroll{overflow-x:auto;margin:0 0 18px;border:1px solid var(--border);
+  border-radius:8px;}
+.doc table{border-collapse:collapse;width:100%;font-size:13px;}
+.doc th{background:var(--tbl-head);text-align:left;padding:9px 13px;
+  font-weight:600;color:var(--text);border-bottom:1px solid var(--border);
+  white-space:nowrap;}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--border-soft);
+  color:var(--text-mute);vertical-align:top;}
+.doc tr:last-child td{border-bottom:none;}
+.doc tbody tr:nth-child(even){background:var(--bg-alt);}
+
+/* ── Mermaid ── */
+.mermaid-box{
+  margin:0 0 22px; padding:20px; background:var(--bg-alt);
+  border:1px solid var(--border); border-radius:10px;
+  overflow-x:auto; text-align:center;
+}
+/* Render at natural size. Never upscale a small diagram to fill the column
+   (that inflates the text); never stretch a wide one thin. */
+.mermaid-box svg{max-width:100% !important;width:auto !important;height:auto !important;}
+.mermaid-box.wide{padding:24px 18px;}
+
+/* ── Hand-drawn architecture SVG ── */
+.arch-svg{
+  margin:0 0 20px; padding:18px 14px;
+  background:var(--bg-alt); border:1px solid var(--border);
+  border-radius:10px; overflow-x:auto;
+}
+.arch-svg svg{
+  display:block; width:100%; min-width:760px; height:auto;
+  --ln:#006BA6; --ln2:#7796AE;
+}
+.arch-svg .zbg{fill:var(--bg);stroke:var(--border);stroke-width:1;stroke-dasharray:4 3;}
+.arch-svg .zt{font:600 10px 'Inter',sans-serif;fill:var(--text-soft);letter-spacing:.9px;}
+.arch-svg .bx{fill:#FFFFFF;stroke:#A8C6DA;stroke-width:1.2;}
+.arch-svg .bx.gate{stroke:#00539F;stroke-width:2;fill:#E2F1FA;}
+.arch-svg .bx.svc{stroke:#00AEEF;stroke-dasharray:5 3;fill:#F4FBFE;}
+.arch-svg .bx.store{stroke:#4E7E9B;fill:#F2F7FB;}
+.arch-svg .bx.lane{stroke:#A8C6DA;}
+.arch-svg .bt{font:600 11px 'Inter',sans-serif;fill:var(--text);}
+.arch-svg .bs{font:400 9.5px 'Inter',sans-serif;fill:var(--text-mute);}
+.arch-svg .el{font:500 9px 'Inter',sans-serif;fill:#006BA6;}
+.arch-svg .el2{font:400 9px 'Inter',sans-serif;fill:var(--text-soft);}
+.arch-svg .ln{fill:none;stroke:var(--ln);stroke-width:1.5;}
+.arch-svg .ln2{fill:none;stroke:var(--ln2);stroke-width:1.3;stroke-dasharray:5 3;}
+.arch-svg .num{fill:#006BA6;}
+.arch-svg .num2{fill:#7796AE;}
+.arch-svg .nt{font:700 9px 'Inter',sans-serif;fill:#fff;}
+[data-theme="dark"] .arch-svg svg{--ln:#00AEEF;--ln2:#5B85A3;}
+[data-theme="dark"] .arch-svg .bx{fill:#00283F;stroke:#17506F;}
+[data-theme="dark"] .arch-svg .bx.gate{stroke:#00AEEF;fill:#00344F;}
+[data-theme="dark"] .arch-svg .bx.svc{stroke:#00AEEF;fill:#002E47;}
+[data-theme="dark"] .arch-svg .bx.store{stroke:#3E7EA0;fill:#002538;}
+[data-theme="dark"] .arch-svg .zbg{fill:#001220;stroke:#0C3A57;}
+[data-theme="dark"] .arch-svg .el{fill:#00AEEF;}
+[data-theme="dark"] .arch-svg .num{fill:#0071A8;}
+[data-theme="dark"] .arch-svg .num2{fill:#3E6683;}
+
+/* ── Responsive ── */
+@media (max-width:1000px){
+  .toc, #tocBtn{display:none !important;}
+  .doc{padding:20px 18px 60px;max-width:none;}
+}
+::-webkit-scrollbar{width:7px;height:7px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="tbtn" id="tocBtn" title="Hide contents" aria-label="Toggle contents"><span class="bar"></span></button>
+  <h1>Helix Controller Investigation &mdash; Story-based BRD &nbsp;·&nbsp; 21 Sep to 31 Dec 2026</h1>
+  <button class="tbtn" id="themeBtn">Dark</button>
+</div>
+
+<div class="wrap">
+  <nav class="toc"><div class="toc-title">Contents</div><div id="tocList"></div></nav>
+  <main class="doc" id="doc"></main>
+</div>
+
+<script>
+const MD = "# Helix Controller Investigation\n## Story-based Business Requirements Document\n\n| | |\n|---|---|\n| **Document** | Helix Controller Investigation - Story-based BRD |\n| **Version** | 1.0 |\n| **Owner** | Finance Technology Architecture |\n| **Delivery window** | Mon 21 Sep 2026 to Thu 31 Dec 2026 (14.5 weeks, 7 sprints) |\n| **Companion document** | Helix Controller Investigation Model - BRD (architecture and controls) |\n| **Status** | Proposed. Sprint 0 exists to confirm the assumptions this plan rests on |\n\n---\n\n## 1. The story we are telling\n\n### 1.1 Today\n\nIt is 06:00 in Singapore. The overnight Helix run has finished and produced an analysis for\nevery reconciliation in scope. Priya, a FOBO controller, opens the Control Tower and reads the\nfirst one: a difference between the CATS front-office value and the MOTIF back-office value on\na master book she owns.\n\nShe believes the analysis. She just cannot interrogate it.\n\nTo find out *why* the values differ, she opens a MOTIF query screen in another window, runs a\nfilter she has memorised, copies three figures into a spreadsheet, opens a CATS extract, finds\nthe matching book, and compares by eye. Twenty minutes later she knows the nostro statement\narrived after the cutoff. She records the decision in the Control Tower. The spreadsheet is\ndeleted. The reasoning is gone.\n\nTomorrow a different controller will meet the same break and repeat the same twenty minutes.\nIf an auditor asks in March how that decision was reached, the answer is a decision code and\nsomebody's memory.\n\n### 1.2 What we are building\n\nThe same morning, after this delivery. Priya reads the analysis and types:\n\n> *Why do the CATS and MOTIF values differ on this book?*\n\nHelix checks what the overnight run already retrieved. The MOTIF value is there; the CATS value\nis not. It identifies CATS as the owning application, calls the approved CATS tool with her\nentitlement applied, and gets back the book values - filtered at source, labelled CATS, stamped\n09:14. A deterministic compare service produces the difference. Helix explains it, keeping the\novernight evidence and the new evidence visually separate.\n\nNinety seconds. Priya records the decision. Every figure traces to a retrieval, every retrieval\nto an entitlement check, and the whole exchange sits under one investigation session that an\nauditor can replay in March.\n\n### 1.3 What success looks like on 31 December\n\n| Measure | Today | Target at go-live |\n|---|---|---|\n| Time to investigate one non-trivial break | 15-25 minutes | Under 3 minutes |\n| Systems the controller opens | 3-4 | 1 |\n| Investigation reasoning retained | None | Full session, replayable |\n| Evidence traceable to source and time | No | Every item |\n| Entitlement enforced on investigation queries | Manual, per system | Automatic, per call, logged |\n\n---\n\n## 2. The people in the story\n\n| Persona | Role | What they need | How we know we succeeded |\n|---|---|---|---|\n| **Priya - FOBO controller** | Investigates and signs off breaks daily | To ask a question in her own words and get a grounded answer without leaving the tool | She stops opening MOTIF and CATS screens during investigation |\n| **Marcus - checker** | Second pair of eyes on material adjustments | To see what was asked, what was retrieved and what changed | He can review without asking the maker to explain |\n| **Sofia - audit** | Reviews decisions months later | To replay an investigation end to end | She reconstructs a March decision without contacting the controller |\n| **Raj - source system owner (MOTIF)** | Owns MOTIF access and data | To know exactly which queries Helix can run and see every call | He can point to an allow-list and a call log |\n| **Elena - controls** | Owns maker-checker and entitlement policy | Material actions stay with a human; access is enforced before data moves | No investigation path bypasses the entitlement gate |\n\n---\n\n## 3. Epics\n\n```mermaid\nflowchart LR\n    E1[E1 - Session continuity<br/>The investigation survives<br/>the conversation]\n    E2[E2 - Governed retrieval<br/>Only approved tools,<br/>only permitted data]\n    E3[E3 - Grounded answers<br/>Every figure traces<br/>to a retrieval]\n    E4[E4 - Controlled scale<br/>Large populations without<br/>large payloads]\n    E5[E5 - Replayable audit<br/>An auditor reconstructs<br/>the investigation]\n\n    E1 --> E2 --> E3\n    E2 --> E4\n    E1 --> E5\n    E3 --> E5\n```\n\n| Epic | Statement | Why it matters |\n|---|---|---|\n| **E1 - Session continuity** | The investigation lives in Helix, not in a model conversation, so it can be resumed, handed over and replayed | Without this, everything else is ephemeral |\n| **E2 - Governed retrieval** | Helix retrieves only from the owning application, through an approved tool, after an entitlement check | This is what makes the capability releasable in a bank |\n| **E3 - Grounded answers** | Every figure in an explanation traces to a retrieval; comparisons run in deterministic code | A number in a financial adjustment must be reproducible |\n| **E4 - Controlled scale** | Large exception populations are filtered and aggregated at source, never passed whole to a model | Without this the capability breaks on the books that need it most |\n| **E5 - Replayable audit** | One session identifier links the overnight run, every controller interaction and the final decision | This is the difference between a demo and a production control |\n\n---\n\n## 4. User stories\n\nStory points use a Fibonacci scale. **MoSCoW**: M = must have for 31 Dec, S = should have,\nC = could have, W = won't have this window.\n\n### E1 - Session continuity\n\n| ID | Story | Acceptance criteria | Pts | MoSCoW |\n|---|---|---|---|---|\n| **S1.1** | As Priya, I want the overnight analysis stored against a session so I can open it and continue where the run left off | Session holds analysis, evidence references, affected book, run and action history. Opening the case shows outcome, explanation, evidence and recommended next step | 8 | M |\n| **S1.2** | As Priya, I want my questions and answers appended to that same session so my investigation is one continuous record | New interaction session links user, role and start time to the existing `investigation_session_id`. History is appended, never overwritten | 8 | M |\n| **S1.3** | As Priya, I want to close my browser and resume later without losing context | Reopening reconstructs context from stored summary, identifiers and evidence references. No dependency on a live model conversation | 13 | M |\n| **S1.4** | As Marcus, I want to pick up an investigation another controller started | Any entitled controller can open the session and see the full prior exchange, attributed by user | 5 | M |\n| **S1.5** | As the platform, I want the context package to carry the minimum needed | Context builder supplies summary, identifiers, evidence references and access scope only. Never a full dataset, never credentials | 8 | M |\n\n### E2 - Governed retrieval\n\n| ID | Story | Acceptance criteria | Pts | MoSCoW |\n|---|---|---|---|---|\n| **S2.1** | As Raj, I want Helix to call only tools I have approved for MOTIF | Tool allow-list per application, enforced server-side. An unlisted tool cannot be invoked | 8 | M |\n| **S2.2** | As Elena, I want every call entitlement-checked before any data moves | Entitlement gate runs before retrieval. Denied calls retrieve nothing, display nothing, and are recorded | 13 | M |\n| **S2.3** | As Priya, I want Helix to answer from what it already has rather than re-querying | Stored evidence is checked first. A source call happens only when the session lacks the answer | 5 | M |\n| **S2.4** | As Raj, I want field-level control over what leaves MOTIF | Field allow-list per tool. Fields outside the list are stripped before the response returns | 8 | M |\n| **S2.5** | As Priya, I want a clear failure when a source is unavailable | Source failure is shown as a failure. No substitute or inferred answer is produced | 5 | M |\n| **S2.6** | As the platform, I want CATS and Trade Store lanes on the same pattern as MBR and MOTIF | Each application has its own tool group, adapter and owning team. Adding a lane requires no change to the agent | 8 | S |\n\n### E3 - Grounded answers\n\n| ID | Story | Acceptance criteria | Pts | MoSCoW |\n|---|---|---|---|---|\n| **S3.1** | As Priya, I want each evidence item labelled with its source and retrieval time | Every returned item carries application name and timestamp, visible in the explanation | 5 | M |\n| **S3.2** | As Sofia, I want overnight evidence and newly retrieved evidence shown separately | Explanation separates original analysis evidence from evidence added during investigation | 8 | M |\n| **S3.3** | As Elena, I want comparisons computed in code, not by the model | Compare service runs versioned deterministic code against linked evidence IDs and returns references with the result | 13 | M |\n| **S3.4** | As Priya, I want to see when new evidence changes the original conclusion | Both versions preserved. The change is shown explicitly, not silently overwritten | 8 | M |\n| **S3.5** | As Priya, I want to know when an answer is low confidence | Confidence and any missing-data caveat are visible in the explanation | 5 | S |\n\n### E4 - Controlled scale\n\n| ID | Story | Acceptance criteria | Pts | MoSCoW |\n|---|---|---|---|---|\n| **S4.1** | As Priya, I want a count and summary before rows when the population is large | Summary-first response: counts and grouped totals precede any detailed rows | 8 | M |\n| **S4.2** | As Priya, I want to narrow to a group and then page through it | Group selection followed by bounded page plus continuation token | 8 | M |\n| **S4.3** | As Raj, I want every tool bounded on rows, fields, time and payload | Limits configured per tool and enforced at the adapter. Truncation is flagged in the response | 8 | M |\n| **S4.4** | As the platform, I want no model-generated SQL reaching a source | Fixed query templates or validated filter parameters only | 13 | M |\n| **S4.5** | As Priya, I want a bulk export path when a genuine large extract is needed | Asynchronous export job, encrypted storage, expiry, file reference held outside the model context | 13 | **W** - January |\n\n### E5 - Replayable audit\n\n| ID | Story | Acceptance criteria | Pts | MoSCoW |\n|---|---|---|---|---|\n| **S5.1** | As Sofia, I want every question, call, evidence item and decision recorded | Audit captures question text, application, tool, validated parameters, entitlement result, timing, row count, errors | 13 | M |\n| **S5.2** | As Sofia, I want to know which prompt and model produced an explanation | Prompt version, skill version, model identifier and tool policy recorded per interaction | 8 | M |\n| **S5.3** | As Sofia, I want to replay an investigation from the audit record alone | A March reviewer reconstructs the full exchange without contacting the controller | 8 | M |\n| **S5.4** | As Elena, I want material actions to follow maker-checker | Decisions route to the existing checker queue. Checker sees what was asked, retrieved and changed | 13 | M |\n| **S5.5** | As Elena, I want evidence stored by reference where retention rules allow | Reference-first storage. Copies made only where retention and classification permit, encrypted at rest | 8 | S |\n\n**Total committed (M and S):** 215 points across 6 delivery sprints - Sprint 0 carries no\nstory points. Deferred to January (W): 13 points.\n\n| Sprint | Points | Running total |\n|---|---|---|\n| Sprint 0 | 0 | 0 |\n| Sprint 1 | 37 | 37 |\n| Sprint 2 | 31 | 68 |\n| Sprint 3 | 34 | 102 |\n| Sprint 4 | 42 | 144 |\n| Sprint 5 | 50 | 194 |\n| Sprint 6 | 21 + hardening | 215 |\n\nSprint 5 is the heaviest at 50 points and carries Gate 2. If velocity in Sprints 1-3 runs below\n34 points, move S5.5 (evidence by reference, 8 pts) to January before Sprint 5 starts rather\nthan discovering the overrun in December.\n\n---\n\n## 5. The delivery story, sprint by sprint\n\n### 5.1 Timeline\n\n```mermaid\ngantt\n    title Helix Controller Investigation - 21 Sep to 31 Dec 2026\n    dateFormat YYYY-MM-DD\n    axisFormat %d %b\n\n    section Sprint 0 - Prove it\n    Design lock D1-D6              :crit, s0a, 2026-09-21, 14d\n    Entitlement spike              :crit, s0b, 2026-09-21, 10d\n    GATE 0 - design locked         :milestone, crit, g0, 2026-10-04, 0d\n\n    section Sprint 1 - Foundation\n    Session and evidence schema    :s1a, 2026-10-05, 14d\n    Tool contract and adapter shape :s1b, 2026-10-05, 14d\n\n    section Sprint 2 - First lane\n    Session persistence            :s2a, 2026-10-19, 14d\n    MOTIF lane end to end          :crit, s2b, 2026-10-19, 14d\n    GATE 1 - one lane working      :milestone, crit, g1, 2026-11-01, 0d\n\n    section Sprint 3 - Second lane\n    Context builder                :s3a, 2026-11-02, 14d\n    CATS lane                      :s3b, 2026-11-02, 14d\n    Entitlement enforcement        :crit, s3c, 2026-11-02, 14d\n\n    section Sprint 4 - Make it true\n    Compare service                :s4a, 2026-11-16, 14d\n    Evidence labelling             :s4b, 2026-11-16, 14d\n    Large population handling      :s4c, 2026-11-16, 14d\n\n    section Sprint 5 - Make it provable\n    Audit completeness             :crit, s5a, 2026-11-30, 14d\n    Maker-checker integration      :s5b, 2026-11-30, 14d\n    GATE 2 - feature complete      :milestone, crit, g2, 2026-12-13, 0d\n\n    section Sprint 6 - Prove it again\n    Shadow run                     :crit, s6a, 2026-12-14, 8d\n    Controller UAT                 :s6b, 2026-12-18, 5d\n    GO-LIVE                        :milestone, crit, gl, 2026-12-23, 0d\n```\n\n### 5.2 Sprint 0 - Prove the assumptions\n**Mon 21 Sep to Sun 4 Oct \u00b7 0 story points \u00b7 Gate 0**\n\nNothing is built. This sprint exists because the plan rests on six unconfirmed answers, and\ndiscovering in November that MOTIF has no query service would end the December date.\n\n| Activity | Output | Owner |\n|---|---|---|\n| Confirm D1 - approved source systems per investigation type | Signed list | Helix architecture + source owners |\n| Confirm D2 - allowed tools and returned fields per application | Allow-list per application | Source owners |\n| Confirm D3 - integration type per application: API, query service, file or restricted adapter | Integration decision per application | Source owners |\n| Confirm D4 - retention for sessions, evidence and prompts | Retention policy | Records management |\n| Confirm D5 - maker-checker rules and source entitlements | Control design | Elena, controls |\n| Confirm D6 - behaviour on unavailable sources and conflicting evidence | Decision rules | Helix architecture |\n| Spike the entitlement service integration | Working call, or a flagged risk | Engineering |\n| Confirm the year-end change freeze window | Confirmed go-live date | Release management |\n\n**Gate 0 exit:** all six answered, entitlement spike returns a real allow or deny.\n\n**If Gate 0 misses:** the December date is gone. The MCP tool layer is the longest workstream\nand sits on the critical path; it cannot start against unknown integration types. Escalate on\n29 September if any source owner has not responded.\n\n---\n\n### 5.3 Sprint 1 - Foundation\n**Mon 5 Oct to Sun 18 Oct \u00b7 37 points**\n\nThe first sprint builds the two things everything else sits on: where an investigation lives,\nand the shape every tool will take.\n\n| Story | Pts |\n|---|---|\n| S1.1 - Overnight analysis stored against a session | 8 |\n| S1.5 - Context package carries the minimum | 8 |\n| S2.1 - Tool allow-list per application, enforced server-side | 8 |\n| S4.4 - Fixed query templates, no model-generated SQL | 13 |\n\n**The story at sprint end.** Priya can open yesterday's analysis and see the overnight evidence\nattached to it. She cannot ask anything yet. An engineer can define a tool for an application\nand it will refuse to run if it is not on the allow-list.\n\n**Demo:** open a real overnight analysis, show the session record behind it, attempt an\nunlisted tool call and watch it refused.\n\n---\n\n### 5.4 Sprint 2 - The first lane\n**Mon 19 Oct to Sun 1 Nov \u00b7 31 points \u00b7 Gate 1**\n\nMOTIF goes first: it already has a query service, and the worked example needs it. One lane\nworking end to end proves the pattern that the other three will copy.\n\n| Story | Pts |\n|---|---|\n| S1.2 - Questions appended to the same session | 8 |\n| S1.4 - Another controller can pick up an investigation | 5 |\n| S2.3 - Answer from stored evidence before calling a source | 5 |\n| S2.4 - Field-level allow-list on retrieval | 8 |\n| S2.5 - Clear failure when a source is unavailable | 5 |\n\n**The story at sprint end.** Priya asks a question about a MOTIF exception. Helix checks the\nsession, finds it lacks the detail, calls the MOTIF tool, and answers. The exchange is stored.\nIf MOTIF is down she is told so, and no answer is invented.\n\n**Gate 1 exit:** one full question-to-answer cycle against a real source, in a test region.\n\n**Demo:** ask \"show me the MOTIF exception detail for this book\" and get a grounded answer.\n\n---\n\n### 5.5 Sprint 3 - The second lane and the gate\n**Mon 2 Nov to Sun 15 Nov \u00b7 34 points**\n\nTwo lanes prove the pattern generalises. The entitlement gate turns a working capability into\na releasable one.\n\n| Story | Pts |\n|---|---|\n| S1.3 - Resume after closing the browser | 13 |\n| S2.2 - Entitlement check before any data moves | 13 |\n| S2.6 - CATS lane on the same pattern | 8 |\n\n**The story at sprint end.** Priya can now ask about both CATS and MOTIF. A book outside her\nscope returns a recorded refusal and no data. She can close her laptop at 11:00, reopen at\n14:00, and continue the same investigation.\n\n**Demo:** the CATS versus MOTIF worked example from the architecture BRD, run live - including\nan entitlement denial.\n\n---\n\n### 5.6 Sprint 4 - Make the answers true\n**Mon 16 Nov to Sun 29 Nov \u00b7 42 points**\n\nRetrieval works. This sprint makes the answers defensible: figures computed in code, evidence\nlabelled by source, and large populations handled without large payloads.\n\n| Story | Pts |\n|---|---|\n| S3.1 - Evidence labelled by source and retrieval time | 5 |\n| S3.2 - Overnight and new evidence shown separately | 8 |\n| S3.3 - Comparisons in deterministic code | 13 |\n| S4.1 - Count and summary before rows | 8 |\n| S4.3 - Row, field, time and payload limits per tool | 8 |\n\n**The story at sprint end.** Priya asks about a reconciliation with 4,800 breaks and gets\n\"4,812 breaks, grouped by type\" rather than a timeout. The CATS-versus-MOTIF difference is\ncomputed by the compare service and carries its evidence references. Marcus can see which\nfigures came from the overnight run and which Priya pulled this morning.\n\n**Demo:** a large-population question answered in under three seconds, and a compare result\ntraced back to two specific retrievals.\n\n---\n\n### 5.7 Sprint 5 - Make it provable\n**Mon 30 Nov to Sun 13 Dec \u00b7 50 points \u00b7 Gate 2**\n\nEverything a controller needs now works. This sprint is for Sofia and Elena - the audit record\nand the maker-checker path that make it releasable.\n\n| Story | Pts |\n|---|---|\n| S3.4 - Show when new evidence changes the conclusion | 8 |\n| S4.2 - Narrow to a group and page through it | 8 |\n| S5.1 - Full audit of questions, calls, evidence and decisions | 13 |\n| S5.2 - Prompt, skill and model versions recorded | 8 |\n| S5.4 - Maker-checker integration | 13 |\n\n**The story at sprint end.** Sofia can open an investigation from last week and replay it. She\nsees the question, the tool called, the parameters, the entitlement result, what returned, and\nwhat the controller decided. Marcus reviews a material adjustment in the existing checker queue.\n\n**Gate 2 exit:** every must-have story has a passing test. Sofia signs off that she can\nreconstruct an investigation from the audit record alone.\n\n**If Gate 2 misses:** narrow the go-live scope - one region instead of three, or one\nreconciliation type. Do not compress the shadow run or UAT.\n\n---\n\n### 5.8 Sprint 6 - Prove it again, then release\n**Mon 14 Dec to Sun 27 Dec \u00b7 21 story points plus hardening \u00b7 Go-live**\n\nNo new capability. This sprint is the evidence that the capability is safe.\n\n| Activity | Dates | Exit |\n|---|---|---|\n| **Shadow run** - investigation available alongside the current process, results compared | 14-21 Dec | No unexplained divergence from controller conclusions |\n| **Controller UAT** - Priya and two peers use it on live analyses | 18-22 Dec | Sign-off from all three |\n| **Go-live** - limited population | 23 Dec | Controls sign-off received |\n\n| Story | Pts |\n|---|---|\n| S3.5 - Low-confidence and missing-data caveats visible | 5 |\n| S5.3 - Replay an investigation from the audit record alone | 8 |\n| S5.5 - Evidence stored by reference where retention allows | 8 |\n| Defect burn-down and hardening | 13 |\n\n**The story at sprint end.** Priya investigates a real break on a live business date, in one\nsystem, in under three minutes, and the investigation is replayable in March.\n\n---\n\n## 6. Scope decisions\n\nThese are choices that make 31 December achievable. Each is reversible in January.\n\n| Decision | What ships in December | What follows |\n|---|---|---|\n| **Two applications, not four** | MOTIF and CATS - they cover the primary worked example | MBR and Trade Store lanes in January. The pattern is proven; each is roughly one sprint |\n| **One region first** | APAC - earliest shift, so problems surface before EMEA and AMER start | EMEA and AMER in January, no code change expected |\n| **One reconciliation type** | The CATS versus MOTIF cash reconciliation | Others follow as source approvals complete |\n| **No bulk export** | Scope, summarise, narrow, page and detail cover the December population | S4.5 in January if a genuine need appears |\n| **Read-only investigation** | Controller records a decision; Helix does not post | Automated posting only after the audit record has run a full cycle in production |\n\n---\n\n## 7. Dependencies\n\n```mermaid\nflowchart TB\n    G0[Gate 0 - design locked<br/>4 Oct]\n    TC[Tool contract<br/>and adapter shape]\n    MOT[MOTIF lane]\n    CAT[CATS lane]\n    ENT[Entitlement gate]\n    SESS[Session persistence]\n    CMP[Compare service]\n    AUD[Audit completeness]\n    MC[Maker-checker]\n    SR[Shadow run<br/>14 Dec]\n    GL[Go-live<br/>23 Dec]\n\n    G0 --> TC\n    G0 --> ENT\n    TC --> MOT --> CAT\n    SESS --> AUD\n    MOT --> CMP\n    ENT --> SR\n    CAT --> SR\n    CMP --> SR\n    AUD --> MC --> SR\n    SR --> GL\n```\n\n| Dependency | Needed by | Owner | Risk if late |\n|---|---|---|---|\n| MOTIF query service access and allow-list | 19 Oct, Sprint 2 | Raj | Sprint 2 cannot start. Critical path |\n| CATS integration decision - file or API | 2 Nov, Sprint 3 | CATS owner | CATS lane slips to January; go-live becomes MOTIF only |\n| Entitlement service integration | 2 Nov, Sprint 3 | Platform security | Blocks release entirely. Spiked in Sprint 0 for this reason |\n| Checker queue interface | 30 Nov, Sprint 5 | Controls engineering | Material adjustments cannot be released |\n| Test data on a live business date | 14 Dec, Sprint 6 | Ops | Shadow run cannot be meaningful |\n| Year-end change freeze window | Confirm in Sprint 0 | Release management | Go-live moves to 15 Dec or January |\n\n---\n\n## 8. Risks\n\n| # | Risk | Likelihood | Impact | Response |\n|---|---|---|---|---|\n| R1 | Source owners do not confirm allow-lists by 4 Oct | Medium | Critical - date lost | Sessions booked in week 1. Escalate 29 Sep on any non-response |\n| R2 | Entitlement integration harder than assumed | Medium | Critical - blocks release | Spiked in Sprint 0, before any dependent work is committed |\n| R3 | CATS has no governed service, only a file extract | Medium | High - lane slips | Sprint 0 decision point. Fall back to MOTIF-only go-live |\n| R4 | Year-end freeze starts before 23 Dec | High | High - go-live blocked | Confirm in Sprint 0. Target 15 Dec or hold to January |\n| R5 | Shadow run shows divergence from controller conclusions | Low | High - delay | Eight-day window starting 14 Dec is the buffer |\n| R6 | Controller availability for UAT in late December | High | Medium | Book Priya and two peers now, before holiday plans are set |\n| R7 | Model selects a plausible but wrong tool | Medium | Medium | Allow-list bounds it. Wrong-tool selections logged and reviewed weekly from Sprint 2 |\n| R8 | Large-population handling insufficient on the worst books | Low | Medium | Test against the largest real reconciliation in Sprint 4, not Sprint 6 |\n\n---\n\n## 9. Definition of done\n\nA story is done when all of the following hold.\n\n- Acceptance criteria demonstrated on a live analysis, not a fixture\n- Entitlement enforced on every path the story introduces\n- Every source call logged with application, tool, parameters, entitlement result, timing and row count\n- No figure reaches a controller that cannot be traced to a retrieval\n- Failure path tested: source unavailable, access denied, result truncated\n- Reviewed by the owning source-system representative where the story touches their application\n\n---\n\n## 10. What happens in January\n\nNot commitments. The shape of the next window, so December decisions are made knowing what\nfollows.\n\n| | Scope |\n|---|---|\n| **January** | MBR and Trade Store lanes. EMEA and AMER regions. Bulk export path (S4.5) |\n| **February** | Additional reconciliation types as source approvals complete. Cross-source tools |\n| **Under review** | Automated posting, only after the audit record has run a full production cycle and controls have reviewed it |\n\n---\n\n## 11. Open questions for Sprint 0\n\n| # | Question | Blocks | Needed by |\n|---|---|---|---|\n| Q1 | Does MOTIF expose a query service Helix can call, or only a database? | Sprint 2 | 4 Oct |\n| Q2 | Is CATS available as an API, or only a controlled file extract? | Sprint 3 | 4 Oct |\n| Q3 | Which fields may leave each application? | Sprints 2-3 | 4 Oct |\n| Q4 | What retention applies to sessions, evidence and prompts? | Sprint 1 schema | 4 Oct |\n| Q5 | Does a bulk approve create one checker item or many? | Sprint 5 | 15 Nov |\n| Q6 | When does the year-end change freeze begin? | Go-live date | 4 Oct |\n";
+/* ── Mermaid theme: greyscale, high contrast, no orange ── */
+if (typeof mermaid === 'undefined') {
+  document.getElementById('doc').innerHTML =
+    '<p style="color:#B02020">Diagram engine failed to load. Check network access to cdn.jsdelivr.net.</p>';
+  throw new Error('mermaid not loaded');
+}
+mermaid.initialize({
+  startOnLoad:false,
+  theme:'base',
+  themeVariables:{
+    fontFamily:'Inter, sans-serif',
+    fontSize:'13px',
+    primaryColor:'#FFFFFF',
+    primaryTextColor:'#00243F',
+    primaryBorderColor:'#8FB4CC',
+    lineColor:'#44637E',
+    secondaryColor:'#E8F3FA',
+    tertiaryColor:'#F2F7FB',
+    background:'#FFFFFF',
+    mainBkg:'#FFFFFF',
+    secondBkg:'#E8F3FA',
+    clusterBkg:'#F2F7FB',
+    clusterBorder:'#BBD7E8',
+    titleColor:'#00243F',
+    edgeLabelBackground:'#FFFFFF',
+    nodeBorder:'#8FB4CC',
+    nodeTextColor:'#00243F',
+    /* sequence */
+    actorBkg:'#FFFFFF', actorBorder:'#8FB4CC', actorTextColor:'#00243F',
+    actorLineColor:'#A8C6DA',
+    signalColor:'#006BA6', signalTextColor:'#00243F',
+    labelBoxBkgColor:'#E8F3FA', labelBoxBorderColor:'#BBD7E8',
+    labelTextColor:'#00243F', loopTextColor:'#00243F',
+    noteBkgColor:'#E2F1FA', noteBorderColor:'#9FCFE8', noteTextColor:'#00243F',
+    activationBkgColor:'#D6ECF8', activationBorderColor:'#00AEEF',
+    sequenceNumberColor:'#FFFFFF',
+    /* state */
+    labelColor:'#00243F',
+    /* gantt */
+    sectionBkgColor:'#EDF6FB', altSectionBkgColor:'#FFFFFF',
+    sectionBkgColor2:'#E2F1FA',
+    taskBkgColor:'#BFE3F5', taskBorderColor:'#4FA9D8',
+    taskTextColor:'#00243F', taskTextOutsideColor:'#00243F',
+    taskTextDarkColor:'#00243F', taskTextLightColor:'#00243F',
+    activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#00539F',
+    doneTaskBkgColor:'#DCE9F2', doneTaskBorderColor:'#A8C6DA',
+    critBkgColor:'#FADDE0', critBorderColor:'#C26A78',
+    gridColor:'#CFE0EC', todayLineColor:'#C08080',
+    /* er */
+    attributeBackgroundColorOdd:'#FFFFFF',
+    attributeBackgroundColorEven:'#F2F7FB'
+  },
+  flowchart:{curve:'basis',padding:8,nodeSpacing:28,rankSpacing:36,subGraphTitleMargin:{top:2,bottom:4},useMaxWidth:false},
+  sequence:{useMaxWidth:false,wrap:true,width:160},
+  gantt:{useMaxWidth:false,barHeight:18,barGap:4,fontSize:11},
+  er:{useMaxWidth:false,fontSize:11}
+});
+
+const DARK_VARS = {
+  primaryColor:'#00283F', primaryTextColor:'#DCEBF5', primaryBorderColor:'#17506F',
+  lineColor:'#5B85A3', secondaryColor:'#012B45', tertiaryColor:'#002138',
+  background:'#001526', mainBkg:'#00283F', secondBkg:'#012B45',
+  clusterBkg:'#001C2E', clusterBorder:'#0C3A57',
+  titleColor:'#DCEBF5', edgeLabelBackground:'#002138',
+  nodeBorder:'#17506F', nodeTextColor:'#DCEBF5',
+  actorBkg:'#00283F', actorBorder:'#17506F', actorTextColor:'#DCEBF5',
+  actorLineColor:'#0C3A57', signalColor:'#00AEEF', signalTextColor:'#DCEBF5',
+  labelBoxBkgColor:'#012B45', labelBoxBorderColor:'#0C3A57',
+  labelTextColor:'#DCEBF5', loopTextColor:'#DCEBF5',
+  noteBkgColor:'#00344F', noteBorderColor:'#0071A8', noteTextColor:'#DCEBF5',
+  activationBkgColor:'#00344F', activationBorderColor:'#00AEEF',
+  labelColor:'#DCEBF5',
+  sectionBkgColor:'#001C2E', altSectionBkgColor:'#001526', sectionBkgColor2:'#00283F',
+  taskBkgColor:'#014A70', taskBorderColor:'#0080BE', taskTextColor:'#DCEBF5',
+  taskTextOutsideColor:'#DCEBF5', taskTextDarkColor:'#DCEBF5', taskTextLightColor:'#DCEBF5',
+  activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#4FC8F5',
+  doneTaskBkgColor:'#02334E', doneTaskBorderColor:'#0C3A57',
+  critBkgColor:'#4A2828', critBorderColor:'#8A4A4A',
+  gridColor:'#0C3A57', todayLineColor:'#8A4A4A',
+  attributeBackgroundColorOdd:'#00283F', attributeBackgroundColorEven:'#002138'
+};
+
+/* ── Extract mermaid blocks, render markdown, re-inject ── */
+let dark = false;
+const diagrams = [];
+const mdNoMermaid = MD.replace(/```mermaid\n([\s\S]*?)```/g, (m, code) => {
+  diagrams.push(code.trim());
+  return `<!--MERMAID:${diagrams.length - 1}-->`;
+});
+
+marked.setOptions({gfm:true, breaks:false, sanitize:false});
+let html = marked.parse(mdNoMermaid);
+
+// wrap tables for horizontal scroll
+html = html.replace(/<table>/g, '<div class="tbl-scroll"><table>')
+           .replace(/<\/table>/g, '</table></div>');
+
+// re-inject diagram placeholders
+html = html.replace(/<!--MERMAID:(\d+)-->/g,
+  (m, i) => `<div class="mermaid-box"><pre class="mermaid">${
+    diagrams[i].replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }</pre></div>`);
+
+document.getElementById('doc').innerHTML = html;
+
+/* ── Build table of contents ── */
+const toc = document.getElementById('tocList');
+document.querySelectorAll('.doc h2, .doc h3').forEach((h, i) => {
+  const id = 'sec' + i; h.id = id;
+  const a = document.createElement('a');
+  a.href = '#' + id;
+  a.textContent = h.textContent;
+  if (h.tagName === 'H3') a.className = 'h3';
+  toc.appendChild(a);
+});
+
+/* ── Render diagrams ── */
+/* Sequence-diagram band colours: light source -> dark equivalent.
+   Hardcoded rect rgb() in mermaid source does not follow the theme,
+   so swap it at render time or dark mode gets white text on pale bands. */
+const BAND_DARK = {
+  '232,241,250':'0,40,63',   /* blue   - check stored / establish */
+  '255,243,224':'0,52,79',   /* amber  - retrieve / interpret     */
+  '232,245,233':'1,43,69',   /* green  - compare / retrieve       */
+  '243,238,250':'0,28,46'    /* purple - explain, decide          */
+};
+function themeBands(src){
+  if(!dark) return src;
+  return src.replace(/rect rgb\(([\d, ]+)\)/g, (m, rgb) => {
+    const key = rgb.replace(/\s/g,'');
+    return BAND_DARK[key] ? `rect rgb(${BAND_DARK[key]})` : m;
+  });
+}
+
+const isWide = src => /^\s*%%\s*wide\b/m.test(src);
+
+async function renderDiagrams(){
+  document.querySelectorAll('.mermaid-box').forEach((box, i) => {
+    box.classList.toggle('wide', isWide(diagrams[i]));
+    box.innerHTML = `<pre class="mermaid">${
+      themeBands(diagrams[i]).replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    }</pre>`;
+  });
+  await mermaid.run({querySelector:'.mermaid'});
+
+  /* Leave diagrams at their natural size - CSS handles overflow. */
+  document.querySelectorAll('.mermaid-box svg').forEach(svg => {
+    svg.style.maxWidth = '100%';
+    svg.style.width    = 'auto';
+    svg.style.height   = 'auto';
+  });
+}
+/* ── Theme toggle ── */
+const btn = document.getElementById('themeBtn');
+dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  btn.textContent = dark ? 'Light' : 'Dark';
+  mermaid.initialize({
+    startOnLoad:false, theme:'base',
+    themeVariables: dark
+      ? Object.assign({fontFamily:'Inter, sans-serif', fontSize:'13px'}, DARK_VARS)
+      : {
+          fontFamily:'Inter, sans-serif', fontSize:'13px',
+          primaryColor:'#FFFFFF', primaryTextColor:'#00243F', primaryBorderColor:'#8FB4CC',
+          lineColor:'#44637E', secondaryColor:'#E8F3FA', tertiaryColor:'#F2F7FB',
+          background:'#FFFFFF', mainBkg:'#FFFFFF', secondBkg:'#E8F3FA',
+          clusterBkg:'#F2F7FB', clusterBorder:'#BBD7E8',
+          titleColor:'#00243F', edgeLabelBackground:'#FFFFFF',
+          nodeBorder:'#8FB4CC', nodeTextColor:'#00243F',
+          actorBkg:'#FFFFFF', actorBorder:'#8FB4CC', actorTextColor:'#00243F',
+          actorLineColor:'#A8C6DA', signalColor:'#006BA6', signalTextColor:'#00243F',
+          labelBoxBkgColor:'#E8F3FA', labelBoxBorderColor:'#BBD7E8',
+          labelTextColor:'#00243F', loopTextColor:'#00243F',
+          noteBkgColor:'#E2F1FA', noteBorderColor:'#9FCFE8', noteTextColor:'#00243F',
+          activationBkgColor:'#D6ECF8', activationBorderColor:'#00AEEF',
+          labelColor:'#00243F',
+          sectionBkgColor:'#EDF6FB', altSectionBkgColor:'#FFFFFF', sectionBkgColor2:'#E2F1FA',
+          taskBkgColor:'#BFE3F5', taskBorderColor:'#4FA9D8', taskTextColor:'#00243F',
+          taskTextOutsideColor:'#00243F', taskTextDarkColor:'#00243F', taskTextLightColor:'#00243F',
+          activeTaskBkgColor:'#00AEEF', activeTaskBorderColor:'#00539F',
+          doneTaskBkgColor:'#DCE9F2', doneTaskBorderColor:'#A8C6DA',
+          critBkgColor:'#FADDE0', critBorderColor:'#C26A78',
+          gridColor:'#CFE0EC', todayLineColor:'#C08080',
+          attributeBackgroundColorOdd:'#FFFFFF', attributeBackgroundColorEven:'#F2F7FB'
+        },
+    flowchart:{curve:'basis',padding:8,nodeSpacing:28,rankSpacing:36,subGraphTitleMargin:{top:2,bottom:4},useMaxWidth:false},
+    sequence:{useMaxWidth:false,wrap:true,width:160},
+    gantt:{useMaxWidth:false,barHeight:18,barGap:4,fontSize:11},
+    er:{useMaxWidth:false,fontSize:11}
+  });
+  renderDiagrams();
+}
+btn.onclick = () => { dark = !dark; applyTheme(); };
+applyTheme();
+
+/* ── Contents panel collapse ── */
+const tocBtn = document.getElementById('tocBtn');
+function setToc(collapsed){
+  document.body.classList.toggle('toc-collapsed', collapsed);
+  tocBtn.title = collapsed ? 'Show contents' : 'Hide contents';
+  try{ localStorage.setItem('helixBrdToc', collapsed ? '1' : '0'); }catch(e){}
+  /* diagrams size to their container - re-render once the width settles */
+  setTimeout(renderDiagrams, 260);
+}
+let tocHidden = false;
+try{ tocHidden = localStorage.getItem('helixBrdToc') === '1'; }catch(e){}
+document.body.classList.toggle('toc-collapsed', tocHidden);
+tocBtn.title = tocHidden ? 'Show contents' : 'Hide contents';
+tocBtn.onclick = () => { tocHidden = !tocHidden; setToc(tocHidden); };
+</script>
+</body>
+</html>
