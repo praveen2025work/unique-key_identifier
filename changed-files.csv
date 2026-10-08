@@ -1,0 +1,95 @@
+area,change,file,why (feature)
+backend,new,apps/backend/agent_one_finance/algorithms.py,Algorithm steps
+backend,changed,apps/backend/agent_one_finance/capabilities.py,Skill session
+backend,changed,apps/backend/agent_one_finance/cases.py,UX review loop
+backend,changed,apps/backend/agent_one_finance/config_sync.py,Skill session
+backend,changed,apps/backend/agent_one_finance/devtools.py,Skill session
+backend,changed,apps/backend/agent_one_finance/evals.py,"How it runs, Evals, eval fix"
+backend,changed,apps/backend/agent_one_finance/groups.py,Skill session
+backend,changed,apps/backend/agent_one_finance/insights.py,Algorithm steps
+backend,changed,apps/backend/agent_one_finance/llm.py,Skill session; Skill session (case view)
+backend,changed,apps/backend/agent_one_finance/llm_agent_sdk.py,Skill session; Skill session (case view)
+backend,changed,apps/backend/agent_one_finance/manifest.py,Skill session
+backend,changed,apps/backend/agent_one_finance/stepkit.py,Algorithm steps
+backend,changed,apps/backend/agent_one_finance/steps.py,FOBO skill simulation; Skill session; Skill session (case view)
+backend,changed,apps/backend/agent_one_finance/steps_v2.py,Algorithm steps
+backend,changed,apps/backend/agent_one_finance/web/main.py,"How it runs, Evals, eval fix"
+backend,changed,apps/backend/agent_one_finance/workflow.py,Skill session
+configuration,new,config/agent-one-finance/capabilities/break-investigation-skill.yaml,FOBO skill simulation; Skill session
+configuration,changed,config/agent-one-finance/capabilities/break-investigation.yaml,Algorithm steps
+configuration,changed,config/agent-one-finance/connectors.office.example.yaml,Algorithm steps; FOBO skill simulation
+configuration,changed,config/agent-one-finance/connectors.yaml,Algorithm steps; FOBO skill simulation
+configuration,changed,config/agent-one-finance/groups/break.investigation/fobo-prime.yaml,Algorithm steps
+configuration,changed,config/agent-one-finance/groups/break.investigation/fobo-rates.yaml,Algorithm steps
+configuration,new,config/agent-one-finance/skills/fobo-investigation-skill.md,Skill session
+web console,changed,apps/web/public/pitch/index.html,"AOF logo; Case card, support guide, pitch figures"
+web console,changed,apps/web/scripts/check-styles.mjs,Five colours
+web console,changed,apps/web/src/App.tsx,Pitch page fix
+web console,changed,apps/web/src/api/aof.ts,"Algorithm steps; How it runs, Evals, eval fix; Skill session (case view); UX review loop"
+web console,changed,apps/web/src/components/Layout.tsx,AOF logo; Pitch page fix
+web console,changed,apps/web/src/components/StatusBadge.tsx,Five colours
+web console,changed,apps/web/src/components/Urgency.tsx,Five colours; UX review loop
+web console,changed,apps/web/src/components/authoring/GuidedForm.tsx,Friendlier configuration; UX review loop
+web console,changed,apps/web/src/components/capability/DataContractPanel.tsx,Five colours
+web console,changed,apps/web/src/components/capability/EvalsPanel.tsx,"How it runs, Evals, eval fix"
+web console,changed,apps/web/src/components/capability/FlowDiagram.tsx,"Five colours; How it runs, Evals, eval fix"
+web console,changed,apps/web/src/components/capability/LearningPanel.tsx,Algorithm steps
+web console,changed,apps/web/src/components/case/CaseActions.tsx,"Case card, support guide, pitch figures; Five colours; Simpler console"
+web console,changed,apps/web/src/components/case/CaseHistory.tsx,Five colours
+web console,changed,apps/web/src/components/case/FollowThroughPanel.tsx,Five colours
+web console,changed,apps/web/src/components/case/RequestsPanel.tsx,Five colours
+web console,new,apps/web/src/components/case/SessionTranscript.tsx,Skill session (case view); UX review loop
+web console,changed,apps/web/src/components/case/SignOffChecklist.tsx,UX review loop
+web console,changed,apps/web/src/components/case/StepsV2.tsx,Five colours
+web console,changed,apps/web/src/components/mission-control/IncidentStrip.tsx,Five colours
+web console,changed,apps/web/src/components/mission-control/LiveTail.tsx,Five colours
+web console,changed,apps/web/src/components/mission-control/SeverityBadge.tsx,Five colours
+web console,new,apps/web/src/components/ops/SupportGuide.tsx,"Case card, support guide, pitch figures"
+web console,changed,apps/web/src/components/orchestrator/OrchestratorEditor.tsx,Five colours; Friendlier configuration; Skill session (configure); UX review loop
+web console,changed,apps/web/src/components/orchestrator/PrepareSteps.tsx,Algorithm steps; Five colours; Friendlier configuration
+web console,changed,apps/web/src/components/orchestrator/fields.tsx,Friendlier configuration; UX review loop
+web console,changed,apps/web/src/components/orchestrator/stages.ts,Friendlier configuration; Skill session; Skill session (configure); UX review loop
+web console,changed,apps/web/src/components/ui.tsx,Simpler console
+web console,changed,apps/web/src/pages/Audit.tsx,"Case card, support guide, pitch figures; UX review loop"
+web console,changed,apps/web/src/pages/Authoring.tsx,Five colours; UX review loop
+web console,changed,apps/web/src/pages/Capabilities.tsx,Friendlier configuration
+web console,changed,apps/web/src/pages/CapabilityDetail.tsx,"How it runs, Evals, eval fix; Simpler console; UX review loop"
+web console,changed,apps/web/src/pages/CaseWorkspace.tsx,"Case card, support guide, pitch figures; FOBO skill simulation; Five colours; Friendlier configuration; Simpler console; Skill session (case view); UX review loop"
+web console,changed,apps/web/src/pages/GroupDetail.tsx,Friendlier configuration; UX review loop
+web console,changed,apps/web/src/pages/Inbox.tsx,Five colours; Simpler console; UX review loop
+web console,changed,apps/web/src/pages/Operations.tsx,"Case card, support guide, pitch figures"
+web console,changed,apps/web/src/pages/Overview.tsx,Simpler console; UX review loop
+web console,changed,apps/web/theme/style-manifest.json,"AOF logo; Case card, support guide, pitch figures"
+test,new,apps/backend/tests/agent_one_finance/test_algorithms.py,Algorithm steps
+test,changed,apps/backend/tests/agent_one_finance/test_break_investigation.py,Algorithm steps
+test,changed,apps/backend/tests/agent_one_finance/test_case_flow.py,UX review loop
+test,changed,apps/backend/tests/agent_one_finance/test_evals.py,"How it runs, Evals, eval fix"
+test,new,apps/backend/tests/agent_one_finance/test_fobo_simulation.py,FOBO skill simulation
+test,changed,apps/backend/tests/agent_one_finance/test_manifest.py,Skill session
+test,new,apps/backend/tests/agent_one_finance/test_skill_session.py,FOBO skill simulation; Skill session; Skill session (case view)
+test,changed,apps/web/src/components/__tests__/Controls.test.tsx,"How it runs, Evals, eval fix"
+test,changed,apps/web/src/components/mission-control/__tests__/SeverityBadge.test.tsx,Five colours
+test,changed,apps/web/src/components/orchestrator/__tests__/OrchestratorEditor.test.tsx,Friendlier configuration
+test,changed,apps/web/src/pages/__tests__/Authoring.test.tsx,UX review loop
+test,changed,apps/web/src/pages/__tests__/CaseWorkspace.test.tsx,Simpler console; UX review loop
+test,changed,apps/web/src/pages/__tests__/Features.test.tsx,UX review loop
+test,changed,apps/web/src/pages/__tests__/Groups.test.tsx,Simpler console; UX review loop
+test,changed,apps/web/src/pages/__tests__/Operations.test.tsx,"Case card, support guide, pitch figures"
+stub/demo data (dev only),changed,apps/backend/agent_one_finance/stub_connectors/finance.py,Algorithm steps; FOBO skill simulation
+stub/demo data (dev only),new,apps/backend/agent_one_finance/stub_connectors/fobo_simulation.py,FOBO skill simulation
+stub/demo data (dev only),new,apps/backend/agent_one_finance/stub_connectors/fobo_skill_simulator.py,FOBO skill simulation
+docs,new,docs/agent-one-finance/architecture/c4/fobo-c4-architecture.html,C4 architecture
+docs,new,docs/agent-one-finance/architecture/c4/fobo.dsl,C4 architecture
+docs,changed,docs/agent-one-finance/fobo-skill/mbrec-data-contract.md,Algorithm steps
+docs,changed,docs/agent-one-finance/fobo-skill/skill-to-agent-one-finance.md,Algorithm steps
+docs,changed,docs/agent-one-finance/guide/README.md,"Algorithm steps; How it runs, Evals, eval fix; Simpler console; Skill session"
+docs,new,docs/agent-one-finance/guide/algorithms.md,Algorithm steps
+docs,changed,docs/agent-one-finance/guide/developer-guide.md,Algorithm steps; Skill session
+docs,changed,docs/agent-one-finance/guide/features-by-capability.md,Algorithm steps
+docs,new,docs/agent-one-finance/guide/how-it-runs-and-evals.md,"How it runs, Evals, eval fix"
+docs,new,docs/agent-one-finance/guide/skill-session.md,FOBO skill simulation; Skill session; Skill session (case view)
+docs,new,docs/agent-one-finance/guide/ui-principles.md,"Case card, support guide, pitch figures; Five colours; Screen book; Simpler console; UX review loop"
+docs,changed,docs/agent-one-finance/migration/styles.md,Five colours
+docs,changed,docs/agent-one-finance/migration/whats-new.md,Algorithm steps; FOBO skill simulation; Office kit notes; Skill session
+docs,changed,docs/agent-one-finance/pitch/agent-one-finance-pitch.html,"AOF logo; Case card, support guide, pitch figures"
+docs,changed,docs/agent-one-finance/platform-overview.md,"Case card, support guide, pitch figures"
